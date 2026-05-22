@@ -440,7 +440,9 @@ Page({
           return
         }
         const canvas = res[0].node
-        const dpr = wx.getWindowInfo().pixelRatio || 2
+        const rawDpr = wx.getWindowInfo().pixelRatio || 2
+        // 限制 DPR 最大为 2，平衡清晰度与内存占用
+        const dpr = Math.min(rawDpr, 2)
 
         // 物理像素尺寸
         const cssWidth = res[0].width
@@ -732,14 +734,18 @@ Page({
       }
     }
 
-    // 绘制光标（随字体大小缩放）
+    // 绘制光标（随字体大小缩放，细短竖线）
     ctx.save()
     ctx.globalCompositeOperation = 'source-over'
     ctx.strokeStyle = 'rgba(61, 43, 31, 0.40)'
-    ctx.lineWidth = Math.max(2, Math.round(fontSize * 0.06))
+    // 线宽为原来的三分之一（约 fontSize * 0.02）
+    ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.02))
     ctx.beginPath()
-    ctx.moveTo(cursorX, cursorY - fontSize * 0.85)
-    ctx.lineTo(cursorX, cursorY + fontSize * 0.15)
+    // 光标长度为字高的三分之一，居中于基线
+    const cursorHeight = fontSize * 0.33
+    const cursorTop = cursorY - fontSize * 0.5 - cursorHeight * 0.5
+    ctx.moveTo(cursorX, cursorTop)
+    ctx.lineTo(cursorX, cursorTop + cursorHeight)
     ctx.stroke()
     ctx.restore()
   },
@@ -2164,6 +2170,16 @@ Page({
 
   onTextAlignChange(e) {
     const align = e.detail.value
+    this.setData({
+      'textSettings.textAlign': align,
+      'settings.textAlign': align
+    }, () => {
+      this._triggerRender()
+    })
+  },
+
+  onTextAlignTap(e) {
+    const align = e.currentTarget.dataset.align
     this.setData({
       'textSettings.textAlign': align,
       'settings.textAlign': align

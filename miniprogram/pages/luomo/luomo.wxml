@@ -126,19 +126,37 @@
               <view class="settings-cell settings-cell-align">
                 <view class="setting-label">对齐</view>
                 <view class="align-options">
-                  <view class="align-option">
-                    <radio value="left" checked="{{textSettings.textAlign === 'left'}}" color="#6B5B4F"/>
+                  <view class="align-option {{textSettings.textAlign === 'left' ? 'active' : ''}}" bindtap="onTextAlignTap" data-align="left">
                     <text>左</text>
                   </view>
-                  <view class="align-option">
-                    <radio value="center" checked="{{textSettings.textAlign === 'center'}}" color="#6B5B4F"/>
+                  <view class="align-option {{textSettings.textAlign === 'center' ? 'active' : ''}}" bindtap="onTextAlignTap" data-align="center">
                     <text>中</text>
                   </view>
                 </view>
               </view>
             </view>
 
-            <!-- 第二行：字号、深浅、倾斜 -->
+            <!-- 第二行：开关项 -->
+            <view class="settings-row">
+              <view class="settings-cell settings-cell-switch">
+                <view class="setting-label">水印</view>
+                <switch checked="{{textSettings.watermarkEnabled}}" bindchange="onWatermarkToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
+              </view>
+              <view class="settings-cell settings-cell-switch">
+                <view class="setting-label">繁简</view>
+                <switch checked="{{textSettings.traditionalChinese}}" bindchange="onTraditionalChineseToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
+              </view>
+              <view class="settings-cell settings-cell-switch">
+                <view class="setting-label">描边</view>
+                <switch checked="{{textSettings.strokeEnabled}}" bindchange="onStrokeToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
+              </view>
+              <view class="settings-cell settings-cell-switch">
+                <view class="setting-label">换行</view>
+                <switch checked="{{textSettings.preserveLineBreaks}}" bindchange="onLineBreakToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
+              </view>
+            </view>
+
+            <!-- 第三行：字号、深浅、倾斜 -->
             <view class="settings-row">
               <view class="settings-cell">
                 <view class="setting-label">字号</view>
@@ -160,26 +178,6 @@
                   <slider class="slider-mini" min="-15" max="15" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onTextSkewChange"/>
                   <text class="slider-value-mini">{{textSettings.textSkewDisplay}}</text>
                 </view>
-              </view>
-            </view>
-
-            <!-- 第三行：开关项 -->
-            <view class="settings-row">
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">水印</view>
-                <switch checked="{{textSettings.watermarkEnabled}}" bindchange="onWatermarkToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">繁简</view>
-                <switch checked="{{textSettings.traditionalChinese}}" bindchange="onTraditionalChineseToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">描边</view>
-                <switch checked="{{textSettings.strokeEnabled}}" bindchange="onStrokeToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">换行</view>
-                <switch checked="{{textSettings.preserveLineBreaks}}" bindchange="onLineBreakToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
               </view>
             </view>
 
@@ -214,15 +212,15 @@
         <block wx:if="{{settingsTab === 'paper'}}">
           <view class="settings-content">
             <!-- 第一行：纸张模板 + 底色 + 老旧度 + 纹理 -->
-            <view class="settings-row">
-              <view class="settings-cell" bindtap="onTogglePaperTemplates">
+            <view class="settings-row settings-row--four">
+              <view class="settings-cell settings-cell--margin" bindtap="onTogglePaperTemplates">
                 <view class="setting-label">纸张模板</view>
                 <view class="setting-value">
                   <text class="value-text-mini">{{paperSettings.templateOptions[paperSettings.templateIndex].name}}</text>
                   <text class="arrow">{{paperSettings.templateExpanded ? '‹' : '›'}}</text>
                 </view>
               </view>
-              <view class="settings-cell">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">底色</view>
                 <picker mode="selector" range="{{paperSettings.colorOptions}}" range-key="name" bindchange="onPaperColorChange" value="{{paperSettings.colorIndex}}">
                   <view class="setting-value">
@@ -231,7 +229,7 @@
                   </view>
                 </picker>
               </view>
-              <view class="settings-cell">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">老旧度</view>
                 <picker mode="selector" range="{{paperSettings.agingOptions}}" bindchange="onPaperAgingChange" value="{{paperSettings.agingIndex}}">
                   <view class="setting-value">
@@ -240,7 +238,7 @@
                   </view>
                 </picker>
               </view>
-              <view class="settings-cell">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">纹理</view>
                 <picker mode="selector" range="{{paperSettings.textureOptions}}" bindchange="onPaperTextureChange" value="{{paperSettings.textureIndex}}">
                   <view class="setting-value">
@@ -373,8 +371,8 @@
         <block wx:if="{{settingsTab === 'layout'}}">
           <view class="settings-content">
             <!-- 第一行：文字方向、首行缩进、页眉页脚、页码显示 -->
-            <view class="settings-row settings-row--taller">
-              <view class="settings-cell settings-cell--taller">
+            <view class="settings-row settings-row--four">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">文字方向</view>
                 <picker mode="selector" range="{{layoutSettings.directionOptions}}" bindchange="onLayoutDirectionChange" value="{{layoutSettings.directionIndex}}">
                   <view class="setting-value">
@@ -383,7 +381,7 @@
                   </view>
                 </picker>
               </view>
-              <view class="settings-cell settings-cell--taller">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">首行缩进</view>
                 <picker mode="selector" range="{{layoutSettings.indentOptions}}" bindchange="onLayoutIndentChange" value="{{layoutSettings.indentIndex}}">
                   <view class="setting-value">
@@ -392,40 +390,40 @@
                   </view>
                 </picker>
               </view>
-              <view class="settings-cell settings-cell-switch">
+              <view class="settings-cell settings-cell--fourth settings-cell-switch">
                 <view class="setting-label">页眉页脚</view>
                 <switch checked="{{layoutSettings.headerFooterEnabled}}" bindchange="onLayoutHeaderFooterToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
               </view>
-              <view class="settings-cell settings-cell-switch">
+              <view class="settings-cell settings-cell--fourth settings-cell-switch">
                 <view class="setting-label">页码显示</view>
                 <switch checked="{{layoutSettings.pageNumberEnabled}}" bindchange="onLayoutPageNumberToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
               </view>
             </view>
 
             <!-- 第二行：行间距、字间距、段落间距、排版松紧 -->
-            <view class="settings-row">
-              <view class="settings-cell">
+            <view class="settings-row settings-row--four">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">行间距</view>
                 <view class="setting-value">
                   <slider class="slider-mini" min="80" max="300" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
                   <text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text>
                 </view>
               </view>
-              <view class="settings-cell">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">字间距</view>
                 <view class="setting-value">
                   <slider class="slider-mini" min="-5" max="25" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLetterSpacingChange"/>
                   <text class="slider-value-mini">{{layoutSettings.letterSpacing}}px</text>
                 </view>
               </view>
-              <view class="settings-cell">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">段落间距</view>
                 <view class="setting-value">
                   <slider class="slider-mini" min="0" max="50" step="1" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutParagraphSpacingChange"/>
                   <text class="slider-value-mini">{{layoutSettings.paragraphSpacing}}px</text>
                 </view>
               </view>
-              <view class="settings-cell">
+              <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">排版松紧</view>
                 <view class="setting-value">
                   <slider class="slider-mini" min="0" max="100" step="1" value="{{layoutSettings.compactness}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutCompactnessChange"/>
@@ -435,20 +433,20 @@
             </view>
 
             <!-- 第三行：开关项 -->
-            <view class="settings-row">
-              <view class="settings-cell settings-cell-switch">
+            <view class="settings-row settings-row--four">
+              <view class="settings-cell settings-cell--fourth settings-cell-switch">
                 <view class="setting-label">字体风化</view>
                 <switch checked="{{layoutSettings.weatheringEnabled}}" bindchange="onLayoutWeatheringToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
               </view>
-              <view class="settings-cell settings-cell-switch">
+              <view class="settings-cell settings-cell--fourth settings-cell-switch">
                 <view class="setting-label">墨色浸染</view>
                 <switch checked="{{layoutSettings.inkSpreadEnabled}}" bindchange="onLayoutInkSpreadToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
               </view>
-              <view class="settings-cell settings-cell-switch">
+              <view class="settings-cell settings-cell--fourth settings-cell-switch">
                 <view class="setting-label">套印错位</view>
                 <switch checked="{{layoutSettings.misregistrationEnabled}}" bindchange="onLayoutMisregistrationToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
               </view>
-              <view class="settings-cell settings-cell-switch">
+              <view class="settings-cell settings-cell--fourth settings-cell-switch">
                 <view class="setting-label">页面破损</view>
                 <switch checked="{{layoutSettings.damageEnabled}}" bindchange="onLayoutDamageToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
               </view>

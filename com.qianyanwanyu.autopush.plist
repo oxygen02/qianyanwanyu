@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.qianyanwanyu.autopush</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh</string>
+    </array>
+    <!-- 每90分钟（5400秒）执行一次 -->
+    <key>StartInterval</key>
+    <integer>5400</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/push.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/push.log</string>
+    <!-- 工作目录 -->
+    <key>WorkingDirectory</key>
+    <string>/Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu</string>
+</dict>
+</plist>

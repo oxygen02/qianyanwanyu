@@ -1240,8 +1240,13 @@
 
 .settings-row--four {
   display: flex;
-  gap: 8rpx;
+  gap: 6rpx;
   justify-content: space-between;
+  margin-bottom: 6rpx;
+}
+
+.settings-row--four:last-child {
+  margin-bottom: 0;
 }
 
 .settings-row--four .settings-cell--margin {
@@ -1249,13 +1254,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
-  padding: 12rpx 12rpx;
+  gap: 6rpx;
+  padding: 10rpx 12rpx;
   background: rgba(255, 255, 255, 0.65);
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.1);
-  min-height: 72rpx;
-  max-height: 72rpx;
+  min-height: 78rpx;
+  max-height: 78rpx;
   justify-content: center;
   box-sizing: border-box;
 }
@@ -1265,13 +1270,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
-  padding: 12rpx 12rpx;
+  gap: 6rpx;
+  padding: 10rpx 12rpx;
   background: rgba(255, 255, 255, 0.65);
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.1);
-  min-height: 72rpx;
-  max-height: 72rpx;
+  min-height: 78rpx;
+  max-height: 78rpx;
   justify-content: center;
   box-sizing: border-box;
 }
@@ -1488,15 +1493,15 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
-  padding: 12rpx 12rpx;
+  gap: 6rpx;
+  padding: 10rpx 12rpx;
   background: rgba(255, 255, 255, 0.65);
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.1);
   min-width: 0;
   overflow: hidden;
-  min-height: 72rpx;
-  max-height: 72rpx;
+  min-height: 78rpx;
+  max-height: 78rpx;
   justify-content: center;
   box-sizing: border-box;
 }
@@ -1510,20 +1515,20 @@
 .settings-cell--wide {
   flex: 2.2;
   min-width: 200rpx;
-  min-height: 72rpx;
-  max-height: 72rpx;
-  padding: 12rpx 12rpx;
+  min-height: 78rpx;
+  max-height: 78rpx;
+  padding: 10rpx 12rpx;
   box-sizing: border-box;
 }
 
 .settings-cell--narrow {
   flex: 0.7;
-  min-height: 72rpx;
-  max-height: 72rpx;
-  padding: 12rpx 12rpx;
+  min-height: 78rpx;
+  max-height: 78rpx;
+  padding: 10rpx 12rpx;
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.65);
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.1);
   display: flex;
   flex-direction: column;
@@ -1574,14 +1579,14 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 12rpx 32rpx 12rpx 12rpx;
+  padding: 10rpx 32rpx 10rpx 12rpx;
   min-width: 0;
   flex: 1;
-  min-height: 72rpx;
-  max-height: 72rpx;
+  min-height: 78rpx;
+  max-height: 78rpx;
   position: relative;
   background: rgba(255, 255, 255, 0.65);
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.1);
   box-sizing: border-box;
 }
@@ -1596,13 +1601,13 @@
   flex-direction: row;
   align-items: center;
   gap: 8rpx;
-  padding: 12rpx 12rpx;
+  padding: 10rpx 12rpx;
   min-width: 0;
   flex: 1;
-  min-height: 72rpx;
-  max-height: 72rpx;
+  min-height: 78rpx;
+  max-height: 78rpx;
   background: rgba(255, 255, 255, 0.65);
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.1);
   box-sizing: border-box;
 }
@@ -1786,18 +1791,23 @@ picker .setting-value {
   display: flex;
   flex-direction: row;
   align-items: center;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+  background-color: rgba(158, 148, 136, 0.1);
+  transition: all 0.2s;
 }
 
-.settings-cell-align .align-option radio {
-  width: 32rpx;
-  height: 32rpx;
-  transform: scale(0.45);
+.settings-cell-align .align-option.active {
+  background-color: #6B5B4F;
+}
+
+.settings-cell-align .align-option.active text {
+  color: #FAF7F2;
 }
 
 .settings-cell-align .align-option text {
   font-size: 18rpx;
   color: #6B5B4F;
-  margin-left: 6rpx;
 }
 
 .input-field-mini {
