@@ -1,0 +1,126 @@
+<!-- pages/shiwen/shiwen.wxml -->
+<!-- 拾文：引导手动粘贴文章正文，清洗后渲染为书页 -->
+<view class="page-root">
+
+  <!-- 顶部标题区 -->
+  <view class="header" style="padding-top:{{statusBarHeight}}px">
+    <text class="header-title">拾文</text>
+    <text class="header-sub">粘贴文章，化为书页</text>
+  </view>
+
+  <!-- 状态机视图切换 -->
+
+  <!-- 状态1：粘贴输入（初始状态） -->
+  <view class="paste-area" wx:if="{{stage === 'input'}}">
+    <view class="paste-card">
+      <textarea
+        class="paste-textarea"
+        value="{{rawText}}"
+        placeholder="将文章正文粘贴到此处..."
+        placeholder-class="paste-placeholder"
+        bindinput="onPasteInput"
+        auto-height="{{false}}"
+        maxlength="{{-1}}"
+        show-confirm-bar="{{false}}"
+        adjust-position="{{false}}"
+      />
+      <!-- 粘贴快捷按钮 -->
+      <view class="paste-actions">
+        <view class="paste-btn" bind:tap="onPasteFromClipboard">
+          <text class="paste-btn-text">从剪贴板粘贴</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 提示文字 -->
+    <view class="paste-tips">
+      <text class="tips-title">使用提示</text>
+      <text class="tips-item">1. 打开微信公众号文章，长按复制全文</text>
+      <text class="tips-item">2. 粘贴到上方文本框</text>
+      <text class="tips-item">3. 点击「生成书页」，铅言万语自动清洗排版</text>
+    </view>
+
+    <!-- 底部按钮 -->
+    <view class="bottom-bar">
+      <view
+        class="generate-btn {{rawText ? 'active' : 'disabled'}}"
+        bind:tap="onGenerate"
+      >
+        <text class="generate-btn-text">生成书页</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 状态2：清洗预览 -->
+  <view class="preview-area" wx:if="{{stage === 'preview'}}">
+    <view class="preview-info">
+      <text class="preview-stat">清洗后 {{cleanedText.length}} 字</text>
+      <text class="preview-revert" bind:tap="onBackToInput">重新粘贴</text>
+    </view>
+
+    <!-- 清洗后文字预览（可编辑） -->
+    <view class="preview-card">
+      <textarea
+        class="preview-textarea"
+        value="{{cleanedText}}"
+        placeholder=""
+        bindinput="onCleanedTextEdit"
+        auto-height="{{false}}"
+        maxlength="{{-1}}"
+        show-confirm-bar="{{false}}"
+        adjust-position="{{false}}"
+      />
+    </view>
+
+    <!-- 模板选择 -->
+    <view class="template-bar">
+      <text class="template-bar-label">纸张</text>
+      <scroll-view scroll-x class="template-mini-scroll">
+        <view class="template-mini-list">
+          <view
+            wx:for="{{templateList}}"
+            wx:key="id"
+            class="template-mini-item {{item.id === activeTemplateId ? 'active' : ''}}"
+            bind:tap="onSelectTemplate"
+            data-id="{{item.id}}"
+            style="background-color:{{item.paper.baseColor}}"
+          >
+            <text class="template-mini-name">{{item.name}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 底部按钮 -->
+    <view class="bottom-bar">
+      <view class="generate-btn active" bind:tap="onRenderAndExport">
+        <text class="generate-btn-text">{{isRendering ? '渲染中...' : '生成并保存'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 状态3：渲染成功 -->
+  <view class="success-area" wx:if="{{stage === 'done'}}">
+    <view class="success-icon-wrap">
+      <text class="success-icon">卷</text>
+    </view>
+    <text class="success-title">书页已生成</text>
+    <text class="success-sub">已保存到相册，可在吾卷中查看历史</text>
+    <view class="success-actions">
+      <view class="success-btn secondary" bind:tap="onReset">
+        <text>继续拾文</text>
+      </view>
+      <view class="success-btn primary" bind:tap="onGoToLuomo">
+        <text>回到落墨</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 离屏Canvas（不显示，仅用于渲染导出） -->
+  <canvas
+    id="shiwenCanvas"
+    type="2d"
+    class="offscreen-canvas"
+    style="width:{{canvasWidth}}px;height:{{canvasHeight}}px"
+  />
+</view>

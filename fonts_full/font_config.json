@@ -1,0 +1,538 @@
+{
+  "fonts": [
+    {
+      "family": "otf",
+      "name": "otf",
+      "weights": [
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "otf-Light.otf",
+          "size": 16076304
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "otf-Regular.otf",
+          "size": 15830868
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "otf-Medium.otf",
+          "size": 15901176
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "otf-Bold.otf",
+          "size": 15643928
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "otf-Heavy.otf",
+          "size": 15342340
+        }
+      ]
+    },
+    {
+      "family": "上古宋体",
+      "name": "上古宋体",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "上古宋体-ExtraLight.ttf",
+          "size": 23587160
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "上古宋体-Light.ttf",
+          "size": 23641412
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "上古宋体-Regular.ttf",
+          "size": 23646152
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "上古宋体-Medium.ttf",
+          "size": 23641660
+        },
+        {
+          "weight": "SemiBold",
+          "weight_value": 6,
+          "filename": "上古宋体-SemiBold.ttf",
+          "size": 23644520
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "上古宋体-Bold.ttf",
+          "size": 23652340
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "上古宋体-Heavy.ttf",
+          "size": 23640996
+        }
+      ]
+    },
+    {
+      "family": "初夏宋体",
+      "name": "初夏宋体",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "初夏宋体-ExtraLight.ttf",
+          "size": 17361956
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "初夏宋体-Light.ttf",
+          "size": 17397500
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "初夏宋体-Regular.ttf",
+          "size": 17399520
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "初夏宋体-Medium.ttf",
+          "size": 17409872
+        },
+        {
+          "weight": "SemiBold",
+          "weight_value": 6,
+          "filename": "初夏宋体-SemiBold.ttf",
+          "size": 17415788
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "初夏宋体-Bold.ttf",
+          "size": 17435636
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "初夏宋体-Heavy.ttf",
+          "size": 17404564
+        }
+      ]
+    },
+    {
+      "family": "寒蝉锦书宋",
+      "name": "寒蝉锦书宋",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "寒蝉锦书宋-Regular.otf",
+          "size": 25800948
+        }
+      ]
+    },
+    {
+      "family": "屏显臻宋",
+      "name": "屏显臻宋",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "屏显臻宋-Regular.ttf",
+          "size": 14263332
+        }
+      ]
+    },
+    {
+      "family": "思源宋体",
+      "name": "思源宋体",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "思源宋体-ExtraLight.otf",
+          "size": 21406352
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "思源宋体-Light.otf",
+          "size": 24501300
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "思源宋体-Regular.otf",
+          "size": 24543332
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "思源宋体-Medium.otf",
+          "size": 24805580
+        },
+        {
+          "weight": "SemiBold",
+          "weight_value": 6,
+          "filename": "思源宋体-SemiBold.otf",
+          "size": 24700532
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "思源宋体-Bold.otf",
+          "size": 25521732
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "思源宋体-Heavy.otf",
+          "size": 24063280
+        }
+      ]
+    },
+    {
+      "family": "文源宋体",
+      "name": "文源宋体",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "文源宋体-ExtraLight.ttf",
+          "size": 15017604
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "文源宋体-Light.ttf",
+          "size": 15068648
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "文源宋体-Regular.ttf",
+          "size": 15080360
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "文源宋体-Medium.ttf",
+          "size": 15088700
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "文源宋体-Bold.ttf",
+          "size": 15171236
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "文源宋体-Heavy.ttf",
+          "size": 15206492
+        }
+      ]
+    },
+    {
+      "family": "方正书宋",
+      "name": "方正书宋",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "方正书宋-Regular.ttf",
+          "size": 3081292
+        }
+      ]
+    },
+    {
+      "family": "昭源宋体",
+      "name": "昭源宋体",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "昭源宋体-ExtraLight.ttf",
+          "size": 24305284
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "昭源宋体-Light.ttf",
+          "size": 24383764
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "昭源宋体-Regular.ttf",
+          "size": 24394648
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "昭源宋体-Medium.ttf",
+          "size": 24402660
+        },
+        {
+          "weight": "SemiBold",
+          "weight_value": 6,
+          "filename": "昭源宋体-SemiBold.ttf",
+          "size": 24397532
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "昭源宋体-Bold.ttf",
+          "size": 24389960
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "昭源宋体-Heavy.ttf",
+          "size": 24325436
+        }
+      ]
+    },
+    {
+      "family": "朝華打字機",
+      "name": "朝華打字機",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "朝華打字機-Regular.ttf",
+          "size": 27492052
+        }
+      ]
+    },
+    {
+      "family": "梦源宋体",
+      "name": "梦源宋体",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "梦源宋体-Regular.ttf",
+          "size": 15793420
+        }
+      ]
+    },
+    {
+      "family": "汇文明朝体",
+      "name": "汇文明朝体",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "汇文明朝体-Regular.otf",
+          "size": 24426256
+        }
+      ]
+    },
+    {
+      "family": "源流明体",
+      "name": "源流明体",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "源流明体-ExtraLight.otf",
+          "size": 16393840
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "源流明体-Light.otf",
+          "size": 16455044
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "源流明体-Regular.otf",
+          "size": 16454556
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "源流明体-Medium.otf",
+          "size": 16409676
+        },
+        {
+          "weight": "SemiBold",
+          "weight_value": 6,
+          "filename": "源流明体-SemiBold.otf",
+          "size": 16331776
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "源流明体-Bold.otf",
+          "size": 16222784
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "源流明体-Heavy.otf",
+          "size": 16027364
+        }
+      ]
+    },
+    {
+      "family": "源起明体",
+      "name": "源起明体",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "源起明体-ExtraLight.ttc",
+          "size": 16642136
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "源起明体-Light.ttc",
+          "size": 16628060
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "源起明体-Regular.ttc",
+          "size": 16613680
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "源起明体-Medium.ttc",
+          "size": 16618436
+        },
+        {
+          "weight": "SemiBold",
+          "weight_value": 6,
+          "filename": "源起明体-SemiBold.ttc",
+          "size": 16638472
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "源起明体-Bold.ttc",
+          "size": 16605624
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "源起明体-Heavy.ttc",
+          "size": 16514424
+        }
+      ]
+    },
+    {
+      "family": "空心晴宋体",
+      "name": "空心晴宋体",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "空心晴宋体-Regular.ttf",
+          "size": 42306224
+        }
+      ]
+    },
+    {
+      "family": "繁媛明朝",
+      "name": "繁媛明朝",
+      "weights": [
+        {
+          "weight": "ExtraLight",
+          "weight_value": 2,
+          "filename": "繁媛明朝-ExtraLight.ttf",
+          "size": 6738624
+        },
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "繁媛明朝-Light.ttf",
+          "size": 6740000
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "繁媛明朝-Regular.ttf",
+          "size": 6746432
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "繁媛明朝-Medium.ttf",
+          "size": 6753444
+        },
+        {
+          "weight": "SemiBold",
+          "weight_value": 6,
+          "filename": "繁媛明朝-SemiBold.ttf",
+          "size": 6754308
+        },
+        {
+          "weight": "Bold",
+          "weight_value": 7,
+          "filename": "繁媛明朝-Bold.ttf",
+          "size": 6745724
+        },
+        {
+          "weight": "Heavy",
+          "weight_value": 9,
+          "filename": "繁媛明朝-Heavy.ttf",
+          "size": 6737228
+        }
+      ]
+    },
+    {
+      "family": "迫真打字油印体",
+      "name": "迫真打字油印体",
+      "weights": [
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "迫真打字油印体-Regular.ttf",
+          "size": 36705764
+        }
+      ]
+    },
+    {
+      "family": "霞鹜文楷",
+      "name": "霞鹜文楷",
+      "weights": [
+        {
+          "weight": "Light",
+          "weight_value": 3,
+          "filename": "霞鹜文楷-Light.ttf",
+          "size": 27229060
+        },
+        {
+          "weight": "Regular",
+          "weight_value": 4,
+          "filename": "霞鹜文楷-Regular.ttf",
+          "size": 25486932
+        },
+        {
+          "weight": "Medium",
+          "weight_value": 5,
+          "filename": "霞鹜文楷-Medium.ttf",
+          "size": 25227744
+        }
+      ]
+    }
+  ]
+}

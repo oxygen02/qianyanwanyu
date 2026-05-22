@@ -1,0 +1,154 @@
+<!-- pages/wujuan/wujuan.wxml -->
+<view class="page-root">
+
+  <!-- 顶部标题 -->
+  <view class="header" style="padding-top:{{statusBarHeight}}px">
+    <text class="header-title">吾卷</text>
+    <text class="header-sub">我的书页历史</text>
+  </view>
+
+  <!-- 标签切换 -->
+  <view class="tabs">
+    <view
+      class="tab-item {{activeTab === 'history' ? 'active' : ''}}"
+      bind:tap="onSwitchTab"
+      data-tab="history"
+    >
+      <text class="tab-text">历史</text>
+    </view>
+    <view
+      class="tab-item {{activeTab === 'templates' ? 'active' : ''}}"
+      bind:tap="onSwitchTab"
+      data-tab="templates"
+    >
+      <text class="tab-text">模板</text>
+    </view>
+    <view
+      class="tab-item {{activeTab === 'settings' ? 'active' : ''}}"
+      bind:tap="onSwitchTab"
+      data-tab="settings"
+    >
+      <text class="tab-text">设置</text>
+    </view>
+  </view>
+
+  <!-- 历史记录 -->
+  <scroll-view scroll-y class="tab-content" wx:if="{{activeTab === 'history'}}">
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{historyList.length === 0}}">
+      <text class="empty-icon">册</text>
+      <text class="empty-text">还没有书页记录</text>
+      <text class="empty-sub">去落墨创作，导出后将在这里留档</text>
+    </view>
+
+    <!-- 历史列表 -->
+    <view class="history-list" wx:else>
+      <view
+        wx:for="{{historyList}}"
+        wx:key="id"
+        class="history-item"
+        bind:tap="onHistoryItemTap"
+        data-id="{{item.id}}"
+      >
+        <!-- 缩略图 -->
+        <view class="history-thumb" style="background-color:#FAF7F2">
+          <image
+            wx:if="{{item.thumbnailPath}}"
+            class="history-thumb-img"
+            src="{{item.thumbnailPath}}"
+            mode="aspectFill"
+          />
+          <text wx:else class="history-thumb-placeholder">文</text>
+        </view>
+        <!-- 信息 -->
+        <view class="history-info">
+          <text class="history-text">{{item.text}}</text>
+          <view class="history-meta">
+            <text class="history-template">{{item.templateName || item.templateId}}</text>
+            <text class="history-date">{{item.dateStr}}</text>
+          </view>
+        </view>
+        <!-- 删除按钮 -->
+        <view class="history-delete" bind:tap="onDeleteHistory" data-id="{{item.id}}" catch:tap="_noop">
+          <text class="delete-icon">x</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 模板管理 -->
+  <scroll-view scroll-y class="tab-content" wx:if="{{activeTab === 'templates'}}">
+    <!-- 系统模板 -->
+    <view class="section-header">
+      <text class="section-title">系统模板</text>
+      <text class="section-count">{{systemTemplates.length}} 套</text>
+    </view>
+    <view class="template-grid">
+      <view
+        wx:for="{{systemTemplates}}"
+        wx:key="id"
+        class="template-grid-item {{item.id === activeTemplateId ? 'active' : ''}}"
+        bind:tap="onApplyTemplate"
+        data-id="{{item.id}}"
+      >
+        <view class="template-preview" style="background-color:{{item.paper.baseColor}}">
+          <text class="template-preview-text" style="color:#3D2B1F">{{item.name}}</text>
+        </view>
+        <text class="template-grid-name">{{item.name}}</text>
+        <text class="template-grid-desc">{{item.desc}}</text>
+      </view>
+    </view>
+
+    <!-- 自定义模板（预留） -->
+    <view class="section-header">
+      <text class="section-title">自定义模板</text>
+      <text class="section-count">{{customTemplates.length}} / 5</text>
+    </view>
+    <view class="custom-placeholder">
+      <text class="custom-hint">自定义模板功能即将上线</text>
+    </view>
+  </scroll-view>
+
+  <!-- 设置 -->
+  <scroll-view scroll-y class="tab-content" wx:if="{{activeTab === 'settings'}}">
+    <view class="settings-list">
+
+      <!-- 水印开关 -->
+      <view class="setting-item">
+        <view class="setting-info">
+          <text class="setting-label">书页水印</text>
+          <text class="setting-desc">导出图片中显示「铅言万语」及创作时间</text>
+        </view>
+        <switch
+          checked="{{settings.watermarkEnabled}}"
+          color="#3D2B1F"
+          bindchange="onToggleWatermark"
+        />
+      </view>
+
+      <!-- 导出质量 -->
+      <view class="setting-item">
+        <view class="setting-info">
+          <text class="setting-label">导出清晰度</text>
+          <text class="setting-desc">高清（2倍分辨率）</text>
+        </view>
+        <text class="setting-value">高清</text>
+      </view>
+
+      <!-- 关于 -->
+      <view class="setting-section-title">关于</view>
+      <view class="setting-item" bind:tap="onAbout">
+        <text class="setting-label">铅言万语</text>
+        <text class="setting-arrow">v1.0</text>
+      </view>
+      <view class="setting-item">
+        <text class="setting-label">让文字回到纸上</text>
+      </view>
+      <view class="setting-item">
+        <text class="setting-label">让阅读回到阅读</text>
+      </view>
+
+    </view>
+  </scroll-view>
+
+</view>
