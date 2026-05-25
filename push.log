@@ -161,3 +161,8 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
 [2026/5/26 00:01:28]    M miniprogram/pages/luomo/luomo.wxml
 [2026/5/26 00:01:28]    M miniprogram/utils/constants.js
 [2026/5/26 00:01:28]    M push.log
+[2026/5/26 00:01:29] 提交结果:
+[2026/5/26 00:01:29]   [master 622a9d4] Auto push: 2026/5/26 00:01:28
+[2026/5/26 00:01:29]    4 files changed, 33 insertions(+), 19 deletions(-)
+[2026/5/26 00:01:30] 推送结果:
+[2026/5/26 00:01:30] [✓] 推送成功
