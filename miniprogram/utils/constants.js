@@ -49,14 +49,14 @@ const TEMPLATES = {
     // 排版
     layout: {
       direction: 'horizontal',  // 横排
-      marginTop: 50,
-      marginBottom: 50,
-      marginLeft: 50,
-      marginRight: 50,
+      marginTop: 30,
+      marginBottom: 30,
+      marginLeft: 30,
+      marginRight: 30,
       fontSize: 40,             // 正文字号（基于750rpx）
-      lineHeight: 1.6,
-      letterSpacing: 0.02,      // em
-      paragraphSpacing: 0.5,    // em，段间额外空白
+      lineHeight: 1.4,
+      letterSpacing: 0.05,      // em
+      paragraphSpacing: 0.3,    // em，段间额外空白
       indent: 2,                // 首行缩进字符数
       textAlign: 'justify'
     },
