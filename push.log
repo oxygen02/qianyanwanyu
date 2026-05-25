@@ -80,3 +80,18 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
  M miniprogram/pages/luomo/luomo.wxss
  M miniprogram/utils/font-loader.js
  M push.log
+[master 3316d5b] Auto push: 2026-05-25 18:13:41
+ 7 files changed, 306 insertions(+), 105 deletions(-)
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag a8481892        
+To https://gitee.com/oxygen02/qianyanwanyu.git
+   ae393ad..3316d5b  master -> master
+[✓] 推送成功 at 2026-05-25 18:13:45
+
+[2026/5/25 18:16:28] ========================================
+[2026/5/25 18:16:28] 开始检查...
+[2026/5/25 18:16:28] 当前分支: master
+[2026/5/25 18:16:28] 检测到变更，开始提交...
+[2026/5/25 18:16:28] 变更文件:
+[2026/5/25 18:16:28]   M push.log
+[2026/5/25 18:16:28]   ?? auto-push.js
