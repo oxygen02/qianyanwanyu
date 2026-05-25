@@ -471,18 +471,27 @@ Page({
         const containerWidth = res[0].width
         const containerHeight = res[0].height
 
+        console.log('[luomo] Canvas容器尺寸:', containerWidth, containerHeight)
+        console.log('[luomo] 纸张尺寸:', selectedSize.width, selectedSize.height)
+
         // 计算缩放比例，使纸张适应容器（保持宽高比）
         const scaleX = containerWidth / selectedSize.width
         const scaleY = containerHeight / selectedSize.height
         const scale = Math.min(scaleX, scaleY, 1) // 最大不放大
 
+        console.log('[luomo] 缩放比例:', scale)
+
         // CSS显示尺寸（在容器内居中显示）
         const cssWidth = Math.floor(selectedSize.width * scale)
         const cssHeight = Math.floor(selectedSize.height * scale)
 
+        console.log('[luomo] CSS尺寸:', cssWidth, cssHeight)
+
         // 物理像素尺寸（用于Canvas绘制）
         const physW = Math.floor(selectedSize.width * dpr)
         const physH = Math.floor(selectedSize.height * dpr)
+
+        console.log('[luomo] 物理像素尺寸:', physW, physH)
 
         canvas.width = physW
         canvas.height = physH
