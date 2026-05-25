@@ -406,7 +406,7 @@
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">行间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="800" step="10" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
+                  <slider class="slider-mini" min="0" max="800" step="3" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
                   <text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text>
                 </view>
               </view>
