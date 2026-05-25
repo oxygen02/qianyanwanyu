@@ -188,7 +188,7 @@ function typesetPage(params) {
     const columnGap = layout.columnGap || 0
     const colWidth = (contentWidth - columnGap * (columns - 1)) / columns
 
-    const charsPerLine = Math.floor(colWidth / (fontSize + letterSpacing))
+    const charsPerLine = Math.floor(colWidth / Math.max(fontSize * 0.5, fontSize + letterSpacing))
     const linesPerColumn = Math.floor(contentHeight / lineHeight)
 
     // 分段

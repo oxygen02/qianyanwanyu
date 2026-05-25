@@ -400,6 +400,7 @@ function _scaleTemplateForDPR(template, dpr) {
     t.layout.marginLeft = scaleMargin(t.layout.marginLeft)
     t.layout.marginRight = scaleMargin(t.layout.marginRight)
     if (t.layout.columnGap) t.layout.columnGap *= d
+    if (t.layout.letterSpacing != null) t.layout.letterSpacing *= d
 
     // 标记已缩放，防止重复缩放
     t.layout._dprScaled = true
