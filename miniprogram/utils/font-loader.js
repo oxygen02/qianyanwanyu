@@ -9,8 +9,8 @@ const _loadedFonts = {}
 // 临时链接缓存：{ fontId: { url: string, timestamp: number } }
 const _tempUrls = {}
 
-// 临时链接有效期（毫秒），保守估计2小时
-const TEMP_URL_MAX_AGE = 2 * 60 * 60 * 1000
+// 临时链接有效期（毫秒），保守估计5分钟（微信实际有效期通常为2小时）
+const TEMP_URL_MAX_AGE = 5 * 60 * 1000
 // 本地缓存目录
 const FONT_CACHE_DIR = `${wx.env.USER_DATA_PATH}/font_cache`
 // 缓存信息存储键
@@ -252,6 +252,112 @@ function formatFileSize(bytes) {
 }
 
 /**
+ * 系统字体回退（单一字体名，不含逗号）
+ * 关键：微信小程序 Canvas 2D 的 ctx.font 不支持 CSS 字体回退列表。
+ * 如果 family 含逗号（如 "A, B, serif"），Canvas 会把它当成一个整体字体名来查找，
+ * 找不到就回退到系统默认无衬线体。
+ */
+function getFallbackFont() {
+  try {
+    const deviceInfo = wx.getDeviceInfo()
+    const platform = deviceInfo.platform
+    if (platform === 'ios' || platform === 'mac') return 'STSong'
+    if (platform === 'android') return 'Noto Serif CJK SC'
+    if (platform === 'devtools') return 'Songti SC'
+    return 'serif'
+  } catch (e) {
+    return 'serif'
+  }
+}
+
+/**
+ * 尝试使用 wx.loadFontFace 加载字体，带重试机制
+ * @param {object} fontConfig - 字体配置
+ * @param {string} fontUrl - 字体 URL
+ * @param {number} maxRetries - 最大重试次数
+ * @returns {Promise<string>} 加载成功的 fontFamily 或回退字体
+ */
+function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
+  return new Promise((resolve) => {
+    const FALLBACK_FONT = getFallbackFont()
+    let retryCount = 0
+    
+    const attemptLoad = () => {
+      // 设置加载超时（大字体文件需要更长时间）
+      const loadTimeout = Math.max(30000, (fontConfig.fileSize || 0) * 2)
+      let loadTimer = null
+      let isResolved = false
+
+      const safeResolve = (result) => {
+        if (!isResolved) {
+          isResolved = true
+          if (loadTimer) clearTimeout(loadTimer)
+          resolve(result)
+        }
+      }
+
+      loadTimer = setTimeout(() => {
+        console.warn('[font-loader] 字体加载超时:', fontConfig.name)
+        if (retryCount < maxRetries) {
+          retryCount++
+          console.log('[font-loader] 重试加载字体:', fontConfig.name, `第${retryCount}次`)
+          // 清除临时链接缓存，强制重新获取
+          delete _tempUrls[fontConfig.id]
+          attemptLoad()
+        } else {
+          _loadedFonts[fontConfig.id] = 'failed'
+          _loadedFonts[fontConfig.id + '_failed'] = true
+          safeResolve(FALLBACK_FONT)
+        }
+      }, loadTimeout)
+
+      wx.loadFontFace({
+        family: fontConfig.family,
+        source: `url("${fontUrl}")`,
+        desc: {
+          weight: fontConfig.weight || '400',
+          style: fontConfig.style || 'normal'
+        },
+        success: async () => {
+          console.log('[font-loader] wx.loadFontFace 成功:', fontConfig.name)
+          await ensureCanvasFontReady(fontConfig.family)
+          _loadedFonts[fontConfig.id] = 'loaded'
+          console.log('[font-loader] 字体完全就绪:', fontConfig.name)
+          safeResolve(fontConfig.family)
+        },
+        fail: (err) => {
+          console.error('[font-loader] wx.loadFontFace 失败:', fontConfig.name, err)
+          
+          // 检查是否是缓存相关错误
+          const errMsg = (err && err.errMsg) || ''
+          const isCacheError = errMsg.includes('CACHE_MISS') || errMsg.includes('cache')
+          
+          if (isCacheError) {
+            console.warn('[font-loader] 检测到缓存错误，清除临时链接缓存后重试')
+            delete _tempUrls[fontConfig.id]
+          }
+          
+          if (retryCount < maxRetries) {
+            retryCount++
+            console.log('[font-loader] 重试加载字体:', fontConfig.name, `第${retryCount}次`)
+            if (loadTimer) clearTimeout(loadTimer)
+            // 延迟后重试
+            setTimeout(attemptLoad, 500)
+          } else {
+            _loadedFonts[fontConfig.id] = 'failed'
+            _loadedFonts[fontConfig.id + '_failed'] = true
+            console.warn('[font-loader] 回退到系统字体:', FALLBACK_FONT)
+            safeResolve(FALLBACK_FONT)
+          }
+        }
+      })
+    }
+    
+    attemptLoad()
+  })
+}
+
+/**
  * 加载字体（优先从本地缓存加载，没有则下载并缓存）
  * @param {string} fontId - 字体ID，对应 BUILT_IN_FONTS 的 id
  * @returns {Promise<string>} 返回实际可用的 font-family 名称
@@ -270,24 +376,6 @@ function loadFont(fontId) {
     return Promise.resolve('serif')
   }
 
-  /**
-   * 系统字体回退（单一字体名，不含逗号）
-   * 关键：微信小程序 Canvas 2D 的 ctx.font 不支持 CSS 字体回退列表。
-   * 如果 family 含逗号（如 "A, B, serif"），Canvas 会把它当成一个整体字体名来查找，
-   * 找不到就回退到系统默认无衬线体。
-   */
-  function getFallbackFont() {
-    try {
-      const deviceInfo = wx.getDeviceInfo()
-      const platform = deviceInfo.platform
-      if (platform === 'ios' || platform === 'mac') return 'STSong'
-      if (platform === 'android') return 'Noto Serif CJK SC'
-      if (platform === 'devtools') return 'Songti SC'
-      return 'serif'
-    } catch (e) {
-      return 'serif'
-    }
-  }
   const FALLBACK_FONT = getFallbackFont()
 
   const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
@@ -341,48 +429,9 @@ function loadFont(fontId) {
             console.log('[font-loader] 使用本地缓存字体:', fontConfig.name)
           }
 
-          // 设置加载超时（大字体文件需要更长时间）
-          const loadTimeout = Math.max(30000, (fontConfig.fileSize || 0) * 2) // 至少30秒，或按文件大小计算
-          let loadTimer = null
-          let isResolved = false
-
-          const safeResolve = (result) => {
-            if (!isResolved) {
-              isResolved = true
-              if (loadTimer) clearTimeout(loadTimer)
-              resolve(result)
-            }
-          }
-
-          loadTimer = setTimeout(() => {
-            console.warn('[font-loader] 字体加载超时:', fontConfig.name)
-            _loadedFonts[fontId] = 'failed'
-            _loadedFonts[fontId + '_failed'] = true
-            safeResolve(FALLBACK_FONT)
-          }, loadTimeout)
-
-          wx.loadFontFace({
-            family: fontConfig.family,
-            source: `url("${fontUrl}")`,
-            desc: {
-              weight: fontConfig.weight || '400',
-              style: fontConfig.style || 'normal'
-            },
-            success: async () => {
-              console.log('[font-loader] wx.loadFontFace 成功:', fontConfig.name)
-              await ensureCanvasFontReady(fontConfig.family)
-              _loadedFonts[fontId] = 'loaded'
-              console.log('[font-loader] 字体完全就绪:', fontConfig.name)
-              safeResolve(fontConfig.family)
-            },
-            fail: (err) => {
-              console.error('[font-loader] wx.loadFontFace 失败:', fontConfig.name, err)
-              _loadedFonts[fontId] = 'failed'
-              _loadedFonts[fontId + '_failed'] = true  // 标记失败，避免重复尝试
-              console.warn('[font-loader] 回退到系统字体:', FALLBACK_FONT)
-              safeResolve(FALLBACK_FONT)
-            }
-          })
+          // 使用带重试的字体加载
+          const result = await tryLoadFontFace(fontConfig, fontUrl, 2)
+          resolve(result)
         })
         .catch((err) => {
           console.error('[font-loader] 获取临时链接失败:', fontConfig.name, err)
@@ -391,7 +440,7 @@ function loadFont(fontId) {
           console.error('  2. 或检查 fileID 是否正确（环境ID是否已变更）')
           console.error('  3. 确认 project.config.json 中的 appid 不是 touristappid')
           _loadedFonts[fontId] = 'failed'
-          _loadedFonts[fontId + '_failed'] = true  // 标记失败，避免重复尝试
+          _loadedFonts[fontId + '_failed'] = true
           
           if (typeof wx !== 'undefined' && wx.showToast) {
             wx.showToast({

@@ -83,6 +83,30 @@ function isLineEndForbidden(char) {
 }
 
 /**
+ * 判断是否为半角字符（数字、字母、半角标点等）
+ * 半角字符宽度约为全角字符的一半
+ */
+function isHalfWidth(char) {
+  if (!char) return false
+  const code = char.charCodeAt(0)
+  // 半角字符范围：
+  // 0x20-0x7E: 基本拉丁字母、数字、半角标点
+  // 0xFF61-0xFF9F: 半角片假名
+  // 0xFFA0-0xFFDC: 半角韩文字母
+  return (code >= 0x20 && code <= 0x7E) ||
+         (code >= 0xFF61 && code <= 0xFF9F) ||
+         (code >= 0xFFA0 && code <= 0xFFDC)
+}
+
+/**
+ * 获取字符宽度（相对于 fontSize 的比例）
+ * 全角字符 = 1.0，半角字符 = 0.5
+ */
+function getCharWidthScale(char) {
+  return isHalfWidth(char) ? 0.5 : 1.0
+}
+
+/**
  * 排版单页文字
  * 输入：文字字符串 + 布局参数
  * 输出：glyph列表（每个字的坐标）+ 剩余未排版文字
@@ -176,73 +200,106 @@ function typesetPage(params) {
       let isFirstLineOfPara = true
 
       while (pos < para.length) {
-        // 计算本行可容纳字数
+        // 计算本行可容纳字数（考虑半角字符宽度）
         // 当每行容量较小时，禁用首行缩进避免第一行只能放极少字符
         const shouldIndent = isFirstLineOfPara && (layout.indent || 0) > 0 && charsPerLine >= 8
         const indent = shouldIndent ? (layout.indent || 0) : 0
-        const lineCapacity = charsPerLine - indent
+        const indentWidth = indent * (fontSize + letterSpacing)
+        const availableWidth = colWidth - indentWidth
 
-        if (lineCapacity <= 0) {
+        if (availableWidth <= fontSize * 0.5) {
           // 边距过大，容纳不了字
           break
         }
 
-        // 取本行字符（先取满）
-        let lineChars = para.slice(pos, pos + lineCapacity)
+        // 根据实际字符宽度计算本行可容纳的字符
+        let lineChars = ''
+        let currentWidth = 0
+        let testPos = pos
+        while (testPos < para.length) {
+          const ch = para[testPos]
+          const charWidth = fontSize * getCharWidthScale(ch) + letterSpacing
+          if (currentWidth + charWidth > availableWidth && lineChars.length > 0) {
+            break
+          }
+          lineChars += ch
+          currentWidth += charWidth
+          testPos++
+        }
 
         // 标点禁则处理：若下一字是行首禁用标点，前移一个
-        if (lineChars.length === lineCapacity && pos + lineCapacity < para.length) {
-          const nextChar = para[pos + lineCapacity]
+        if (testPos < para.length && lineChars.length > 0) {
+          const nextChar = para[testPos]
           if (isLineStartForbidden(nextChar)) {
-            lineChars = para.slice(pos, pos + lineCapacity - 1)
+            lineChars = lineChars.slice(0, -1)
           }
           // 若行尾是禁用标点，也后移一个
           const lastChar = lineChars[lineChars.length - 1]
-          if (isLineEndForbidden(lastChar)) {
-            lineChars = para.slice(pos, pos + lineCapacity + 1)
+          if (isLineEndForbidden(lastChar) && testPos < para.length) {
+            lineChars += para[testPos]
           }
         }
 
         // 计算本行起始坐标
         const colStartX = marginLeft + col * (colWidth + columnGap)
-        const lineStartX = colStartX + indent * (fontSize + letterSpacing)
+        const lineStartX = colStartX + indentWidth
         const lineY = marginTop + lineInCol * lineHeight + fontSize  // 基线
 
         // 判断是否为段落最后一行（不强制两端对齐）
         const isLastLineOfPara = pos + lineChars.length >= para.length
 
+        // 计算本行实际总宽度（用于居中对齐）
+        let lineTotalWidth = 0
+        for (let i = 0; i < lineChars.length; i++) {
+          lineTotalWidth += fontSize * getCharWidthScale(lineChars[i]) + letterSpacing
+        }
+        if (lineChars.length > 0) {
+          lineTotalWidth -= letterSpacing // 最后一个字符不需要字距
+        }
+
         // 生成字形
         if (layout.textAlign === 'center') {
           // 居中对齐
-          const totalW = lineChars.length * (fontSize + letterSpacing)
-          const startX = colStartX + (colWidth - totalW) / 2
+          const startX = colStartX + (colWidth - lineTotalWidth) / 2
+          let currentX = startX
           for (let i = 0; i < lineChars.length; i++) {
+            const ch = lineChars[i]
+            const charWidth = fontSize * getCharWidthScale(ch)
             glyphs.push({
-              text: lineChars[i],
-              x: startX + i * (fontSize + letterSpacing),
+              text: ch,
+              x: currentX,
               y: lineY
             })
+            currentX += charWidth + letterSpacing
           }
-        } else if (layout.textAlign === 'justify' && lineChars.length === lineCapacity && !isLastLineOfPara) {
+        } else if (layout.textAlign === 'justify' && !isLastLineOfPara && lineChars.length > 1) {
           // 两端对齐（仅非最后一行）
-          const gap = lineChars.length > 1
-            ? (colWidth - indent * (fontSize + letterSpacing) - lineChars.length * fontSize) / (lineChars.length - 1)
-            : 0
+          const contentWidth = lineTotalWidth - (lineChars.length - 1) * letterSpacing
+          const extraSpace = availableWidth - contentWidth
+          const extraGap = extraSpace / (lineChars.length - 1)
+          let currentX = lineStartX
           for (let i = 0; i < lineChars.length; i++) {
+            const ch = lineChars[i]
+            const charWidth = fontSize * getCharWidthScale(ch)
             glyphs.push({
-              text: lineChars[i],
-              x: lineStartX + i * (fontSize + gap),
+              text: ch,
+              x: currentX,
               y: lineY
             })
+            currentX += charWidth + letterSpacing + extraGap
           }
         } else {
           // 左对齐 / 最后一行
+          let currentX = lineStartX
           for (let i = 0; i < lineChars.length; i++) {
+            const ch = lineChars[i]
+            const charWidth = fontSize * getCharWidthScale(ch)
             glyphs.push({
-              text: lineChars[i],
-              x: lineStartX + i * (fontSize + letterSpacing),
+              text: ch,
+              x: currentX,
               y: lineY
             })
+            currentX += charWidth + letterSpacing
           }
         }
 
@@ -293,7 +350,7 @@ function typesetPage(params) {
     let col = 0
     let charInCol = 0
     let textIdx = 0
-    const chars = text.replace(/\n/g, '　')  // 换行改为全角空格（竖排段落）
+    const chars = processedText.replace(/\n/g, '　')  // 换行改为全角空格（竖排段落）
 
     while (textIdx < chars.length) {
       if (col >= totalColumns) {
@@ -301,11 +358,15 @@ function typesetPage(params) {
         return { glyphs, remainder, pagesFull: true }
       }
 
+      const ch = chars[textIdx]
+      // 半角字符在竖排时旋转显示，占用高度为宽度（即半角宽度）
+      const charAdvance = isHalfWidth(ch) ? fontSize * 0.5 + letterSpacing : charHeight
+
       const x = marginLeft + (totalColumns - 1 - col) * fontSize * 1.5 + fontSize * 0.5 // 从右往左
       const y = marginTop + charInCol * charHeight + fontSize
 
       glyphs.push({
-        text: chars[textIdx],
+        text: ch,
         x,
         y
       })

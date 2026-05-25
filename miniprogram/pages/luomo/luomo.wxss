@@ -1241,7 +1241,6 @@
 .settings-row--four {
   display: flex;
   gap: 6rpx;
-  justify-content: space-between;
   margin-bottom: 6rpx;
 }
 
@@ -1285,6 +1284,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  padding: 10rpx 12rpx;
 }
 
 .settings-row--taller {

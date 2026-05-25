@@ -692,6 +692,7 @@ Page({
     const template = this._getEffectiveTemplate()
     const dpr = wx.getWindowInfo().pixelRatio || 2
     const layout = template.layout
+    // _getEffectiveTemplate 返回的是 CSS 像素值，需要乘以 DPR 转换为物理像素
     const fontSize = (layout.fontSize || 32) * dpr
     const marginTop = (layout.marginTop || 60) * dpr
     const marginLeft = (layout.marginLeft || 50) * dpr
@@ -712,14 +713,27 @@ Page({
 
     if (text.length > 0) {
       if (direction === 'horizontal') {
-        // 横排：计算最后一行文字末尾位置
-        const charsPerLine = Math.max(1, Math.floor(contentWidth / (fontSize + letterSpacing)))
-        const lines = []
-        for (let i = 0; i < text.length; i += charsPerLine) {
-          lines.push(text.slice(i, i + charsPerLine))
+        // 横排：计算最后一行文字末尾位置（考虑半角字符宽度）
+        let currentLineWidth = 0
+        let lines = ['']
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i]
+          const charWidth = fontSize * (ch.charCodeAt(0) >= 0x20 && ch.charCodeAt(0) <= 0x7E ? 0.5 : 1) + letterSpacing
+          if (currentLineWidth + charWidth > contentWidth && lines[lines.length - 1].length > 0) {
+            lines.push('')
+            currentLineWidth = 0
+          }
+          lines[lines.length - 1] += ch
+          currentLineWidth += charWidth
         }
         const lastLine = lines[lines.length - 1] || ''
-        cursorX = marginLeft + lastLine.length * (fontSize + letterSpacing)
+        // 计算最后一行实际宽度
+        let lastLineWidth = 0
+        for (let i = 0; i < lastLine.length; i++) {
+          const ch = lastLine[i]
+          lastLineWidth += fontSize * (ch.charCodeAt(0) >= 0x20 && ch.charCodeAt(0) <= 0x7E ? 0.5 : 1) + letterSpacing
+        }
+        cursorX = marginLeft + lastLineWidth
         cursorY = marginTop + fontSize * 0.85 + (lines.length - 1) * lineHeight
       } else {
         // 竖排
