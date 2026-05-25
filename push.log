@@ -187,3 +187,17 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
 [2026/5/26 00:11:00] 变更文件:
 [2026/5/26 00:11:00]   M miniprogram/pages/luomo/luomo.wxml
 [2026/5/26 00:11:00]    M push.log
+[2026/5/26 00:11:00] 提交结果:
+[2026/5/26 00:11:00]   [master b81e75b] Auto push: 2026/5/26 00:11:00
+[2026/5/26 00:11:00]    2 files changed, 14 insertions(+), 1 deletion(-)
+[2026/5/26 00:11:02] 推送结果:
+[2026/5/26 00:11:02] [✓] 推送成功
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
+[2026/5/26 00:13:40] ========================================
+[2026/5/26 00:13:40] 开始检查...
+[2026/5/26 00:13:40] 当前分支: master
+[2026/5/26 00:13:40] 检测到变更，开始提交...
+[2026/5/26 00:13:40] 变更文件:
+[2026/5/26 00:13:40]   M miniprogram/pages/luomo/luomo.wxml
+[2026/5/26 00:13:40]    M push.log
