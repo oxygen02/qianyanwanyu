@@ -18,6 +18,7 @@
         id="bookCanvas"
         type="2d"
         class="book-canvas {{canvasZoomed ? 'zoomed' : ''}}"
+        style="width: {{canvasCssWidth}}px; height: {{canvasCssHeight}}px;"
         bind:touchstart="onCanvasTouchStart"
         bind:touchend="onCanvasTouchEnd"
       />

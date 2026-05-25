@@ -141,6 +141,9 @@ Page({
     paperSizeList: [],
     // Canvas 放大预览状态
     canvasZoomed: false,
+    // Canvas CSS尺寸（用于固定纸张尺寸）
+    canvasCssWidth: 0,
+    canvasCssHeight: 0,
     // 状态栏高度（用于Canvas安全区域留白）
     safeAreaTop: 0,
 
@@ -484,10 +487,6 @@ Page({
         canvas.width = physW
         canvas.height = physH
 
-        // 设置Canvas的CSS尺寸（在容器内居中）
-        canvas.style.width = `${cssWidth}px`
-        canvas.style.height = `${cssHeight}px`
-
         this._canvas = canvas
         this._canvasWidth = physW
         this._canvasHeight = physH
@@ -495,6 +494,12 @@ Page({
         this._canvasCssHeight = cssHeight
         this._canvasScale = scale
         this._canvasReady = true
+
+        // 通过setData更新Canvas的CSS尺寸（使用style属性绑定）
+        this.setData({
+          canvasCssWidth: cssWidth,
+          canvasCssHeight: cssHeight
+        })
 
         // Canvas就绪，若有文字则渲染，无文字则启动光标闪烁
         if (this.data.text) {
