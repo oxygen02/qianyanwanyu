@@ -296,7 +296,7 @@ function typesetPage(params) {
             })
             currentX += charWidth + letterSpacing
           }
-        } else if (layout.textAlign === 'justify' && lineChars.length === lineCapacity && !isLastLineOfPara) {
+        } else if (layout.textAlign === 'justify' && !isLastLineOfPara && lineChars.length > 1) {
           // 两端对齐：先算出 gap，只有当 gap <= letterSpacing + fontSize*0.1 才真正两端对齐
           // 否则说明行内字符太少，被过度撑开，回退到左对齐
           const gap = lineChars.length > 1
