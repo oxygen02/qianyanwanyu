@@ -217,8 +217,13 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   const weatheringEnabled = inkConfig.weathering || false
   const weatheringIntensity = inkConfig.weatheringIntensity || 0
 
+  // DPR：用于将物理像素转换为 CSS 像素
+  const dpr = (layoutConfig && layoutConfig._dpr) || 2
+
   const family = sanitizeFontFamily(fontConfig.family)
-  const fontStr = `${fontConfig.weight || '400'} ${fontSize}px ${family}`
+  // Canvas 2D 的 ctx.font 使用 CSS 像素，所以将物理像素 fontSize 转换回 CSS 像素
+  const cssFontSize = fontSize / dpr
+  const fontStr = `${fontConfig.weight || '400'} ${cssFontSize}px ${family}`
 
   console.log('[ink-effect] drawInkBlock fontStr:', fontStr, 'glyphs:', glyphs.length,
     'opacity:', opacity.toFixed(2), 'variation:', variation.toFixed(2),

@@ -119,6 +119,10 @@ async function renderPage(params) {
   // 根据设备像素比缩放模板参数，确保文字在物理像素Canvas上显示正确大小
   const dpr = wx.getWindowInfo().pixelRatio || 2
   template = _scaleTemplateForDPR(template, dpr)
+  // 将 DPR 保存到 layout 中，供 ink-effect.js 使用
+  if (template.layout) {
+    template.layout._dpr = dpr
+  }
 
   const ctx = canvas.getContext('2d')
 
@@ -372,13 +376,12 @@ function _scaleTemplateForDPR(template, dpr) {
   const d = dpr || 2
 
   // 排版参数（px 单位）
-  // 注意：Canvas 2D 的 ctx.font 使用 CSS 像素，Canvas 引擎会自动处理 DPR
-  // 所以 fontSize 不需要乘以 DPR
-  // margin 等空间参数：如果值 <= 120 视为用户直接设置的像素值，不再乘以 DPR
-  // 如果值 > 120 视为模板默认值（基于 750rpx 设计稿），需要乘以 DPR
+  // Canvas 2D 的 backing store 使用物理像素，但 ctx.font 使用 CSS 像素
+  // 为了确保排版计算和实际绘制一致，我们将所有空间参数统一为物理像素
   if (t.layout) {
-    // fontSize 保持 CSS 像素，Canvas 会自动缩放
-    t.layout.fontSize = t.layout.fontSize || 32
+    // fontSize 需要乘以 DPR，因为 Canvas 绘制时字体大小是 CSS 像素
+    // 但我们的排版计算使用物理像素坐标
+    t.layout.fontSize = (t.layout.fontSize || 32) * d
     
     // 边距：统一乘 DPR，确保在物理像素 Canvas 上显示正确大小
     // 模板默认值基于 750rpx 设计稿，用户设置值也是 CSS 像素单位
