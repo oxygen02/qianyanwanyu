@@ -375,6 +375,11 @@ function _scaleTemplateForDPR(template, dpr) {
   const t = JSON.parse(JSON.stringify(template))
   const d = dpr || 2
 
+  // 防止重复缩放：如果模板已经被 DPR 缩放过了，直接返回
+  if (t.layout && t.layout._dprScaled) {
+    return t
+  }
+
   // 排版参数（px 单位）
   // Canvas 2D 的 backing store 使用物理像素，但 ctx.font 使用 CSS 像素
   // 为了确保排版计算和实际绘制一致，我们将所有空间参数统一为物理像素
@@ -382,19 +387,22 @@ function _scaleTemplateForDPR(template, dpr) {
     // fontSize 需要乘以 DPR，因为 Canvas 绘制时字体大小是 CSS 像素
     // 但我们的排版计算使用物理像素坐标
     t.layout.fontSize = (t.layout.fontSize || 32) * d
-    
+
     // 边距：统一乘 DPR，确保在物理像素 Canvas 上显示正确大小
     // 模板默认值基于 750rpx 设计稿，用户设置值也是 CSS 像素单位
     const scaleMargin = (val) => {
       if (val == null) return 60 * d  // 默认 60px * DPR
       return val * d
     }
-    
+
     t.layout.marginTop = scaleMargin(t.layout.marginTop)
     t.layout.marginBottom = scaleMargin(t.layout.marginBottom)
     t.layout.marginLeft = scaleMargin(t.layout.marginLeft)
     t.layout.marginRight = scaleMargin(t.layout.marginRight)
     if (t.layout.columnGap) t.layout.columnGap *= d
+
+    // 标记已缩放，防止重复缩放
+    t.layout._dprScaled = true
   }
 
   // 水印字号保持 CSS 像素

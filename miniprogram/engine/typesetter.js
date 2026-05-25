@@ -109,6 +109,25 @@ function toFullWidth(text) {
 }
 
 /**
+ * ASCII 半角字符宽度比例
+ * 经过 toFullWidth 处理后，数字/字母已转为全角。
+ * 剩余半角字符（标点、空格等）按 0.5 倍字宽计算
+ */
+function getCharWidthScale(ch) {
+  const code = ch.charCodeAt(0)
+  // 全角字符范围：CJK、全角形式、中文标点等
+  if (code >= 0x2000 || (code >= 0xFF00)) {
+    return 1.0
+  }
+  // ASCII 半角字符
+  if (code <= 0x7F) {
+    return 0.5
+  }
+  // 其他 Unicode（默认全角）
+  return 1.0
+}
+
+/**
  * 排版单页文字
  * 输入：文字字符串 + 布局参数
  * 输出：glyph列表（每个字的坐标）+ 剩余未排版文字
@@ -132,12 +151,12 @@ function typesetPage(params) {
 
   let fontSize = layout.fontSize * sizeScale
   let lineHeight = fontSize * (layout.lineHeight * lineHeightScale)
-  // 字距：em -> px，上限放宽到 0.35em 以适应更宽的字距范围
-  const letterSpacing = Math.min(layout.letterSpacing * fontSize, fontSize * 0.35)
+  // 字距：em -> px，范围 -1.0em ~ 1.0em（负值让字紧贴，正值加大间距）
+  const letterSpacing = Math.max(-fontSize * 1.0, Math.min(layout.letterSpacing * fontSize, fontSize * 1.0))
   const direction = layout.direction || 'horizontal'
 
   // 段落间距（单位：行数，合理范围 0~5，防止异常大值导致换页）
-  const paragraphSpacing = Math.min(layout.paragraphSpacing || 0, 5)
+  const paragraphSpacing = Math.min(layout.paragraphSpacing || 0, 10)
   // 空行处理
   const emptyLineHandling = layout.emptyLineHandling || 'preserve'
 

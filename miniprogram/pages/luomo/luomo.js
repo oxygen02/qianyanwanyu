@@ -61,16 +61,16 @@ Page({
     // 运行时设置覆盖（文字 / 纸张 / 排版）
     settings: {
       // === 字体选择 ===
-      fontId: '上古宋体-Regular',
+      fontId: '思源宋体-Regular',
 
       // === 基础排版 ===
-      fontSize: 40,
+      fontSize: 32,
       fontSizeMode: 'px',
-      fontSizeDisplay: '40px',
+      fontSizeDisplay: '32px',
       lineHeight: null,
-      lineHeightVal: 200,
+      lineHeightVal: 140,
       letterSpacing: null,
-      letterSpacingVal: 5,
+      letterSpacingVal: 0,
       direction: null,
       fontWeight: '400',
       textAlign: 'left',
@@ -92,11 +92,11 @@ Page({
       damageVal: 2,
 
       // === 基础纸张 ===
-      paperBaseColor: '#FAF7F2',
-      marginTopVal: 50,
-      marginBottomVal: 50,
-      marginLeftVal: 50,
-      marginRightVal: 50,
+      paperBaseColor: '#F5F0E6',
+      marginTopVal: 30,
+      marginBottomVal: 30,
+      marginLeftVal: 20,
+      marginRightVal: 20,
 
       // === 质感效果 ===
       aging: null,
@@ -155,10 +155,10 @@ Page({
     // ===== 文字设置页面数据 =====
     textSettings: {
       fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
-      fontIndex: 0,
-      fontSize: 40,
+      fontIndex: 1,
+      fontSize: 32,
       fontSizeMode: 'px',
-      fontSizeDisplay: '40px',
+      fontSizeDisplay: '32px',
       weightOptions: ['纤细', '常规', '中等', '加粗'],
       weightIndex: 1,
       inkColorOptions: [
@@ -219,8 +219,8 @@ Page({
       textureIndex: 0,
       shadowEnabled: false,
       shadowIntensity: 50,
-      marginVertical: 50,
-      marginHorizontal: 50,
+      marginVertical: 30,
+      marginHorizontal: 20,
       formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
       formIndex: 0,
       foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -246,8 +246,8 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 180,
-      lineHeightDisplay: '1.8倍',
+      lineHeight: 140,
+      lineHeightDisplay: '1.4倍',
       letterSpacing: 0,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
@@ -1508,7 +1508,7 @@ Page({
 
   onFontSizeStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.fontSize + delta, 20, 48)
+    const newVal = this._clamp(this.data.settings.fontSize + delta, 10, 100)
     const mode = this.data.textSettings.fontSizeMode
     const display = mode === 'px' ? `${newVal}px` : `${newVal}号`
     this.setData({
@@ -1533,28 +1533,28 @@ Page({
 
   onMarginTopStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginTopVal + delta, 0, 200)
+    const newVal = this._clamp(this.data.settings.marginTopVal + delta, 0, 300)
     this.setData({ 'settings.marginTopVal': newVal })
     this._triggerRender()
   },
 
   onMarginBottomStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, 0, 200)
+    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, 0, 300)
     this.setData({ 'settings.marginBottomVal': newVal })
     this._triggerRender()
   },
 
   onMarginLeftStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, 0, 200)
+    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, 0, 300)
     this.setData({ 'settings.marginLeftVal': newVal })
     this._triggerRender()
   },
 
   onMarginRightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginRightVal + delta, 0, 200)
+    const newVal = this._clamp(this.data.settings.marginRightVal + delta, 0, 300)
     this.setData({ 'settings.marginRightVal': newVal })
     this._triggerRender()
   },
@@ -1601,7 +1601,7 @@ Page({
 
   onLineHeightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 80, 400)
+    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 50, 600)
     this.setData({
       'settings.lineHeight': newVal / 100,
       'settings.lineHeightVal': newVal,
@@ -1612,7 +1612,7 @@ Page({
 
   onLetterSpacingStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, -10, 40)
+    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, -100, 100)
     this.setData({
       'settings.letterSpacingVal': newVal,
       'settings.letterSpacing': newVal / 100
@@ -1667,21 +1667,21 @@ Page({
    */
   _buildSettingsFromTemplate(template, fontId) {
     const t = template || TEMPLATES['modern-prose']
-    const lineHeightVal = Math.round(t.layout.lineHeight * 100)
-    const fontSize = t.layout.fontSize
+    const lineHeightVal = 140  // 默认 1.4 倍行距
+    const fontSize = 32        // 默认 32px
     return {
       // 字体选择
-      fontId: fontId || (t.font && t.font.family) || '上古宋体-Regular',
+      fontId: fontId || (t.font && t.font.family) || '思源宋体-Regular',
 
       // 基础排版
       fontSize: fontSize,
       fontSizeMode: 'px',
       fontSizeDisplay: `${fontSize}px`,
-      lineHeight: t.layout.lineHeight,
+      lineHeight: 1.4,
       lineHeightVal: lineHeightVal,
       lineHeightDisplay: (lineHeightVal / 100).toFixed(1),
-      letterSpacing: t.layout.letterSpacing,
-      letterSpacingVal: Math.round(t.layout.letterSpacing * 100),
+      letterSpacing: 0,
+      letterSpacingVal: 0,
       direction: t.layout.direction,
       fontWeight: t.font.weight || '400',
       textAlign: 'left',
@@ -1728,11 +1728,11 @@ Page({
       layoutModeIndex: 0,
 
       // 基础纸张
-      paperBaseColor: t.paper.baseColor || '#FAF7F2',
-      marginTopVal: 50,
-      marginBottomVal: 50,
-      marginLeftVal: 50,
-      marginRightVal: 50,
+      paperBaseColor: t.paper.baseColor || '#F5F0E6',
+      marginTopVal: 30,
+      marginBottomVal: 30,
+      marginLeftVal: 20,
+      marginRightVal: 20,
 
       // 质感效果
       aging: t.paper.ageOpacity || 0,
@@ -1789,7 +1789,7 @@ Page({
         break
       default: // 默认模式
         tpl.layout.textAlign = 'left'
-        tpl.layout.lineHeight = 1.8
+        tpl.layout.lineHeight = 1.4
         tpl.layout.paragraphSpacing = toLines(25)
         tpl.layout.indent = indentMap[0]
     }
@@ -2289,10 +2289,10 @@ Page({
     this.setData({
       textSettings: {
         fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
-        fontIndex: 0,
-        fontSize: 40,
+        fontIndex: 1,
+        fontSize: 32,
         fontSizeMode: 'px',
-        fontSizeDisplay: '40px',
+        fontSizeDisplay: '32px',
         weightOptions: ['纤细', '常规', '中等', '加粗'],
         weightIndex: 1,
         inkColorOptions: [
@@ -2321,8 +2321,8 @@ Page({
       'settings.inkColor': '#0D0D0D',
       'settings.inkOpacity': 0.35,
       'settings.inkOpacityVal': 35,
-      'settings.fontSize': 40,
-      'settings.fontSizeDisplay': '40px'
+      'settings.fontSize': 32,
+      'settings.fontSizeDisplay': '32px'
     })
     this._triggerRender()
     wx.showToast({ title: '已重置文字设置', icon: 'success' })
@@ -2551,8 +2551,8 @@ Page({
         textureIndex: 0,
         shadowEnabled: false,
         shadowIntensity: 50,
-        marginVertical: 50,
-        marginHorizontal: 50,
+        marginVertical: 30,
+        marginHorizontal: 20,
         formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
         formIndex: 0,
         foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -2578,10 +2578,10 @@ Page({
       'settings.aging': 0.25,
       'settings.shadowIntensityVal': 0,
       'settings.shadowIntensity': 0,
-      'settings.marginTopVal': 50,
-      'settings.marginBottomVal': 50,
-      'settings.marginLeftVal': 50,
-      'settings.marginRightVal': 50
+      'settings.marginTopVal': 30,
+      'settings.marginBottomVal': 30,
+      'settings.marginLeftVal': 20,
+      'settings.marginRightVal': 20
     })
     this._triggerRender()
     wx.showToast({ title: '已重置纸张设置', icon: 'success' })
@@ -2778,8 +2778,8 @@ Page({
       default: // 默认模式
         config = {
           textAlign: 'left',
-          lineHeight: 180,
-          lineHeightDisplay: '1.8倍',
+          lineHeight: 140,
+          lineHeightDisplay: '1.4倍',
           paragraphSpacing: 25,
           indentIndex: 0
         }
@@ -2813,8 +2813,8 @@ Page({
         directionIndex: 0,
         verticalDir: 'rtl',
         textAlign: 'left',
-        lineHeight: 180,
-        lineHeightDisplay: '1.8倍',
+        lineHeight: 140,
+        lineHeightDisplay: '1.4倍',
         letterSpacing: 0,
         indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
         indentIndex: 0,
@@ -2843,9 +2843,9 @@ Page({
     })
     this.setData({
       'settings.textAlign': 'left',
-      'settings.lineHeightVal': 180,
-      'settings.lineHeight': 1.8,
-      'settings.lineHeightDisplay': '1.8',
+      'settings.lineHeightVal': 140,
+      'settings.lineHeight': 1.4,
+      'settings.lineHeightDisplay': '1.4',
       'settings.letterSpacingVal': 0,
       'settings.letterSpacing': 0,
       'settings.firstLineIndent': 0,
