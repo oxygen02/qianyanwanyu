@@ -692,7 +692,11 @@ Page({
     const template = this._getEffectiveTemplate()
     const dpr = wx.getWindowInfo().pixelRatio || 2
     const layout = template.layout
-    const fontSize = (layout.fontSize || 32) * dpr
+    // 注意：_getEffectiveTemplate 返回的 layout 值已经是 CSS 像素
+    // fontSize 保持 CSS 像素（Canvas 会自动按 DPR 缩放）
+    const fontSize = layout.fontSize || 32
+    // 边距：如果已经被 _scaleTemplateForDPR 缩放过（在 renderPage 中），
+    // 但 _drawCursor 直接读原始 template，所以这里需要乘 DPR
     const marginTop = (layout.marginTop || 60) * dpr
     const marginLeft = (layout.marginLeft || 50) * dpr
     const marginRight = (layout.marginRight || 50) * dpr
@@ -1516,28 +1520,28 @@ Page({
 
   onMarginTopStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginTopVal + delta, 20, 120)
+    const newVal = this._clamp(this.data.settings.marginTopVal + delta, 0, 200)
     this.setData({ 'settings.marginTopVal': newVal })
     this._triggerRender()
   },
 
   onMarginBottomStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, 20, 120)
+    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, 0, 200)
     this.setData({ 'settings.marginBottomVal': newVal })
     this._triggerRender()
   },
 
   onMarginLeftStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, 20, 120)
+    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, 0, 200)
     this.setData({ 'settings.marginLeftVal': newVal })
     this._triggerRender()
   },
 
   onMarginRightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginRightVal + delta, 20, 120)
+    const newVal = this._clamp(this.data.settings.marginRightVal + delta, 0, 200)
     this.setData({ 'settings.marginRightVal': newVal })
     this._triggerRender()
   },
@@ -1584,7 +1588,7 @@ Page({
 
   onLineHeightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 120, 300)
+    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 80, 400)
     this.setData({
       'settings.lineHeight': newVal / 100,
       'settings.lineHeightVal': newVal,
@@ -1595,8 +1599,11 @@ Page({
 
   onLetterSpacingStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, -5, 25)
-    this.setData({ 'settings.letterSpacingVal': newVal })
+    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, -10, 40)
+    this.setData({
+      'settings.letterSpacingVal': newVal,
+      'settings.letterSpacing': newVal / 100
+    })
     this._triggerRender()
   },
 
@@ -1740,35 +1747,37 @@ Page({
    */
   _applyLayoutMode(tpl, modeIndex) {
     const indentMap = { 0: 0, 1: 2, 2: 4 }
+    // paragraphSpacing：UI 值 0-100 -> 行数 0-4（除以100乘以4）
+    const toLines = (uiVal) => (uiVal / 100) * 4
     switch (modeIndex) {
       case 1: // 诗词模式
         tpl.layout.textAlign = 'center'
         tpl.layout.lineHeight = 2.2
-        tpl.layout.paragraphSpacing = 35
+        tpl.layout.paragraphSpacing = toLines(35)
         tpl.layout.indent = indentMap[0]
         break
       case 2: // 书信模式
         tpl.layout.textAlign = 'left'
         tpl.layout.lineHeight = 2.0
-        tpl.layout.paragraphSpacing = 20
+        tpl.layout.paragraphSpacing = toLines(20)
         tpl.layout.indent = indentMap[1]
         break
       case 3: // 散文模式
         tpl.layout.textAlign = 'left'
         tpl.layout.lineHeight = 1.9
-        tpl.layout.paragraphSpacing = 25
+        tpl.layout.paragraphSpacing = toLines(25)
         tpl.layout.indent = indentMap[1]
         break
       case 4: // 小说模式
         tpl.layout.textAlign = 'left'
         tpl.layout.lineHeight = 1.85
-        tpl.layout.paragraphSpacing = 15
+        tpl.layout.paragraphSpacing = toLines(15)
         tpl.layout.indent = indentMap[2]
         break
       default: // 默认模式
         tpl.layout.textAlign = 'left'
         tpl.layout.lineHeight = 1.8
-        tpl.layout.paragraphSpacing = 25
+        tpl.layout.paragraphSpacing = toLines(25)
         tpl.layout.indent = indentMap[0]
     }
   },
@@ -1781,13 +1790,9 @@ Page({
     const tpl = JSON.parse(JSON.stringify(base))
     const s = this.data.settings
 
-    // === 基础排版 ===
+    // === 基础排版（不受布局模式影响的）===
     if (s.fontSize != null) tpl.layout.fontSize = s.fontSize
-    if (s.lineHeight != null) tpl.layout.lineHeight = s.lineHeight
-    if (s.letterSpacing != null) tpl.layout.letterSpacing = s.letterSpacing
     if (s.direction != null) tpl.layout.direction = s.direction
-    if (s.textAlign != null) tpl.layout.textAlign = s.textAlign
-    if (s.firstLineIndent != null) tpl.layout.indent = s.firstLineIndent
     // 字体：优先用 settings.fontId，其次用模板的 family
     if (s.fontId != null) {
       tpl.font.family = s.fontId
@@ -1891,10 +1896,6 @@ Page({
     }
 
     // === 排版新增设置 ===
-    // 段落间距
-    if (s.paragraphSpacing != null) {
-      tpl.layout.paragraphSpacing = s.paragraphSpacing
-    }
     // 空行处理
     if (s.emptyLineHandling != null) {
       tpl.layout.emptyLineHandling = s.emptyLineHandling // 'preserve' or 'merge'
@@ -1928,9 +1929,19 @@ Page({
       }
     }
 
-    // === 布局模式 ===
+    // === 布局模式（先应用，后面 s.xxx 可覆盖）===
     if (s.layoutModeIndex != null) {
       this._applyLayoutMode(tpl, s.layoutModeIndex)
+    }
+
+    // === 用户排版覆盖（优先级最高，放 _applyLayoutMode 之后）===
+    if (s.lineHeight != null) tpl.layout.lineHeight = s.lineHeight
+    if (s.letterSpacing != null) tpl.layout.letterSpacing = s.letterSpacing
+    if (s.textAlign != null) tpl.layout.textAlign = s.textAlign
+    if (s.firstLineIndent != null) tpl.layout.indent = s.firstLineIndent
+    // 段落间距：UI 值 0-100，换算为行数（0-4行），放在最后确保优先级最高
+    if (s.paragraphSpacing != null) {
+      tpl.layout.paragraphSpacing = (s.paragraphSpacing / 100) * 4
     }
 
     return tpl
@@ -2773,7 +2784,8 @@ Page({
       'settings.textAlign': config.textAlign,
       'settings.lineHeightVal': config.lineHeight,
       'settings.lineHeight': config.lineHeight / 100,
-      'settings.lineHeightDisplay': (config.lineHeight / 100).toFixed(1)
+      'settings.lineHeightDisplay': (config.lineHeight / 100).toFixed(1),
+      'settings.paragraphSpacing': config.paragraphSpacing
     })
     
     this._triggerRender()
@@ -2823,7 +2835,8 @@ Page({
       'settings.lineHeightDisplay': '1.8',
       'settings.letterSpacingVal': 0,
       'settings.letterSpacing': 0,
-      'settings.firstLineIndent': 0
+      'settings.firstLineIndent': 0,
+      'settings.paragraphSpacing': 25
     })
     this._triggerRender()
     wx.showToast({ title: '已重置排版设置', icon: 'success' })

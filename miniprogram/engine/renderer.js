@@ -380,10 +380,11 @@ function _scaleTemplateForDPR(template, dpr) {
     // fontSize 保持 CSS 像素，Canvas 会自动缩放
     t.layout.fontSize = t.layout.fontSize || 32
     
-    // 边距：用户设置值（<=120）直接使用；模板默认值（>120）需要缩放
+    // 边距：统一乘 DPR，确保在物理像素 Canvas 上显示正确大小
+    // 模板默认值基于 750rpx 设计稿，用户设置值也是 CSS 像素单位
     const scaleMargin = (val) => {
       if (val == null) return 60 * d  // 默认 60px * DPR
-      return val <= 120 ? val : val * d
+      return val * d
     }
     
     t.layout.marginTop = scaleMargin(t.layout.marginTop)

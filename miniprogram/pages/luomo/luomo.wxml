@@ -65,7 +65,7 @@
     <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}">
       <textarea
         class="text-input"
-        value="{{text}}"
+        model:value="{{text}}"
         placeholder="在此写下文字..."
         placeholder-class="input-placeholder"
         auto-height="{{false}}"
@@ -272,7 +272,7 @@
               <view class="settings-cell settings-cell--margin">
                 <view class="setting-label">上下边距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="20" max="120" step="5" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperMarginVerticalChange"/>
+                  <slider class="slider-mini" min="0" max="200" step="5" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperMarginVerticalChange"/>
                   <text class="slider-value-mini">{{paperSettings.marginVertical}}</text>
                 </view>
               </view>
@@ -295,7 +295,7 @@
               <view class="settings-cell settings-cell--margin">
                 <view class="setting-label">左右边距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="20" max="120" step="5" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperMarginHorizontalChange"/>
+                  <slider class="slider-mini" min="0" max="200" step="5" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperMarginHorizontalChange"/>
                   <text class="slider-value-mini">{{paperSettings.marginHorizontal}}</text>
                 </view>
               </view>
@@ -405,22 +405,22 @@
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">行间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="80" max="300" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
+                  <slider class="slider-mini" min="80" max="400" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
                   <text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text>
                 </view>
               </view>
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">字间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="-5" max="25" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLetterSpacingChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.letterSpacing}}px</text>
+                  <slider class="slider-mini" min="-10" max="40" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLetterSpacingChange"/>
+                  <text class="slider-value-mini">{{layoutSettings.letterSpacing}}%</text>
                 </view>
               </view>
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">段落间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="50" step="1" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutParagraphSpacingChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.paragraphSpacing}}px</text>
+                  <slider class="slider-mini" min="0" max="100" step="1" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutParagraphSpacingChange"/>
+                  <text class="slider-value-mini">{{layoutSettings.paragraphSpacing}}</text>
                 </view>
               </view>
               <view class="settings-cell settings-cell--fourth">

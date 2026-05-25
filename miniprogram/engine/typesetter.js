@@ -83,6 +83,32 @@ function isLineEndForbidden(char) {
 }
 
 /**
+ * ASCII 半角字符 → 全角 CJK 字符转换
+ * 在中文排版中，英文/数字应占据全角单元格，否则 fillText 渲染时
+ * 半角字符实际宽度只有 fontSize/2，而排版分配的间距是 fontSize，造成空隙
+ */
+function toFullWidth(text) {
+  let result = ''
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    const code = ch.charCodeAt(0)
+    if (code >= 0x30 && code <= 0x39) {
+      // 数字 0-9 → ０-９ (U+FF10-U+FF19)
+      result += String.fromCharCode(code - 0x30 + 0xFF10)
+    } else if (code >= 0x41 && code <= 0x5A) {
+      // 大写字母 A-Z → Ａ-Ｚ (U+FF21-U+FF3A)
+      result += String.fromCharCode(code - 0x41 + 0xFF21)
+    } else if (code >= 0x61 && code <= 0x7A) {
+      // 小写字母 a-z → ａ-ｚ (U+FF41-U+FF5A)
+      result += String.fromCharCode(code - 0x61 + 0xFF41)
+    } else {
+      result += ch
+    }
+  }
+  return result
+}
+
+/**
  * 排版单页文字
  * 输入：文字字符串 + 布局参数
  * 输出：glyph列表（每个字的坐标）+ 剩余未排版文字
@@ -106,12 +132,12 @@ function typesetPage(params) {
 
   let fontSize = layout.fontSize * sizeScale
   let lineHeight = fontSize * (layout.lineHeight * lineHeightScale)
-  // 字距：em -> px，但限制最大值避免字被拆开
-  const letterSpacing = Math.min(layout.letterSpacing * fontSize, fontSize * 0.15)
+  // 字距：em -> px，上限放宽到 0.35em 以适应更宽的字距范围
+  const letterSpacing = Math.min(layout.letterSpacing * fontSize, fontSize * 0.35)
   const direction = layout.direction || 'horizontal'
 
-  // 段落间距
-  const paragraphSpacing = layout.paragraphSpacing || 0
+  // 段落间距（单位：行数，合理范围 0~5，防止异常大值导致换页）
+  const paragraphSpacing = Math.min(layout.paragraphSpacing || 0, 5)
   // 空行处理
   const emptyLineHandling = layout.emptyLineHandling || 'preserve'
 
@@ -121,6 +147,9 @@ function typesetPage(params) {
   if (textScript === 'tc') {
     processedText = simplifyToTraditional(text)
   }
+
+  // 半角→全角转换（数字/英文字母在中文排版中应占全角单元格）
+  processedText = toFullWidth(processedText)
 
   const marginTop = layout.marginTop
   const marginBottom = layout.marginBottom
@@ -224,16 +253,30 @@ function typesetPage(params) {
             })
           }
         } else if (layout.textAlign === 'justify' && lineChars.length === lineCapacity && !isLastLineOfPara) {
-          // 两端对齐（仅非最后一行）
+          // 两端对齐：先算出 gap，只有当 gap <= letterSpacing + fontSize*0.1 才真正两端对齐
+          // 否则说明行内字符太少，被过度撑开，回退到左对齐
           const gap = lineChars.length > 1
             ? (colWidth - indent * (fontSize + letterSpacing) - lineChars.length * fontSize) / (lineChars.length - 1)
             : 0
-          for (let i = 0; i < lineChars.length; i++) {
-            glyphs.push({
-              text: lineChars[i],
-              x: lineStartX + i * (fontSize + gap),
-              y: lineY
-            })
+          // gap 合理区间：不超过 letterSpacing + 10% 字宽（即接近左对齐时才启用）
+          const maxAcceptableGap = letterSpacing + fontSize * 0.12
+          if (gap <= maxAcceptableGap) {
+            for (let i = 0; i < lineChars.length; i++) {
+              glyphs.push({
+                text: lineChars[i],
+                x: lineStartX + i * (fontSize + gap),
+                y: lineY
+              })
+            }
+          } else {
+            // gap 过大，回退左对齐
+            for (let i = 0; i < lineChars.length; i++) {
+              glyphs.push({
+                text: lineChars[i],
+                x: lineStartX + i * (fontSize + letterSpacing),
+                y: lineY
+              })
+            }
           }
         } else {
           // 左对齐 / 最后一行
@@ -266,8 +309,8 @@ function typesetPage(params) {
       }
 
       // 段间空白
-      if (pIdx < paragraphs.length - 1 && layout.paragraphSpacing > 0) {
-        lineInCol += layout.paragraphSpacing
+      if (pIdx < paragraphs.length - 1 && paragraphSpacing > 0) {
+        lineInCol += paragraphSpacing
         if (lineInCol >= linesPerColumn) {
           lineInCol = 0
           col++
