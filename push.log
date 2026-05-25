@@ -166,3 +166,11 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
 [2026/5/26 00:01:29]    4 files changed, 33 insertions(+), 19 deletions(-)
 [2026/5/26 00:01:30] 推送结果:
 [2026/5/26 00:01:30] [✓] 推送成功
+[2026/5/26 00:08:42] ========================================
+[2026/5/26 00:08:42] 开始检查...
+[2026/5/26 00:08:42] 当前分支: master
+[2026/5/26 00:08:42] 检测到变更，开始提交...
+[2026/5/26 00:08:42] 变更文件:
+[2026/5/26 00:08:42]   M miniprogram/pages/luomo/luomo.wxml
+[2026/5/26 00:08:42]    M push.log
+[2026/5/26 00:08:42]   ?? .workbuddy/automations/
