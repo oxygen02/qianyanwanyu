@@ -448,6 +448,7 @@ Page({
     query.select('#bookCanvas')
       .fields({ node: true, size: true })
       .exec((res) => {
+        console.log('[luomo] Canvas query结果:', res)
         if (!res || !res[0] || !res[0].node) {
           console.error('[luomo] Canvas节点获取失败')
           return
@@ -482,14 +483,14 @@ Page({
         console.log('[luomo] 缩放比例:', scale)
 
         // CSS显示尺寸（在容器内居中显示）
-        const cssWidth = Math.floor(selectedSize.width * scale)
-        const cssHeight = Math.floor(selectedSize.height * scale)
+        const cssWidth = Math.max(1, Math.floor(selectedSize.width * scale))
+        const cssHeight = Math.max(1, Math.floor(selectedSize.height * scale))
 
         console.log('[luomo] CSS尺寸:', cssWidth, cssHeight)
 
         // 物理像素尺寸（用于Canvas绘制）
-        const physW = Math.floor(selectedSize.width * dpr)
-        const physH = Math.floor(selectedSize.height * dpr)
+        const physW = Math.max(1, Math.floor(selectedSize.width * dpr))
+        const physH = Math.max(1, Math.floor(selectedSize.height * dpr))
 
         console.log('[luomo] 物理像素尺寸:', physW, physH)
 
