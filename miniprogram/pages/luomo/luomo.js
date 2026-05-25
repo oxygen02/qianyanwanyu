@@ -454,18 +454,46 @@ Page({
         // 限制 DPR 最大为 2，平衡清晰度与内存占用
         const dpr = Math.min(rawDpr, 2)
 
-        // 物理像素尺寸
-        const cssWidth = res[0].width
-        const cssHeight = res[0].height
-        const physW = Math.floor(cssWidth * dpr)
-        const physH = Math.floor(cssHeight * dpr)
+        // 获取纸张尺寸设置
+        const sizeIndex = this.data.paperSettings.sizeIndex || 0
+        const sizeOptions = [
+          { width: 720, height: 1080, name: '竖版书页' },
+          { width: 1080, height: 720, name: '横版书页' },
+          { width: 900, height: 900, name: '方形书页' },
+          { width: 750, height: 1334, name: '朋友圈适配' }
+        ]
+        const selectedSize = sizeOptions[sizeIndex] || sizeOptions[0]
+
+        // 计算Canvas容器尺寸
+        const containerWidth = res[0].width
+        const containerHeight = res[0].height
+
+        // 计算缩放比例，使纸张适应容器（保持宽高比）
+        const scaleX = containerWidth / selectedSize.width
+        const scaleY = containerHeight / selectedSize.height
+        const scale = Math.min(scaleX, scaleY, 1) // 最大不放大
+
+        // CSS显示尺寸（在容器内居中显示）
+        const cssWidth = Math.floor(selectedSize.width * scale)
+        const cssHeight = Math.floor(selectedSize.height * scale)
+
+        // 物理像素尺寸（用于Canvas绘制）
+        const physW = Math.floor(selectedSize.width * dpr)
+        const physH = Math.floor(selectedSize.height * dpr)
 
         canvas.width = physW
         canvas.height = physH
 
+        // 设置Canvas的CSS尺寸（在容器内居中）
+        canvas.style.width = `${cssWidth}px`
+        canvas.style.height = `${cssHeight}px`
+
         this._canvas = canvas
         this._canvasWidth = physW
         this._canvasHeight = physH
+        this._canvasCssWidth = cssWidth
+        this._canvasCssHeight = cssHeight
+        this._canvasScale = scale
         this._canvasReady = true
 
         // Canvas就绪，若有文字则渲染，无文字则启动光标闪烁
