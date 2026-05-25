@@ -1703,6 +1703,12 @@ picker .setting-value {
   min-height: 32rpx;
 }
 
+/* 字间距滑块：增大可触摸区域 */
+.slider-letter-spacing {
+  min-height: 48rpx;
+  height: 48rpx;
+}
+
 .slider-value-mini {
   font-size: 17rpx;
   color: #6B5B4F;
