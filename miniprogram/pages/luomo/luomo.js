@@ -468,59 +468,79 @@ Page({
         ]
         const selectedSize = sizeOptions[sizeIndex] || sizeOptions[0]
 
-        // 计算Canvas容器尺寸
-        const containerWidth = res[0].width
-        const containerHeight = res[0].height
+        // 计算Canvas容器尺寸（使用boundingClientRect获取正确尺寸）
+        const canvasRect = res[0].node.getBoundingClientRect ? res[0].node.getBoundingClientRect() : null
+        let containerWidth = canvasRect ? canvasRect.width : res[0].width
+        let containerHeight = canvasRect ? canvasRect.height : res[0].height
 
-        console.log('[luomo] Canvas容器尺寸:', containerWidth, containerHeight)
-        console.log('[luomo] 纸张尺寸:', selectedSize.width, selectedSize.height)
-
-        // 计算缩放比例，使纸张适应容器（保持宽高比）
-        const scaleX = containerWidth / selectedSize.width
-        const scaleY = containerHeight / selectedSize.height
-        const scale = Math.min(scaleX, scaleY, 1) // 最大不放大
-
-        console.log('[luomo] 缩放比例:', scale)
-
-        // CSS显示尺寸（在容器内居中显示）
-        const cssWidth = Math.max(1, Math.floor(selectedSize.width * scale))
-        const cssHeight = Math.max(1, Math.floor(selectedSize.height * scale))
-
-        console.log('[luomo] CSS尺寸:', cssWidth, cssHeight)
-
-        // 物理像素尺寸（用于Canvas绘制）
-        const physW = Math.max(1, Math.floor(selectedSize.width * dpr))
-        const physH = Math.max(1, Math.floor(selectedSize.height * dpr))
-
-        console.log('[luomo] 物理像素尺寸:', physW, physH)
-
-        canvas.width = physW
-        canvas.height = physH
-
-        this._canvas = canvas
-        this._canvasWidth = physW
-        this._canvasHeight = physH
-        this._canvasCssWidth = cssWidth
-        this._canvasCssHeight = cssHeight
-        this._canvasScale = scale
-        this._canvasReady = true
-
-        // 通过setData更新Canvas的CSS尺寸（使用style属性绑定）
-        console.log('[luomo] 设置Canvas CSS尺寸:', cssWidth, cssHeight)
-        this.setData({
-          canvasCssWidth: cssWidth,
-          canvasCssHeight: cssHeight
-        }, () => {
-          console.log('[luomo] Canvas CSS尺寸已更新:', this.data.canvasCssWidth, this.data.canvasCssHeight)
-        })
-
-        // Canvas就绪，若有文字则渲染，无文字则启动光标闪烁
-        if (this.data.text) {
-          this._triggerRender()
-        } else {
-          this._startCursorBlink()
+        // 如果尺寸仍为0，使用父容器尺寸
+        if (!containerWidth || !containerHeight) {
+          const parentQuery = this.createSelectorQuery()
+          parentQuery.select('.canvas-area').boundingClientRect((rect) => {
+            if (rect && rect.width > 0 && rect.height > 0) {
+              this._initCanvasWithSize(canvas, dpr, selectedSize, rect.width, rect.height)
+            } else {
+              // 使用窗口尺寸作为后备
+              const windowInfo = wx.getWindowInfo()
+              this._initCanvasWithSize(canvas, dpr, selectedSize, windowInfo.windowWidth, windowInfo.windowHeight * 0.65)
+            }
+          }).exec()
+          return
         }
+
+        this._initCanvasWithSize(canvas, dpr, selectedSize, containerWidth, containerHeight)
       })
+  },
+
+  _initCanvasWithSize(canvas, dpr, selectedSize, containerWidth, containerHeight) {
+    console.log('[luomo] Canvas容器尺寸:', containerWidth, containerHeight)
+    console.log('[luomo] 纸张尺寸:', selectedSize.width, selectedSize.height)
+
+    // 计算缩放比例，使纸张适应容器（保持宽高比）
+    const scaleX = containerWidth / selectedSize.width
+    const scaleY = containerHeight / selectedSize.height
+    const scale = Math.min(scaleX, scaleY, 1) // 最大不放大
+
+    console.log('[luomo] 缩放比例:', scale)
+
+    // CSS显示尺寸（在容器内居中显示）
+    const cssWidth = Math.max(1, Math.floor(selectedSize.width * scale))
+    const cssHeight = Math.max(1, Math.floor(selectedSize.height * scale))
+
+    console.log('[luomo] CSS尺寸:', cssWidth, cssHeight)
+
+    // 物理像素尺寸（用于Canvas绘制）
+    const physW = Math.max(1, Math.floor(selectedSize.width * dpr))
+    const physH = Math.max(1, Math.floor(selectedSize.height * dpr))
+
+    console.log('[luomo] 物理像素尺寸:', physW, physH)
+
+    canvas.width = physW
+    canvas.height = physH
+
+    this._canvas = canvas
+    this._canvasWidth = physW
+    this._canvasHeight = physH
+    this._canvasCssWidth = cssWidth
+    this._canvasCssHeight = cssHeight
+    this._canvasScale = scale
+    this._canvasReady = true
+
+    // 通过setData更新Canvas的CSS尺寸（使用style属性绑定）
+    console.log('[luomo] 设置Canvas CSS尺寸:', cssWidth, cssHeight)
+    this.setData({
+      canvasCssWidth: cssWidth,
+      canvasCssHeight: cssHeight
+    }, () => {
+      console.log('[luomo] Canvas CSS尺寸已更新:', this.data.canvasCssWidth, this.data.canvasCssHeight)
+    })
+
+    // Canvas就绪，若有文字则渲染，无文字则启动光标闪烁
+    if (this.data.text) {
+      this._triggerRender()
+    } else {
+      this._startCursorBlink()
+    }
   },
 
   // ============ 文字输入 ============
