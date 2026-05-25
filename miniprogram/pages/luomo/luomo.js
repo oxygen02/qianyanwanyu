@@ -156,9 +156,9 @@ Page({
     textSettings: {
       fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
       fontIndex: 1,
-      fontSize: 32,
+      fontSize: 40,
       fontSizeMode: 'px',
-      fontSizeDisplay: '32px',
+      fontSizeDisplay: '40px',
       weightOptions: ['纤细', '常规', '中等', '加粗'],
       weightIndex: 1,
       inkColorOptions: [
@@ -219,8 +219,8 @@ Page({
       textureIndex: 0,
       shadowEnabled: false,
       shadowIntensity: 50,
-      marginVertical: 30,
-      marginHorizontal: 20,
+      marginVertical: 50,
+      marginHorizontal: 50,
       formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
       formIndex: 0,
       foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -246,9 +246,9 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 140,
-      lineHeightDisplay: '1.4倍',
-      letterSpacing: 0,
+      lineHeight: 160,
+      lineHeightDisplay: '1.6倍',
+      letterSpacing: 2,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
       layoutModeOptions: ['默认模式', '诗词模式', '书信模式', '散文模式', '小说模式'],
@@ -373,12 +373,22 @@ Page({
       activeFontDownloadStatus: currentFontStatus === 'loaded' ? 'loaded' : 'idle',
       watermarkEnabled: userSettings.watermarkEnabled !== false,
       settings: initialSettings,
+      // 同步 textSettings
       'textSettings.fontSize': initialSettings.fontSize,
       'textSettings.fontSizeDisplay': initialSettings.fontSizeDisplay,
       'textSettings.inkOpacity': initialSettings.inkOpacityVal,
+      // 同步 paperSettings
       'paperSettings.templateOptions': templateOptions,
       'paperSettings.templateSwiperItems': templateSwiperItems,
-      'paperSettings.currentSwiperIndex': 0
+      'paperSettings.currentSwiperIndex': 0,
+      'paperSettings.marginVertical': initialSettings.marginTopVal,
+      'paperSettings.marginHorizontal': initialSettings.marginLeftVal,
+      // 同步 layoutSettings
+      'layoutSettings.lineHeight': initialSettings.lineHeightVal,
+      'layoutSettings.lineHeightDisplay': initialSettings.lineHeightDisplay,
+      'layoutSettings.letterSpacing': initialSettings.letterSpacingVal,
+      'layoutSettings.textAlign': initialSettings.textAlign,
+      'layoutSettings.firstLineIndent': initialSettings.firstLineIndent
     })
 
     // 恢复草稿
@@ -1667,25 +1677,32 @@ Page({
    */
   _buildSettingsFromTemplate(template, fontId) {
     const t = template || TEMPLATES['modern-prose']
-    const lineHeightVal = 140  // 默认 1.4 倍行距
-    const fontSize = 32        // 默认 32px
+    // 使用模板默认值，确保与模板设计一致
+    const templateFontSize = t.layout.fontSize || 40
+    const templateLineHeight = t.layout.lineHeight || 1.6
+    const templateLetterSpacing = t.layout.letterSpacing || 0.02
+    const templateMarginTop = t.layout.marginTop || 50
+    const templateMarginBottom = t.layout.marginBottom || 50
+    const templateMarginLeft = t.layout.marginLeft || 50
+    const templateMarginRight = t.layout.marginRight || 50
+    const lineHeightVal = Math.round(templateLineHeight * 100)
     return {
       // 字体选择
       fontId: fontId || (t.font && t.font.family) || '思源宋体-Regular',
 
-      // 基础排版
-      fontSize: fontSize,
+      // 基础排版 - 使用模板默认值
+      fontSize: templateFontSize,
       fontSizeMode: 'px',
-      fontSizeDisplay: `${fontSize}px`,
-      lineHeight: 1.4,
+      fontSizeDisplay: `${templateFontSize}px`,
+      lineHeight: templateLineHeight,
       lineHeightVal: lineHeightVal,
-      lineHeightDisplay: (lineHeightVal / 100).toFixed(1),
-      letterSpacing: 0,
-      letterSpacingVal: 0,
+      lineHeightDisplay: templateLineHeight.toFixed(1),
+      letterSpacing: templateLetterSpacing,
+      letterSpacingVal: Math.round(templateLetterSpacing * 100),
       direction: t.layout.direction,
       fontWeight: t.font.weight || '400',
-      textAlign: 'left',
-      firstLineIndent: 2,
+      textAlign: t.layout.textAlign || 'left',
+      firstLineIndent: t.layout.indent || 2,
 
       // 墨色质感
       inkColor: t.ink.color || '#1A1008',
@@ -1714,7 +1731,7 @@ Page({
       watermarkType: 'none', // none, light, custom, page
 
       // 排版设置新增
-      paragraphSpacing: 25,
+      paragraphSpacing: Math.round((t.layout.paragraphSpacing || 0.5) * 50),
       emptyLineHandling: 'preserve',
       compactness: 50,
       pageNumberEnabled: false,
@@ -1727,12 +1744,12 @@ Page({
       inkSpreadIntensity: 50,
       layoutModeIndex: 0,
 
-      // 基础纸张
+      // 基础纸张 - 使用模板默认值
       paperBaseColor: t.paper.baseColor || '#F5F0E6',
-      marginTopVal: 30,
-      marginBottomVal: 30,
-      marginLeftVal: 20,
-      marginRightVal: 20,
+      marginTopVal: templateMarginTop,
+      marginBottomVal: templateMarginBottom,
+      marginLeftVal: templateMarginLeft,
+      marginRightVal: templateMarginRight,
 
       // 质感效果
       aging: t.paper.ageOpacity || 0,

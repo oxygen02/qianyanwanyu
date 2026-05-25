@@ -405,14 +405,14 @@
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">行间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="50" max="600" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
+                  <slider class="slider-mini" min="80" max="400" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
                   <text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text>
                 </view>
               </view>
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">字间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="-100" max="100" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLetterSpacingChange"/>
+                  <slider class="slider-mini" min="-20" max="100" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLetterSpacingChange"/>
                   <text class="slider-value-mini">{{layoutSettings.letterSpacing}}%</text>
                 </view>
               </view>
