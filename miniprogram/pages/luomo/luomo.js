@@ -506,9 +506,12 @@ Page({
         this._canvasReady = true
 
         // 通过setData更新Canvas的CSS尺寸（使用style属性绑定）
+        console.log('[luomo] 设置Canvas CSS尺寸:', cssWidth, cssHeight)
         this.setData({
           canvasCssWidth: cssWidth,
           canvasCssHeight: cssHeight
+        }, () => {
+          console.log('[luomo] Canvas CSS尺寸已更新:', this.data.canvasCssWidth, this.data.canvasCssHeight)
         })
 
         // Canvas就绪，若有文字则渲染，无文字则启动光标闪烁
