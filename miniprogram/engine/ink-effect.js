@@ -10,6 +10,7 @@
 const opentype = require('../utils/opentype.min.js')
 
 const FONT_CACHE_DIR = `${wx.env.USER_DATA_PATH}/font_cache`
+const FONT_CACHE_INFO_KEY = 'font_cache_info'
 
 function getFS() {
   return wx.getFileSystemManager()
@@ -24,7 +25,33 @@ async function loadFontFromCache(fontId) {
   
   return new Promise((resolve, reject) => {
     const fs = getFS()
-    const filePath = `${FONT_CACHE_DIR}/${fontId}.ttf`
+    let filePath = null
+    try {
+      const cacheInfo = wx.getStorageSync(FONT_CACHE_INFO_KEY) || {}
+      if (cacheInfo[fontId] && cacheInfo[fontId].path) {
+        filePath = cacheInfo[fontId].path
+      }
+    } catch (e) {
+      // 忽略 storage 异常，继续回退到猜测路径
+    }
+    if (!filePath) {
+      const candidates = [
+        `${FONT_CACHE_DIR}/${fontId}.ttf`,
+        `${FONT_CACHE_DIR}/${fontId}.otf`,
+        `${FONT_CACHE_DIR}/${fontId}.ttc`
+      ]
+      for (const p of candidates) {
+        try {
+          fs.accessSync(p)
+          filePath = p
+          break
+        } catch (e) {}
+      }
+    }
+    if (!filePath) {
+      reject(new Error(`本地未找到字体缓存: ${fontId}`))
+      return
+    }
     
     fs.readFile({
       filePath: filePath,
@@ -450,6 +477,7 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
 
 /**
  * 绘制印章
+ * 固定印章大小为36rpx，默认位置在右下角
  */
 function drawStamp(ctx, width, height, stampConfig) {
   if (!stampConfig) return
@@ -457,7 +485,9 @@ function drawStamp(ctx, width, height, stampConfig) {
   const text = stampConfig.text || '记'
   const color = stampConfig.color || '#C41E3A'
   const opacity = stampConfig.opacity || 0.7
-  const size = 52
+  
+  const dpr = wx.getSystemInfoSync().pixelRatio || 2
+  const size = 36 / 2 * dpr
 
   let sx, sy
   const margin = 28
@@ -471,12 +501,12 @@ function drawStamp(ctx, width, height, stampConfig) {
       sx = margin + size / 2
       sy = margin + size / 2
       break
-    case 'bottomRight':
-      sx = width - margin - size / 2
+    case 'bottomLeft':
+      sx = margin + size / 2
       sy = height - margin - size / 2
       break
     default:
-      sx = margin + size / 2
+      sx = width - margin - size / 2
       sy = height - margin - size / 2
   }
 
@@ -504,6 +534,7 @@ function drawStamp(ctx, width, height, stampConfig) {
 /**
  * 绘制水印
  * 2025-05-18 修复：从硬编码 28px 改为基于版心下边距（marginBottom）定位
+ * 固定水印文字大小为36rpx，默认位置在右下角
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} width
@@ -517,16 +548,15 @@ function drawWatermark(ctx, width, height, watermarkConfig, dateStr, layoutConfi
 
   const text = watermarkConfig.text || '铅言万语'
   const opacity = watermarkConfig.opacity || 0.15
-  const fontSize = watermarkConfig.fontSize || 20
+  
+  const dpr = wx.getSystemInfoSync().pixelRatio || 2
+  const defaultFontSize = 36 / 2 * dpr
+  const fontSize = watermarkConfig.userSetFontSize ? ((watermarkConfig.fontSize || 36) / 2 * dpr) : defaultFontSize
+  const position = watermarkConfig.userSetPosition ? (watermarkConfig.position || 'bottomRight') : 'bottomRight'
 
-  // marginBottom 已被 DPR 缩放（物理像素）
-  const marginBottom = (layoutConfig && layoutConfig.marginBottom) || 60
-  const marginRight = (layoutConfig && layoutConfig.marginRight) || 50
-  const marginLeft = (layoutConfig && layoutConfig.marginLeft) || 50
-
-  // 水印位于底部 margin 区域的中间位置
-  // 即：页面底部 - marginBottom/2（在底部留白区域的中间）
-  const footerCenterY = height - marginBottom / 2
+  const fixedRight = 36
+  const fixedLeft = 36
+  const fixedBottomCenter = 46
 
   ctx.save()
   ctx.globalAlpha = opacity
@@ -536,22 +566,18 @@ function drawWatermark(ctx, width, height, watermarkConfig, dateStr, layoutConfi
 
   const displayText = dateStr ? `${text}  ${dateStr}` : text
 
-  switch (watermarkConfig.position) {
-    case 'bottomRight':
-      ctx.textAlign = 'right'
-      ctx.fillText(displayText, width - marginRight, footerCenterY)
-      break
+  switch (position) {
     case 'bottomCenter':
       ctx.textAlign = 'center'
-      ctx.fillText(displayText, width / 2, footerCenterY)
+      ctx.fillText(displayText, width / 2, height - fixedBottomCenter)
       break
     case 'bottomLeft':
       ctx.textAlign = 'left'
-      ctx.fillText(displayText, marginLeft, footerCenterY)
+      ctx.fillText(displayText, fixedLeft, height - fixedBottomCenter)
       break
     default:
       ctx.textAlign = 'right'
-      ctx.fillText(displayText, width - marginRight, footerCenterY)
+      ctx.fillText(displayText, width - fixedRight, height - fixedBottomCenter)
   }
 
   ctx.restore()
@@ -559,6 +585,7 @@ function drawWatermark(ctx, width, height, watermarkConfig, dateStr, layoutConfi
 
 /**
  * 绘制水印 + Logo（并列显示在页面底部）
+ * 固定水印文字大小为36rpx，默认位置在右下角
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} width
  * @param {number} height
@@ -570,55 +597,38 @@ async function drawWatermarkWithLogo(ctx, width, height, watermarkConfig, dateSt
   if (!watermarkConfig) return
 
   const text = watermarkConfig.text || '铅言万语'
-  // 提高不透明度，让水印更明显
   const opacity = Math.min((watermarkConfig.opacity || 0.15) * 2, 0.4)
-  // 增大水印字号
-  const fontSize = (watermarkConfig.fontSize || 20) * 1.5
+  
+  const dpr = wx.getSystemInfoSync().pixelRatio || 2
+  const defaultFontSize = 36 / 2 * dpr
+  const fontSize = watermarkConfig.userSetFontSize ? ((watermarkConfig.fontSize || 36) / 2 * dpr) : defaultFontSize
+  const position = watermarkConfig.userSetPosition ? (watermarkConfig.position || 'bottomRight') : 'bottomRight'
 
-  // marginBottom 已被 DPR 缩放（物理像素）
-  const marginBottom = (layoutConfig && layoutConfig.marginBottom) || 60
-  const marginRight = (layoutConfig && layoutConfig.marginRight) || 50
-  const marginLeft = (layoutConfig && layoutConfig.marginLeft) || 50
+  const fixedRight = 36
+  const fixedLeft = 36
+  const footerCenterY = height - 46
 
-  // 位置靠近页面底部（在 marginBottom 区域内，靠近底边）
-  // 距离页面底部 25% 的 marginBottom 处
-  const footerCenterY = height - marginBottom * 0.25
-
-  // Logo 尺寸：更大，高度为 marginBottom 的 70%
-  const logoSize = marginBottom * 0.7
+  const logoSize = 36 / 2 * dpr
+  const logoGap = 8
 
   ctx.save()
   ctx.globalAlpha = opacity
   ctx.textBaseline = 'middle'
 
-  // 尝试加载并绘制 Logo
   let logoDrawn = false
   try {
     const logoImg = await _loadLogoImage()
     if (logoImg) {
       const logoY = footerCenterY - logoSize / 2
 
-      // 根据水印位置决定 Logo 位置（与水印分列两侧）
-      if (watermarkConfig.position === 'bottomRight' || watermarkConfig.position === 'none') {
-        // 水印在右，Logo 在左
-        ctx.drawImage(logoImg, marginLeft, logoY, logoSize, logoSize)
-        // 绘制水印（右侧）
-        ctx.font = `${fontSize}px serif`
-        ctx.fillStyle = '#3D2B1F'
-        ctx.textAlign = 'right'
-        const displayText = dateStr ? `${text}  ${dateStr}` : text
-        ctx.fillText(displayText, width - marginRight, footerCenterY)
-      } else if (watermarkConfig.position === 'bottomLeft') {
-        // 水印在左，Logo 在右
-        ctx.drawImage(logoImg, width - marginRight - logoSize, logoY, logoSize, logoSize)
-        // 绘制水印（左侧）
+      if (position === 'bottomLeft') {
+        ctx.drawImage(logoImg, width - fixedRight - logoSize, logoY, logoSize, logoSize)
         ctx.font = `${fontSize}px serif`
         ctx.fillStyle = '#3D2B1F'
         ctx.textAlign = 'left'
         const displayText = dateStr ? `${text}  ${dateStr}` : text
-        ctx.fillText(displayText, marginLeft, footerCenterY)
-      } else {
-        // 居中：Logo 在水印左侧
+        ctx.fillText(displayText, fixedLeft, footerCenterY)
+      } else if (position === 'bottomCenter') {
         const displayText = dateStr ? `${text}  ${dateStr}` : text
         ctx.font = `${fontSize}px serif`
         ctx.fillStyle = '#3D2B1F'
@@ -628,6 +638,15 @@ async function drawWatermarkWithLogo(ctx, width, height, watermarkConfig, dateSt
         const startX = (width - totalWidth) / 2
         ctx.drawImage(logoImg, startX, logoY, logoSize, logoSize)
         ctx.fillText(displayText, startX + logoSize + 12, footerCenterY)
+      } else {
+        ctx.font = `${fontSize}px serif`
+        ctx.fillStyle = '#3D2B1F'
+        ctx.textAlign = 'right'
+        const displayText = dateStr ? `${text}  ${dateStr}` : text
+        const textWidth = ctx.measureText(displayText).width
+        const logoX = width - fixedRight - textWidth - logoGap - logoSize
+        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
+        ctx.fillText(displayText, width - fixedRight, footerCenterY)
       }
       logoDrawn = true
     }
@@ -635,27 +654,22 @@ async function drawWatermarkWithLogo(ctx, width, height, watermarkConfig, dateSt
     console.warn('[ink-effect] Logo 加载失败:', e)
   }
 
-  // 如果 Logo 未绘制成功，只绘制水印
   if (!logoDrawn) {
     ctx.font = `${fontSize}px serif`
     ctx.fillStyle = '#3D2B1F'
     const displayText = dateStr ? `${text}  ${dateStr}` : text
-    switch (watermarkConfig.position) {
-      case 'bottomRight':
-        ctx.textAlign = 'right'
-        ctx.fillText(displayText, width - marginRight, footerCenterY)
-        break
+    switch (position) {
       case 'bottomCenter':
         ctx.textAlign = 'center'
         ctx.fillText(displayText, width / 2, footerCenterY)
         break
       case 'bottomLeft':
         ctx.textAlign = 'left'
-        ctx.fillText(displayText, marginLeft, footerCenterY)
+        ctx.fillText(displayText, fixedLeft, footerCenterY)
         break
       default:
         ctx.textAlign = 'right'
-        ctx.fillText(displayText, width - marginRight, footerCenterY)
+        ctx.fillText(displayText, width - fixedRight, footerCenterY)
     }
   }
 

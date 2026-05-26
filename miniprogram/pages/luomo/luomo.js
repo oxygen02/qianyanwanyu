@@ -2,7 +2,7 @@
 // 落墨页 - 主书写页核心逻辑
 
 const { renderPage, estimatePageCount, clearRenderCache } = require('../../engine/renderer')
-const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, hasVisited, markVisited } = require('../../utils/storage')
+const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, saveSettings, hasVisited, markVisited } = require('../../utils/storage')
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
 const { loadFont, getFontStatus, formatFileSize } = require('../../utils/font-loader')
@@ -136,6 +136,23 @@ Page({
       inkSpreadEnabled: false,
       inkSpreadIntensity: 50,
       layoutModeIndex: 0
+    },
+    uiRanges: {
+      fontSizeMin: 18, fontSizeMax: 60,
+      inkOpacityMin: 20, inkOpacityMax: 90,
+      textSkewMin: -8, textSkewMax: 8,
+      strokeWidthMin: 0, strokeWidthMax: 3, strokeWidthStep: 0.2,
+      marginMin: 10, marginMax: 120, marginStep: 2,
+      shadowMax: 70,
+      imperfectionMax: 70,
+      lineHeightMin: 120, lineHeightMax: 260, lineHeightStep: 2,
+      letterSpacingMin: -20, letterSpacingMax: 20,
+      paragraphSpacingMax: 60,
+      compactnessMin: 20, compactnessMax: 80,
+      weatheringMax: 70,
+      inkSpreadMax: 70,
+      misregistrationMax: 3, misregistrationStep: 0.2,
+      damageMax: 70
     },
     // 纸张尺寸列表（用于选择面板）
     paperSizeList: [],
@@ -365,6 +382,7 @@ Page({
 
     // 构建设置并同步 textSettings
     const initialSettings = this._buildSettingsFromTemplate(template, currentFontId)
+    const uiRanges = this._getUiRangesByTemplate(activeTemplateId)
     
     this.setData({
       activeTemplateId,
@@ -374,7 +392,9 @@ Page({
       paperSizeList,
       activeFontId: currentFontId,
       activeFontDownloadStatus: currentFontStatus === 'loaded' ? 'loaded' : 'idle',
+      uiRanges,
       watermarkEnabled: userSettings.watermarkEnabled !== false,
+      lastStylePreset: userSettings.lastStylePreset || '',
       settings: initialSettings,
       // 同步 textSettings
       'textSettings.fontSize': initialSettings.fontSize,
@@ -392,6 +412,13 @@ Page({
       'layoutSettings.letterSpacing': initialSettings.letterSpacingVal,
       'layoutSettings.textAlign': initialSettings.textAlign,
       'layoutSettings.firstLineIndent': initialSettings.firstLineIndent
+    }, () => {
+      // 自动恢复上次一键风格（静默应用，不弹提示）
+      const preset = userSettings.lastStylePreset
+      if (preset === 'light-print') this.onApplyLightPrintPreset({ silent: true, remember: false })
+      else if (preset === 'immersive') this.onApplyImmersivePreset({ silent: true, remember: false })
+      else if (preset === 'ancient-bold') this.onApplyAncientBoldPreset({ silent: true, remember: false })
+      else if (preset === 'modern-minimal') this.onApplyModernMinimalPreset({ silent: true, remember: false })
     })
 
     // 恢复草稿
@@ -979,6 +1006,7 @@ Page({
       currentPage: 0,
       'paperSettings.templateIndex': templateIndex >= 0 ? templateIndex : 0,
       settings: newSettings,
+      uiRanges: this._getUiRangesByTemplate(id),
       'textSettings.fontSize': newSettings.fontSize,
       'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
       'textSettings.inkOpacity': newSettings.inkOpacityVal
@@ -1008,6 +1036,7 @@ Page({
       activeTemplateName: template.name,
       currentPage: 0,
       settings: newSettings,
+      uiRanges: this._getUiRangesByTemplate(newId),
       'textSettings.fontSize': newSettings.fontSize,
       'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
       'textSettings.inkOpacity': newSettings.inkOpacityVal
@@ -1172,6 +1201,10 @@ Page({
    */
   onCloseFontPanel() {
     this.setData({ fontPanelVisible: false })
+  },
+
+  onCloseFontPanelBg() {
+    this.onCloseFontPanel()
   },
 
   /**
@@ -1540,7 +1573,10 @@ Page({
   },
 
   onWatermarkPositionChange(e) {
-    this.setData({ 'settings.watermarkPosition': e.currentTarget.dataset.pos })
+    this.setData({
+      'settings.watermarkPosition': e.currentTarget.dataset.pos,
+      'settings.watermarkUserSetPosition': true
+    })
     this._triggerRender()
 
   },
@@ -1568,6 +1604,194 @@ Page({
 
   },
 
+  _applyStylePreset(preset, toastTitle, presetKey, opts = {}) {
+    const { silent = false, remember = true } = opts
+    const { uiRanges, settings } = this.data
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+    const fontSize = clamp(preset.fontSize, uiRanges.fontSizeMin, uiRanges.fontSizeMax)
+    const inkOpacityVal = clamp(preset.inkOpacityVal, uiRanges.inkOpacityMin, uiRanges.inkOpacityMax)
+    const marginVal = clamp(preset.marginVal, uiRanges.marginMin, uiRanges.marginMax)
+    const lineHeightVal = clamp(preset.lineHeightVal, uiRanges.lineHeightMin, uiRanges.lineHeightMax)
+    const letterSpacingVal = clamp(preset.letterSpacingVal, uiRanges.letterSpacingMin, uiRanges.letterSpacingMax)
+
+    this.setData({
+      'settings.fontSize': fontSize,
+      'settings.fontSizeDisplay': `${fontSize}px`,
+      'settings.inkOpacity': inkOpacityVal / 100,
+      'settings.inkOpacityVal': inkOpacityVal,
+      'settings.textSkew': preset.textSkew,
+      'settings.strokeEnabled': preset.strokeEnabled,
+      'settings.strokeWidth': preset.strokeWidth,
+      'settings.marginTopVal': marginVal,
+      'settings.marginBottomVal': marginVal,
+      'settings.marginLeftVal': marginVal,
+      'settings.marginRightVal': marginVal,
+      'settings.shadowIntensity': preset.shadowIntensityVal / 100,
+      'settings.shadowIntensityVal': preset.shadowIntensityVal,
+      'settings.aging': preset.agingVal / 100,
+      'settings.agingVal': preset.agingVal,
+      'settings.fiberOpacity': preset.fiberOpacityVal / 100,
+      'settings.fiberOpacityVal': preset.fiberOpacityVal,
+      'settings.lineHeight': lineHeightVal / 100,
+      'settings.lineHeightVal': lineHeightVal,
+      'settings.lineHeightDisplay': (lineHeightVal / 100).toFixed(2),
+      'settings.letterSpacing': letterSpacingVal / 100,
+      'settings.letterSpacingVal': letterSpacingVal,
+      'settings.variation': preset.variationVal / 100,
+      'settings.variationVal': preset.variationVal,
+      'settings.blurRadius': preset.blurRadiusVal / 100,
+      'settings.blurRadiusVal': preset.blurRadiusVal,
+      'settings.misRegistration': preset.misRegistrationVal / 100,
+      'settings.misRegistrationVal': preset.misRegistrationVal,
+      'settings.damage': preset.damageVal / 100,
+      'settings.damageVal': preset.damageVal,
+      'settings.weatheringEnabled': preset.weatheringEnabled,
+      'settings.weatheringIntensity': preset.weatheringIntensity,
+      'settings.inkSpreadEnabled': preset.inkSpreadEnabled,
+      'settings.inkSpreadIntensity': preset.inkSpreadIntensity,
+      'settings.paragraphSpacing': preset.paragraphSpacing,
+      'settings.compactness': preset.compactness,
+      'settings.textAlign': settings.direction === 'vertical' ? 'right' : preset.textAlign,
+      'textSettings.fontSize': fontSize,
+      'textSettings.fontSizeDisplay': `${fontSize}px`,
+      'textSettings.inkOpacity': inkOpacityVal,
+      'textSettings.textSkew': preset.textSkew,
+      'textSettings.textSkewDisplay': `${preset.textSkew}°`,
+      'textSettings.strokeEnabled': preset.strokeEnabled,
+      'textSettings.strokeWidth': preset.strokeWidth,
+      'paperSettings.marginVertical': marginVal,
+      'paperSettings.marginHorizontal': marginVal,
+      'paperSettings.shadowIntensity': preset.shadowIntensityVal,
+      'layoutSettings.lineHeight': lineHeightVal,
+      'layoutSettings.lineHeightDisplay': (lineHeightVal / 100).toFixed(2) + '倍',
+      'layoutSettings.letterSpacing': letterSpacingVal,
+      'layoutSettings.paragraphSpacing': preset.paragraphSpacing,
+      'layoutSettings.compactness': preset.compactness,
+      'layoutSettings.weatheringEnabled': preset.weatheringEnabled,
+      'layoutSettings.weatheringIntensity': preset.weatheringIntensity,
+      'layoutSettings.inkSpreadEnabled': preset.inkSpreadEnabled,
+      'layoutSettings.inkSpreadIntensity': preset.inkSpreadIntensity,
+      lastStylePreset: presetKey || ''
+    })
+    if (remember && presetKey) {
+      const current = loadSettings()
+      saveSettings({
+        ...current,
+        lastStylePreset: presetKey
+      })
+    }
+    if (!silent) wx.showToast({ title: toastTitle, icon: 'none' })
+    this._triggerRender()
+  },
+
+  onApplyLightPrintPreset(opts = {}) {
+    this._applyStylePreset({
+      fontSize: 42,
+      inkOpacityVal: 66,
+      textSkew: 0,
+      strokeEnabled: false,
+      strokeWidth: 0.6,
+      marginVal: 40,
+      shadowIntensityVal: 12,
+      agingVal: 18,
+      fiberOpacityVal: 18,
+      lineHeightVal: 138,
+      letterSpacingVal: -10,
+      variationVal: 8,
+      blurRadiusVal: 6,
+      misRegistrationVal: 4,
+      damageVal: 2,
+      weatheringEnabled: false,
+      weatheringIntensity: 18,
+      inkSpreadEnabled: true,
+      inkSpreadIntensity: 20,
+      paragraphSpacing: 8,
+      compactness: 60,
+      textAlign: 'justify'
+    }, '已启用清雅轻印', 'light-print', opts)
+  },
+
+  onApplyImmersivePreset(opts = {}) {
+    this._applyStylePreset({
+      fontSize: 44,
+      inkOpacityVal: 76,
+      textSkew: 0,
+      strokeEnabled: true,
+      strokeWidth: 0.8,
+      marginVal: 40,
+      shadowIntensityVal: 18,
+      agingVal: 25,
+      fiberOpacityVal: 22,
+      lineHeightVal: 144,
+      letterSpacingVal: -10,
+      variationVal: 10,
+      blurRadiusVal: 8,
+      misRegistrationVal: 6,
+      damageVal: 3,
+      weatheringEnabled: true,
+      weatheringIntensity: 28,
+      inkSpreadEnabled: true,
+      inkSpreadIntensity: 32,
+      paragraphSpacing: 10,
+      compactness: 58,
+      textAlign: 'justify'
+    }, '已启用印刷沉浸模式', 'immersive', opts)
+  },
+
+  onApplyAncientBoldPreset(opts = {}) {
+    this._applyStylePreset({
+      fontSize: 46,
+      inkOpacityVal: 84,
+      textSkew: 0,
+      strokeEnabled: true,
+      strokeWidth: 1.1,
+      marginVal: 44,
+      shadowIntensityVal: 22,
+      agingVal: 34,
+      fiberOpacityVal: 28,
+      lineHeightVal: 156,
+      letterSpacingVal: -6,
+      variationVal: 14,
+      blurRadiusVal: 10,
+      misRegistrationVal: 8,
+      damageVal: 5,
+      weatheringEnabled: true,
+      weatheringIntensity: 42,
+      inkSpreadEnabled: true,
+      inkSpreadIntensity: 46,
+      paragraphSpacing: 12,
+      compactness: 54,
+      textAlign: 'justify'
+    }, '已启用古籍厚墨', 'ancient-bold', opts)
+  },
+
+  onApplyModernMinimalPreset(opts = {}) {
+    this._applyStylePreset({
+      fontSize: 40,
+      inkOpacityVal: 58,
+      textSkew: 0,
+      strokeEnabled: false,
+      strokeWidth: 0.5,
+      marginVal: 34,
+      shadowIntensityVal: 8,
+      agingVal: 8,
+      fiberOpacityVal: 10,
+      lineHeightVal: 132,
+      letterSpacingVal: -12,
+      variationVal: 6,
+      blurRadiusVal: 4,
+      misRegistrationVal: 2,
+      damageVal: 1,
+      weatheringEnabled: false,
+      weatheringIntensity: 10,
+      inkSpreadEnabled: false,
+      inkSpreadIntensity: 12,
+      paragraphSpacing: 6,
+      compactness: 62,
+      textAlign: 'left'
+    }, '已启用现代极简', 'modern-minimal', opts)
+  },
+
   // --- 纸张尺寸 ---
 
   onPaperSizeChange(e) {
@@ -1582,9 +1806,195 @@ Page({
     return Math.max(min, Math.min(max, val))
   },
 
+  _getUiRangesByTemplate(templateId) {
+    const base = {
+      strokeWidthMin: 0, strokeWidthMax: 3, strokeWidthStep: 0.2,
+      marginStep: 2,
+      shadowMax: 70,
+      imperfectionMax: 70,
+      paragraphSpacingMax: 60,
+      compactnessMin: 20, compactnessMax: 80,
+      weatheringMax: 70,
+      inkSpreadMax: 70,
+      damageMax: 70
+    }
+    const presets = {
+      compactModern: {
+        fontSizeMin: 18, fontSizeMax: 72,
+        inkOpacityMin: 20, inkOpacityMax: 90,
+        textSkewMin: -8, textSkewMax: 8,
+        marginMin: 10, marginMax: 110,
+        lineHeightMin: 112, lineHeightMax: 205, lineHeightStep: 2,
+        letterSpacingMin: -20, letterSpacingMax: 15,
+        misregistrationMax: 2.4, misregistrationStep: 0.2
+      },
+      balanced: {
+        fontSizeMin: 18, fontSizeMax: 76,
+        inkOpacityMin: 20, inkOpacityMax: 90,
+        textSkewMin: -8, textSkewMax: 8,
+        marginMin: 10, marginMax: 120,
+        lineHeightMin: 116, lineHeightMax: 230, lineHeightStep: 2,
+        letterSpacingMin: -18, letterSpacingMax: 20,
+        misregistrationMax: 3, misregistrationStep: 0.2
+      },
+      ancientReadable: {
+        fontSizeMin: 20, fontSizeMax: 74,
+        inkOpacityMin: 25, inkOpacityMax: 88,
+        textSkewMin: -6, textSkewMax: 6,
+        marginMin: 16, marginMax: 130,
+        lineHeightMin: 128, lineHeightMax: 250, lineHeightStep: 2,
+        letterSpacingMin: -15, letterSpacingMax: 25,
+        misregistrationMax: 3, misregistrationStep: 0.2
+      },
+      newsPrint: {
+        fontSizeMin: 18, fontSizeMax: 68,
+        inkOpacityMin: 25, inkOpacityMax: 92,
+        textSkewMin: -4, textSkewMax: 4,
+        marginMin: 10, marginMax: 95,
+        lineHeightMin: 110, lineHeightMax: 176, lineHeightStep: 2,
+        letterSpacingMin: -12, letterSpacingMax: 12,
+        misregistrationMax: 2.2, misregistrationStep: 0.2
+      },
+      playful: {
+        fontSizeMin: 20, fontSizeMax: 72,
+        inkOpacityMin: 20, inkOpacityMax: 85,
+        textSkewMin: -10, textSkewMax: 10,
+        marginMin: 10, marginMax: 125,
+        lineHeightMin: 112, lineHeightMax: 220, lineHeightStep: 2,
+        letterSpacingMin: -15, letterSpacingMax: 20,
+        misregistrationMax: 2.8, misregistrationStep: 0.2
+      }
+    }
+
+    const overrides = {
+      // 高频模板单独精调（优先级最高）
+      'modern-prose': {
+        fontSizeMin: 20, fontSizeMax: 72,
+        inkOpacityMin: 26, inkOpacityMax: 82,
+        textSkewMin: -5, textSkewMax: 5,
+        marginMin: 14, marginMax: 92,
+        lineHeightMin: 112, lineHeightMax: 168, lineHeightStep: 2,
+        letterSpacingMin: -20, letterSpacingMax: 4,
+        misregistrationMax: 1.8, misregistrationStep: 0.2
+      },
+      'vintage-letter': {
+        fontSizeMin: 20, fontSizeMax: 72,
+        inkOpacityMin: 24, inkOpacityMax: 86,
+        textSkewMin: -6, textSkewMax: 6,
+        marginMin: 14, marginMax: 106,
+        lineHeightMin: 118, lineHeightMax: 182, lineHeightStep: 2,
+        letterSpacingMin: -18, letterSpacingMax: 8,
+        misregistrationMax: 2.2, misregistrationStep: 0.2
+      },
+      'ancient-manuscript': {
+        fontSizeMin: 22, fontSizeMax: 74,
+        inkOpacityMin: 28, inkOpacityMax: 88,
+        textSkewMin: -4, textSkewMax: 4,
+        marginMin: 24, marginMax: 132,
+        lineHeightMin: 126, lineHeightMax: 196, lineHeightStep: 2,
+        letterSpacingMin: -14, letterSpacingMax: 12,
+        misregistrationMax: 2.4, misregistrationStep: 0.2
+      },
+      'ancient-xuan': {
+        fontSizeMin: 22, fontSizeMax: 76,
+        inkOpacityMin: 30, inkOpacityMax: 90,
+        textSkewMin: -4, textSkewMax: 4,
+        marginMin: 24, marginMax: 136,
+        lineHeightMin: 128, lineHeightMax: 204, lineHeightStep: 2,
+        letterSpacingMin: -14, letterSpacingMax: 12,
+        misregistrationMax: 2.6, misregistrationStep: 0.2
+      },
+      'republic-paper': {
+        fontSizeMin: 18, fontSizeMax: 68,
+        inkOpacityMin: 30, inkOpacityMax: 90,
+        textSkewMin: -3, textSkewMax: 3,
+        marginMin: 10, marginMax: 84,
+        lineHeightMin: 108, lineHeightMax: 162, lineHeightStep: 2,
+        letterSpacingMin: -14, letterSpacingMax: 6,
+        misregistrationMax: 1.8, misregistrationStep: 0.2
+      },
+      'modern-magazine': presets.compactModern,
+      'modern-minimal': presets.compactModern,
+      'minimal-white': {
+        fontSizeMin: 18, fontSizeMax: 68,
+        inkOpacityMin: 22, inkOpacityMax: 80,
+        textSkewMin: -2, textSkewMax: 2,
+        marginMin: 12, marginMax: 84,
+        lineHeightMin: 108, lineHeightMax: 154, lineHeightStep: 2,
+        letterSpacingMin: -14, letterSpacingMax: 4,
+        misregistrationMax: 1.2, misregistrationStep: 0.2
+      },
+      'typewriter': {
+        fontSizeMin: 18, fontSizeMax: 66,
+        inkOpacityMin: 30, inkOpacityMax: 90,
+        textSkewMin: -3, textSkewMax: 3,
+        marginMin: 12, marginMax: 92,
+        lineHeightMin: 110, lineHeightMax: 164, lineHeightStep: 2,
+        letterSpacingMin: -10, letterSpacingMax: 6,
+        misregistrationMax: 1.6, misregistrationStep: 0.2
+      },
+      'draft-paper': presets.compactModern,
+      'vintage-diary': {
+        fontSizeMin: 20, fontSizeMax: 70,
+        inkOpacityMin: 24, inkOpacityMax: 84,
+        textSkewMin: -5, textSkewMax: 5,
+        marginMin: 14, marginMax: 104,
+        lineHeightMin: 116, lineHeightMax: 176, lineHeightStep: 2,
+        letterSpacingMin: -14, letterSpacingMax: 8,
+        misregistrationMax: 2.0, misregistrationStep: 0.2
+      },
+      'vintage-print': presets.balanced,
+      'japanese-washi': {
+        fontSizeMin: 20, fontSizeMax: 72,
+        inkOpacityMin: 22, inkOpacityMax: 82,
+        textSkewMin: -4, textSkewMax: 4,
+        marginMin: 16, marginMax: 114,
+        lineHeightMin: 118, lineHeightMax: 184, lineHeightStep: 2,
+        letterSpacingMin: -12, letterSpacingMax: 8,
+        misregistrationMax: 2.0, misregistrationStep: 0.2
+      },
+      'kraft-paper': {
+        fontSizeMin: 20, fontSizeMax: 70,
+        inkOpacityMin: 28, inkOpacityMax: 90,
+        textSkewMin: -4, textSkewMax: 4,
+        marginMin: 14, marginMax: 108,
+        lineHeightMin: 114, lineHeightMax: 172, lineHeightStep: 2,
+        letterSpacingMin: -12, letterSpacingMax: 8,
+        misregistrationMax: 2.2, misregistrationStep: 0.2
+      },
+      'retro-diary': presets.balanced,
+      'ancient-block': presets.ancientReadable,
+      'calligraphy-xuan': presets.ancientReadable,
+      'parchment': presets.ancientReadable,
+      'buddhist-scripture': presets.ancientReadable,
+      'buddhist-script': presets.ancientReadable,
+      'republic-newspaper': presets.newsPrint,
+      'magazine': presets.compactModern
+    }
+
+    const mobanPrefixRules = [
+      { prefix: 'moban-bzb-', preset: presets.newsPrint },
+      { prefix: 'moban-gb-', preset: presets.ancientReadable },
+      { prefix: 'moban-xz-', preset: presets.playful },
+      { prefix: 'moban-zz-', preset: presets.balanced }
+    ]
+
+    const direct = overrides[templateId]
+    if (direct) return { ...base, ...direct }
+
+    for (const rule of mobanPrefixRules) {
+      if (templateId.startsWith(rule.prefix)) {
+        return { ...base, ...rule.preset }
+      }
+    }
+
+    return { ...base, ...presets.balanced }
+  },
+
   onFontSizeStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.fontSize + delta, 10, 100)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.fontSize + delta, uiRanges.fontSizeMin, uiRanges.fontSizeMax)
     const mode = this.data.textSettings.fontSizeMode
     const display = mode === 'px' ? `${newVal}px` : `${newVal}号`
     this.setData({
@@ -1598,7 +2008,8 @@ Page({
 
   onInkOpacityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.inkOpacityVal + delta, 40, 100)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.inkOpacityVal + delta, uiRanges.inkOpacityMin, uiRanges.inkOpacityMax)
     this.setData({
       'settings.inkOpacity': newVal / 100,
       'settings.inkOpacityVal': newVal,
@@ -1609,35 +2020,39 @@ Page({
 
   onMarginTopStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginTopVal + delta, 0, 300)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.marginTopVal + delta, uiRanges.marginMin, uiRanges.marginMax)
     this.setData({ 'settings.marginTopVal': newVal })
     this._triggerRender()
   },
 
   onMarginBottomStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, 0, 300)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, uiRanges.marginMin, uiRanges.marginMax)
     this.setData({ 'settings.marginBottomVal': newVal })
     this._triggerRender()
   },
 
   onMarginLeftStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, 0, 300)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, uiRanges.marginMin, uiRanges.marginMax)
     this.setData({ 'settings.marginLeftVal': newVal })
     this._triggerRender()
   },
 
   onMarginRightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.marginRightVal + delta, 0, 300)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.marginRightVal + delta, uiRanges.marginMin, uiRanges.marginMax)
     this.setData({ 'settings.marginRightVal': newVal })
     this._triggerRender()
   },
 
   onAgingStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.agingVal + delta, 10, 100)
+    const newVal = this._clamp(this.data.settings.agingVal + delta, 0, 80)
     this.setData({
       'settings.aging': newVal / 100,
       'settings.agingVal': newVal
@@ -1647,7 +2062,7 @@ Page({
 
   onFiberOpacityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.fiberOpacityVal + delta, 20, 100)
+    const newVal = this._clamp(this.data.settings.fiberOpacityVal + delta, 0, 60)
     this.setData({
       'settings.fiberOpacity': newVal / 100,
       'settings.fiberOpacityVal': newVal
@@ -1657,7 +2072,7 @@ Page({
 
   onShadowIntensityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.shadowIntensityVal + delta, 0, 100)
+    const newVal = this._clamp(this.data.settings.shadowIntensityVal + delta, 0, 70)
     this.setData({
       'settings.shadowIntensity': newVal / 100,
       'settings.shadowIntensityVal': newVal
@@ -1667,7 +2082,7 @@ Page({
 
   onLightIntensityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.lightIntensityVal + delta, 0, 100)
+    const newVal = this._clamp(this.data.settings.lightIntensityVal + delta, 0, 70)
     this.setData({
       'settings.lightIntensity': newVal / 100,
       'settings.lightIntensityVal': newVal
@@ -1677,7 +2092,8 @@ Page({
 
   onLineHeightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 50, 600)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, uiRanges.lineHeightMin, uiRanges.lineHeightMax)
     this.setData({
       'settings.lineHeight': newVal / 100,
       'settings.lineHeightVal': newVal,
@@ -1688,7 +2104,8 @@ Page({
 
   onLetterSpacingStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, -100, 100)
+    const { uiRanges } = this.data
+    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, uiRanges.letterSpacingMin, uiRanges.letterSpacingMax)
     this.setData({
       'settings.letterSpacingVal': newVal,
       'settings.letterSpacing': newVal / 100
@@ -1698,7 +2115,7 @@ Page({
 
   onVariationStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.variationVal + delta, 0, 30)
+    const newVal = this._clamp(this.data.settings.variationVal + delta, 0, 20)
     this.setData({
       'settings.variation': newVal / 100,
       'settings.variationVal': newVal
@@ -1708,7 +2125,7 @@ Page({
 
   onBlurRadiusStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.blurRadiusVal + delta, 0, 20)
+    const newVal = this._clamp(this.data.settings.blurRadiusVal + delta, 0, 12)
     this.setData({
       'settings.blurRadius': newVal / 100,
       'settings.blurRadiusVal': newVal
@@ -1718,7 +2135,7 @@ Page({
 
   onMisRegistrationStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.misRegistrationVal + delta, 0, 30)
+    const newVal = this._clamp(this.data.settings.misRegistrationVal + delta, 0, 20)
     this.setData({
       'settings.misRegistration': newVal / 100,
       'settings.misRegistrationVal': newVal
@@ -1728,7 +2145,7 @@ Page({
 
   onDamageStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.damageVal + delta, 0, 20)
+    const newVal = this._clamp(this.data.settings.damageVal + delta, 0, 12)
     this.setData({
       'settings.damage': newVal / 100,
       'settings.damageVal': newVal
@@ -1830,6 +2247,7 @@ Page({
       // 装饰元素
       stampEnabled: !!(t.decoration && t.decoration.stamp),
       watermarkPosition: (t.decoration && t.decoration.watermark && t.decoration.watermark.position) || 'bottomRight',
+      watermarkUserSetPosition: !!(t.decoration && t.decoration.watermark && t.decoration.watermark.userSetPosition),
 
       // 纸张尺寸
       paperSizeId: 'a4'
@@ -1951,7 +2369,7 @@ Page({
     if (s.stampEnabled != null) {
       if (s.stampEnabled) {
         if (!tpl.decoration.stamp) {
-          tpl.decoration.stamp = base.decoration.stamp || { text: '记', color: '#C41E3A', position: 'bottomLeft', opacity: 0.7 }
+          tpl.decoration.stamp = base.decoration.stamp || { text: '记', color: '#C41E3A', position: 'bottomRight', opacity: 0.7 }
         }
       } else {
         tpl.decoration.stamp = null
@@ -1963,6 +2381,7 @@ Page({
       } else {
         tpl.watermark = tpl.watermark || { text: '铅言万语', position: 'bottomRight', opacity: 0.15, fontSize: 20 }
         tpl.watermark.position = s.watermarkPosition
+        tpl.watermark.userSetPosition = !!s.watermarkUserSetPosition
       }
     }
 
@@ -2100,6 +2519,24 @@ Page({
     }
     // 分享当前页截图
     this.onExport()
+  },
+
+  onCloseSavePanelBg() {
+    this.setData({ savePanelVisible: false })
+  },
+
+  onCloseSavePanel() {
+    this.setData({ savePanelVisible: false })
+  },
+
+  onSaveToAlbum() {
+    this.setData({ savePanelVisible: false })
+    this.onExport()
+  },
+
+  onShareToFriends() {
+    this.setData({ savePanelVisible: false })
+    this.onSharePage()
   },
 
   // ============ 工具方法 ============
@@ -2439,7 +2876,27 @@ Page({
   },
 
   onPaperTemplateChange(e) {
-    this.setData({ 'paperSettings.templateIndex': e.detail.value })
+    const index = Number(e.detail.value)
+    const templateOption = this.data.paperSettings.templateOptions[index]
+    if (!templateOption) return
+    const templateId = templateOption.id
+    const template = TEMPLATES[templateId]
+    if (!template) return
+
+    const newSettings = this._buildSettingsFromTemplate(template, this.data.activeFontId)
+    this.setData({
+      'paperSettings.templateIndex': index,
+      activeTemplateId: templateId,
+      activeTemplateName: template.name,
+      currentPage: 0,
+      settings: newSettings,
+      uiRanges: this._getUiRangesByTemplate(templateId),
+      'textSettings.fontSize': newSettings.fontSize,
+      'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
+      'textSettings.inkOpacity': newSettings.inkOpacityVal
+    })
+    saveActiveTemplate(templateId)
+    clearRenderCache()
     this._triggerRender()
   },
 
@@ -2458,6 +2915,7 @@ Page({
         activeTemplateName: template.name,
         currentPage: 0,
         settings: newSettings,
+        uiRanges: this._getUiRangesByTemplate(templateId),
         'textSettings.fontSize': newSettings.fontSize,
         'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
         'textSettings.inkOpacity': newSettings.inkOpacityVal,

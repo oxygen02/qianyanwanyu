@@ -219,3 +219,18 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
 [2026/5/26 10:13:43]    M miniprogram/pages/luomo/luomo.js
 [2026/5/26 10:13:43]    M miniprogram/utils/constants.js
 [2026/5/26 10:13:43]    M push.log
+[2026/5/26 10:13:43] 提交结果:
+[2026/5/26 10:13:43]   [master 20de9c8] Auto push: 2026/5/26 10:13:43
+[2026/5/26 10:13:43]    4 files changed, 37 insertions(+), 20 deletions(-)
+[2026/5/26 10:13:45] 推送结果:
+[2026/5/26 10:13:45] [✓] 推送成功
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted

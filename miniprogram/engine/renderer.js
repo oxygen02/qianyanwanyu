@@ -2,7 +2,7 @@
 // 主渲染器 - 协调 paper.js + ink-effect.js + typesetter.js
 
 const { generatePaperTexture, drawBorder, drawGrid, drawLineGuide } = require('./paper')
-const { drawInkBlock, drawStamp, drawWatermarkWithLogo, drawPageNumber } = require('./ink-effect')
+const { drawInkBlock, drawInkBlockWithOpenType, drawStamp, drawWatermarkWithLogo, drawPageNumber } = require('./ink-effect')
 const { typesetAllPages } = require('./typesetter')
 const { TEMPLATES } = require('../utils/constants')
 const { loadImageFromFileID } = require('../utils/image-loader')
@@ -208,7 +208,18 @@ async function renderPage(params) {
 
   const currentPage = pages[pageIndex]
   if (currentPage && currentPage.glyphs.length > 0) {
-    drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout)
+    const fontId = template.font && template.font.family
+    const isSystemFont = !fontId || ['serif', 'sans-serif', 'monospace'].includes(fontId)
+    const useOpenType = !isSystemFont && currentPage.glyphs.length <= 1500
+    if (useOpenType) {
+      try {
+        await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, fontId, template.layout.fontSize, template.layout)
+      } catch (e) {
+        drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout)
+      }
+    } else {
+      drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout)
+    }
   }
 
   // ============ 第四层：表面装饰（文字之上）============

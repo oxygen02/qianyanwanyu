@@ -49,6 +49,7 @@
   "libVersion": "3.4.6",
   "appType": "miniProgram",
   "miniprogramRoot": "miniprogram/",
+  "cloudfunctionRoot": "miniprogram/cloud/",
   "condition": {
     "search": {
       "list": []

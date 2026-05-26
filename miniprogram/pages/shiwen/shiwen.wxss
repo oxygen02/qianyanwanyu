@@ -12,6 +12,7 @@
 .header {
   padding: 20rpx 40rpx 24rpx;
   background-color: #F5F0E8;
+  flex-shrink: 0;
 }
 
 .header-title {
@@ -49,7 +50,7 @@
 
 .paste-textarea {
   width: 100%;
-  min-height: 300rpx;
+  min-height: 360rpx;
   font-size: 28rpx;
   line-height: 1.8;
   color: #3D2B1F;
@@ -73,6 +74,11 @@
   background-color: rgba(61, 43, 31, 0.08);
   border-radius: 40rpx;
   padding: 16rpx 40rpx;
+  transition: background-color 0.2s;
+}
+
+.paste-btn:active {
+  background-color: rgba(61, 43, 31, 0.15);
 }
 
 .paste-btn-text {
@@ -105,6 +111,7 @@
 /* ---- 底部按钮 ---- */
 .bottom-bar {
   padding: 24rpx 0 48rpx;
+  flex-shrink: 0;
 }
 
 .generate-btn {
@@ -132,60 +139,230 @@
   letter-spacing: 0.1em;
 }
 
+/* ---- 加载中 ---- */
+.loading-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  padding: 80rpx 40rpx;
+}
+
+.loading-spinner {
+  width: 64rpx;
+  height: 64rpx;
+  border: 4rpx solid rgba(61, 43, 31, 0.1);
+  border-top-color: #3D2B1F;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 32rpx;
+  color: #3D2B1F;
+  font-family: serif;
+  letter-spacing: 0.05em;
+}
+
+.loading-sub {
+  font-size: 24rpx;
+  color: #9E9488;
+}
+
 /* ---- 预览区域 ---- */
 .preview-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0 32rpx;
-  gap: 24rpx;
+  padding: 0 24rpx;
+  gap: 16rpx;
+  overflow: hidden;
 }
 
-.preview-info {
+/* 文章信息栏 */
+.article-info {
+  background-color: rgba(250, 247, 242, 0.8);
+  border-radius: 16rpx;
+  padding: 20rpx 28rpx;
+  flex-shrink: 0;
+}
+
+.article-title {
+  display: block;
+  font-size: 30rpx;
+  color: #3D2B1F;
+  font-family: serif;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 8rpx;
+}
+
+.article-meta {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   align-items: center;
-  padding: 8rpx 0;
+  gap: 20rpx;
 }
 
-.preview-stat {
-  font-size: 24rpx;
+.article-author {
+  font-size: 22rpx;
   color: #9E9488;
 }
 
-.preview-revert {
-  font-size: 24rpx;
-  color: #3D2B1F;
-  text-decoration: underline;
+.article-stat,
+.article-pages {
+  font-size: 22rpx;
+  color: #9E9488;
 }
 
-.preview-card {
+.clean-info {
+  margin-top: 8rpx;
+}
+
+.clean-badge {
+  font-size: 20rpx;
+  color: #7A9E7E;
+  background-color: rgba(122, 158, 126, 0.12);
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+/* 书页Canvas容器 */
+.book-page-container {
+  position: relative;
   flex: 1;
-  background-color: #FAF7F2;
-  border-radius: 20rpx;
-  padding: 32rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-  min-height: 360rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400rpx;
 }
 
-.preview-textarea {
-  width: 100%;
-  height: 100%;
-  min-height: 300rpx;
-  font-size: 28rpx;
-  line-height: 1.8;
+.book-canvas {
+  border-radius: 8rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+}
+
+/* 翻页提示 */
+.page-hint {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(61, 43, 31, 0.06);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.book-page-container:active .page-hint {
+  opacity: 1;
+}
+
+.left-hint {
+  left: 16rpx;
+}
+
+.right-hint {
+  right: 16rpx;
+}
+
+.hint-arrow {
+  font-size: 36rpx;
   color: #3D2B1F;
   font-family: serif;
+}
+
+/* 渲染中遮罩 */
+.rendering-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(245, 240, 232, 0.6);
+  border-radius: 8rpx;
+}
+
+.rendering-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 4rpx solid rgba(61, 43, 31, 0.1);
+  border-top-color: #3D2B1F;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* 页码指示器 */
+.page-indicator {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 0;
+  flex-shrink: 0;
+}
+
+.page-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background-color: rgba(61, 43, 31, 0.2);
+  transition: all 0.3s;
+}
+
+.page-dot.active {
+  width: 24rpx;
+  border-radius: 4rpx;
+  background-color: #3D2B1F;
+}
+
+.page-dot.image-dot {
+  border: 2rpx solid rgba(61, 43, 31, 0.3);
   background-color: transparent;
 }
 
-/* ---- 模板选择横条 ---- */
+.page-dot.image-dot.active {
+  background-color: #3D2B1F;
+  border-color: #3D2B1F;
+}
+
+/* 页类型标识 */
+.page-type-badge {
+  position: absolute;
+  top: 8rpx;
+  right: 16rpx;
+  background-color: rgba(61, 43, 31, 0.08);
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.page-type-text {
+  font-size: 20rpx;
+  color: #9E9488;
+}
+
+/* 模板选择 */
 .template-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 20rpx;
+  flex-shrink: 0;
+  padding: 8rpx 0;
 }
 
 .template-bar-label {
@@ -209,6 +386,7 @@
   padding: 12rpx 24rpx;
   border-radius: 24rpx;
   border: 2rpx solid transparent;
+  transition: border-color 0.2s;
 }
 
 .template-mini-item.active {
@@ -219,6 +397,57 @@
   font-size: 24rpx;
   color: #3D2B1F;
   font-family: serif;
+}
+
+/* 预览底部操作栏 */
+.preview-bottom {
+  padding: 16rpx 0 40rpx;
+}
+
+.preview-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.action-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.action-btn.secondary {
+  background-color: rgba(61, 43, 31, 0.08);
+}
+
+.action-btn.secondary:active {
+  background-color: rgba(61, 43, 31, 0.15);
+}
+
+.action-btn.primary {
+  background-color: #3D2B1F;
+}
+
+.action-btn.primary:active {
+  opacity: 0.85;
+}
+
+.action-btn text {
+  font-size: 30rpx;
+  font-family: serif;
+  letter-spacing: 0.05em;
+}
+
+.action-btn.secondary text {
+  color: #3D2B1F;
+}
+
+.action-btn.primary text {
+  color: #FAF7F2;
 }
 
 /* ---- 成功状态 ---- */
@@ -286,13 +515,4 @@
 .success-btn.secondary {
   background-color: rgba(61, 43, 31, 0.1);
   color: #3D2B1F;
-}
-
-/* ---- 离屏Canvas（不可见） ---- */
-.offscreen-canvas {
-  position: fixed;
-  left: -9999px;
-  top: -9999px;
-  opacity: 0;
-  pointer-events: none;
 }

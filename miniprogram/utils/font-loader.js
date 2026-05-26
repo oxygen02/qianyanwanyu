@@ -462,7 +462,10 @@ function loadFont(fontId) {
                 })
               }, 2100)
             }
-            resolve(fallbackFont.id)
+            // 确保回退字体也是真正可用（已加载）
+            loadFont(fallbackFont.id)
+              .then((loadedFallbackFamily) => resolve(loadedFallbackFamily))
+              .catch(() => resolve(FALLBACK_FONT))
           } else {
             console.warn('[font-loader] 回退到系统字体:', FALLBACK_FONT)
             resolve(FALLBACK_FONT)

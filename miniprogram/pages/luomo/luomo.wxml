@@ -162,21 +162,21 @@
               <view class="settings-cell">
                 <view class="setting-label">字号</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="10" max="100" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onFontSizeChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.fontSizeMin}}" max="{{uiRanges.fontSizeMax}}" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onFontSizeChange"/>
                   <text class="slider-value-mini">{{textSettings.fontSize}}px</text>
                 </view>
               </view>
               <view class="settings-cell">
                 <view class="setting-label">深浅</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{textSettings.inkOpacity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onTextInkOpacityChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.inkOpacityMin}}" max="{{uiRanges.inkOpacityMax}}" step="1" value="{{textSettings.inkOpacity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onTextInkOpacityChange"/>
                   <text class="slider-value-mini">{{textSettings.inkOpacity}}%</text>
                 </view>
               </view>
               <view class="settings-cell">
                 <view class="setting-label">倾斜</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="-15" max="15" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onTextSkewChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.textSkewMin}}" max="{{uiRanges.textSkewMax}}" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onTextSkewChange"/>
                   <text class="slider-value-mini">{{textSettings.textSkewDisplay}}</text>
                 </view>
               </view>
@@ -200,7 +200,7 @@
               <view class="settings-cell settings-cell--wide">
                 <view class="setting-label">描边粗细</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="5" step="0.5" value="{{textSettings.strokeWidth}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onStrokeWidthChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.strokeWidthMin}}" max="{{uiRanges.strokeWidthMax}}" step="{{uiRanges.strokeWidthStep}}" value="{{textSettings.strokeWidth}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onStrokeWidthChange"/>
                   <text class="slider-value-mini">{{textSettings.strokeWidth}}px</text>
                 </view>
               </view>
@@ -273,7 +273,7 @@
               <view class="settings-cell settings-cell--margin">
                 <view class="setting-label">上下边距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="200" step="5" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperMarginVerticalChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.marginMin}}" max="{{uiRanges.marginMax}}" step="{{uiRanges.marginStep}}" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperMarginVerticalChange"/>
                   <text class="slider-value-mini">{{paperSettings.marginVertical}}</text>
                 </view>
               </view>
@@ -296,7 +296,7 @@
               <view class="settings-cell settings-cell--margin">
                 <view class="setting-label">左右边距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="200" step="5" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperMarginHorizontalChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.marginMin}}" max="{{uiRanges.marginMax}}" step="{{uiRanges.marginStep}}" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperMarginHorizontalChange"/>
                   <text class="slider-value-mini">{{paperSettings.marginHorizontal}}</text>
                 </view>
               </view>
@@ -334,7 +334,7 @@
               <view class="settings-cell" wx:if="{{paperSettings.shadowEnabled}}">
                 <view class="setting-label">阴影强度</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{paperSettings.shadowIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperShadowIntensityChange"/>
+                  <slider class="slider-mini" min="0" max="{{uiRanges.shadowMax}}" step="1" value="{{paperSettings.shadowIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperShadowIntensityChange"/>
                   <text class="slider-value-mini">{{paperSettings.shadowIntensity}}%</text>
                 </view>
               </view>
@@ -359,7 +359,7 @@
               <view class="settings-cell" wx:if="{{paperSettings.imperfectionEnabled}}">
                 <view class="setting-label">瑕疵强度</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{paperSettings.imperfectionIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onPaperImperfectionIntensityChange"/>
+                  <slider class="slider-mini" min="0" max="{{uiRanges.imperfectionMax}}" step="1" value="{{paperSettings.imperfectionIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperImperfectionIntensityChange"/>
                   <text class="slider-value-mini">{{paperSettings.imperfectionIntensity}}%</text>
                 </view>
               </view>
@@ -406,28 +406,28 @@
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">行间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="500" step="3" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutLineHeightChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.lineHeightMin}}" max="{{uiRanges.lineHeightMax}}" step="{{uiRanges.lineHeightStep}}" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutLineHeightChange"/>
                   <text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text>
                 </view>
               </view>
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">字间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini slider-letter-spacing" min="-50" max="50" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutLetterSpacingChange"/>
+                  <slider class="slider-mini slider-letter-spacing" min="{{uiRanges.letterSpacingMin}}" max="{{uiRanges.letterSpacingMax}}" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutLetterSpacingChange"/>
                   <text class="slider-value-mini">{{layoutSettings.letterSpacing}}%</text>
                 </view>
               </view>
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">段落间距</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutParagraphSpacingChange"/>
+                  <slider class="slider-mini" min="0" max="{{uiRanges.paragraphSpacingMax}}" step="1" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutParagraphSpacingChange"/>
                   <text class="slider-value-mini">{{layoutSettings.paragraphSpacing}}</text>
                 </view>
               </view>
               <view class="settings-cell settings-cell--fourth">
                 <view class="setting-label">排版松紧</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{layoutSettings.compactness}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="8" bindchange="onLayoutCompactnessChange"/>
+                  <slider class="slider-mini" min="{{uiRanges.compactnessMin}}" max="{{uiRanges.compactnessMax}}" step="1" value="{{layoutSettings.compactness}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutCompactnessChange"/>
                   <text class="slider-value-mini">{{layoutSettings.compactness}}%</text>
                 </view>
               </view>
@@ -475,21 +475,21 @@
               <view class="settings-cell" wx:if="{{layoutSettings.weatheringEnabled}}">
                 <view class="setting-label">风化强度</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{layoutSettings.weatheringIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onLayoutWeatheringIntensityChange"/>
+                  <slider class="slider-mini" min="0" max="{{uiRanges.weatheringMax}}" step="1" value="{{layoutSettings.weatheringIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutWeatheringIntensityChange"/>
                   <text class="slider-value-mini">{{layoutSettings.weatheringIntensity}}%</text>
                 </view>
               </view>
               <view class="settings-cell" wx:if="{{layoutSettings.inkSpreadEnabled}}">
                 <view class="setting-label">浸染强度</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{layoutSettings.inkSpreadIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onLayoutInkSpreadIntensityChange"/>
+                  <slider class="slider-mini" min="0" max="{{uiRanges.inkSpreadMax}}" step="1" value="{{layoutSettings.inkSpreadIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutInkSpreadIntensityChange"/>
                   <text class="slider-value-mini">{{layoutSettings.inkSpreadIntensity}}%</text>
                 </view>
               </view>
               <view class="settings-cell" wx:if="{{layoutSettings.misregistrationEnabled}}">
                 <view class="setting-label">错位偏移</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="5" step="0.5" value="{{layoutSettings.misregistrationOffset}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onLayoutMisregistrationOffsetChange"/>
+                  <slider class="slider-mini" min="0" max="{{uiRanges.misregistrationMax}}" step="{{uiRanges.misregistrationStep}}" value="{{layoutSettings.misregistrationOffset}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutMisregistrationOffsetChange"/>
                   <text class="slider-value-mini">{{layoutSettings.misregistrationOffset}}px</text>
                 </view>
               </view>
@@ -509,7 +509,7 @@
               <view class="settings-cell" wx:if="{{layoutSettings.damageEnabled}}">
                 <view class="setting-label">破损强度</view>
                 <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="100" step="1" value="{{layoutSettings.damageIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="10" bindchange="onLayoutDamageIntensityChange"/>
+                  <slider class="slider-mini" min="0" max="{{uiRanges.damageMax}}" step="1" value="{{layoutSettings.damageIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutDamageIntensityChange"/>
                   <text class="slider-value-mini">{{layoutSettings.damageIntensity}}%</text>
                 </view>
               </view>
@@ -540,6 +540,10 @@
       <!-- 底部操作栏 -->
       <view class="sp-footer">
         <view class="sp-footer-btn sp-footer-btn--reset" bind:tap="onResetTab">重置</view>
+        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyLightPrintPreset">清雅轻印</view>
+        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyImmersivePreset">印刷沉浸</view>
+        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyAncientBoldPreset">古籍厚墨</view>
+        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyModernMinimalPreset">现代极简</view>
         <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onResetSettings">恢复默认</view>
         <view class="sp-footer-btn sp-footer-btn--done" bind:tap="onCloseSettings">确定</view>
       </view>
