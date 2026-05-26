@@ -68,9 +68,9 @@ Page({
       fontSizeMode: 'px',
       fontSizeDisplay: '32px',
       lineHeight: null,
-      lineHeightVal: 140,
+      lineHeightVal: 60,
       letterSpacing: null,
-      letterSpacingVal: 0,
+      letterSpacingVal: -21,
       direction: null,
       fontWeight: '400',
       textAlign: 'left',
@@ -93,10 +93,10 @@ Page({
 
       // === 基础纸张 ===
       paperBaseColor: '#F5F0E6',
-      marginTopVal: 30,
-      marginBottomVal: 30,
-      marginLeftVal: 20,
-      marginRightVal: 20,
+      marginTopVal: 0,
+      marginBottomVal: 0,
+      marginLeftVal: 0,
+      marginRightVal: 0,
 
       // === 质感效果 ===
       aging: null,
@@ -126,7 +126,7 @@ Page({
       // === 排版新增设置 ===
       paragraphSpacing: 15,
       emptyLineHandling: 'preserve',
-      compactness: 50,
+      compactness: 32,
       pageNumberEnabled: false,
       headerFooterEnabled: false,
       headerText: '',
@@ -222,8 +222,8 @@ Page({
       textureIndex: 0,
       shadowEnabled: false,
       shadowIntensity: 50,
-      marginVertical: 30,
-      marginHorizontal: 30,
+      marginVertical: 0,
+      marginHorizontal: 0,
       formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
       formIndex: 0,
       foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -249,9 +249,9 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 140,
-      lineHeightDisplay: '1.4倍',
-      letterSpacing: 5,
+      lineHeight: 60,
+      lineHeightDisplay: '0.6倍',
+      letterSpacing: -21,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
       layoutModeOptions: ['默认模式', '诗词模式', '书信模式', '散文模式', '小说模式'],
@@ -274,7 +274,7 @@ Page({
       headerFooterEnabled: false,
       headerText: '',
       footerText: '',
-      compactness: 50
+      compactness: 32
     }
   },
 

@@ -49,16 +49,17 @@ const TEMPLATES = {
     // 排版
     layout: {
       direction: 'horizontal',  // 横排
-      marginTop: 30,
-      marginBottom: 30,
-      marginLeft: 30,
-      marginRight: 30,
+      marginTop: 0,
+      marginBottom: 0,
+      marginLeft: 0,
+      marginRight: 0,
       fontSize: 40,             // 正文字号（基于750rpx）
-      lineHeight: 1.4,
-      letterSpacing: 0.05,      // em
+      lineHeight: 0.6,
+      letterSpacing: -0.21,      // em
       paragraphSpacing: 0.3,    // em，段间额外空白
       indent: 2,                // 首行缩进字符数
-      textAlign: 'justify'
+      textAlign: 'justify',
+      compactness: 32           // 排版松紧度
     },
     // 字体
     font: {
