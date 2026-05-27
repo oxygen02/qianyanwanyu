@@ -14,7 +14,6 @@ Page({
     categories: [],
     tags: [],
     showTagsPanel: false,
-    copiedId: null,
     isLoading: false,
     hasMore: true,
     offset: 0,
@@ -57,29 +56,30 @@ Page({
         result = await poemService.getList(this.data.limit, offset)
       }
 
-    // 为每条数据生成摘要（如果没有的话）
-    const processedList = result.list.map(item => {
-      if (!item.excerpt && item.content) {
-        // 取前30个字作为摘要
-        const excerpt = item.content.replace(/\n/g, ' ').substring(0, 30) + (item.content.length > 30 ? '...' : '')
-        return { ...item, excerpt }
-      }
-      return item
-    })
+      // 为每条数据生成摘要（如果没有的话）
+      const processedList = result.list.map(item => {
+        if (!item.excerpt && item.content) {
+          // 取前30个字作为摘要
+          const excerpt = item.content.replace(/\n/g, ' ').substring(0, 30) + (item.content.length > 30 ? '...' : '')
+          return { ...item, excerpt }
+        }
+        return item
+      })
 
-    const newList = reset ? processedList : [...this.data.contentList, ...processedList]
+      const newList = reset ? processedList : [...this.data.contentList, ...processedList]
 
-    this.setData({
-      contentList: newList,
-      filteredList: newList,
-      hasMore: result.hasMore,
-      offset: offset + result.list.length,
-      isLoading: false
-    })
+      this.setData({
+        contentList: newList,
+        filteredList: newList,
+        hasMore: result.hasMore,
+        offset: offset + result.list.length,
+        isLoading: false
+      })
 
       // 提取标签
       this._extractTags(newList)
     } catch (err) {
+      console.error('[wendian] 加载失败:', err)
       this.setData({ isLoading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
     }
@@ -156,35 +156,6 @@ Page({
   async onLoadMore() {
     if (!this.data.hasMore || this.data.isLoading) return
     await this._loadPoems()
-  },
-
-  onCopyContent(e) {
-    const id = e.currentTarget.dataset.id
-    const item = this.data.contentList.find(c => c.id === id)
-    if (!item) return
-
-    const text = item.content
-    wx.setClipboardData({
-      data: text,
-      success: () => {
-        this.setData({ copiedId: id })
-        wx.showToast({ title: '已复制', icon: 'none' })
-        setTimeout(() => {
-          this.setData({ copiedId: null })
-        }, 1500)
-      }
-    })
-  },
-
-  onGoToLuomo(e) {
-    const id = e.currentTarget.dataset.id
-    const item = this.data.contentList.find(c => c.id === id)
-    if (!item) return
-
-    wx.setStorageSync('wendian_pending_text', item.content)
-    wx.switchTab({
-      url: '/pages/luomo/luomo'
-    })
   },
 
   onItemTap(e) {

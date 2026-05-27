@@ -79,3 +79,12 @@
 - **修改文件**: app.json、poem-detail（js/wxml/wxss）、content-data.js、push.log、memory.md
 - **推送范围**: c4e6e91..b1ff5f4 master -> master
 - **备注**: pull 时远程已最新，本地 poem-detail 页面和内容数据有更新
+
+## 2026-05-27 14:09 (UTC+8)
+- **Status**: 推送成功
+- **Commit**: `c139147` - "Auto push: 2026-05-27 14:09:23"
+- **变更文件**: 13 files changed, 852 insertions(+), 132 deletions(-)
+- **新增文件**: fetchPoems/（index.js/package.json）、copy.png、poem-service.js、migrate-to-cloud.js
+- **修改文件**: poem-detail（js/wxml/wxss）、wendian（js/wxml/wxss）、content-data.js、push.log
+- **推送范围**: 5a803e9..c139147 master -> master
+- **备注**: pull 时远程已最新，文典和诗词详情页功能迭代，新增云函数 fetchPoems 和诗词服务模块

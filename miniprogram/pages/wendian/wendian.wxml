@@ -71,7 +71,7 @@
       <view
         wx:for="{{filteredList}}"
         wx:key="id"
-        class="content-card {{copiedId === item.id ? 'copied' : ''}}"
+        class="content-card"
         data-id="{{item.id}}"
         bindtap="onItemTap"
       >

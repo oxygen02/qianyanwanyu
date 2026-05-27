@@ -279,3 +279,5 @@ To https://gitee.com/oxygen02/qianyanwanyu.git
    b1ff5f4..5a803e9  master -> master
 [✓] 推送成功 at 2026-05-27 13:26:33
 
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
