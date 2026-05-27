@@ -24,7 +24,7 @@ const TOOLBAR_DISMISS_DELAY = 4000
 const AUTO_SAVE_INTERVAL = 5000
 
 // 字体预览样本文字
-const FONT_PREVIEW_TEXT = '让文字回到纸上'
+const FONT_PREVIEW_TEXT = '为文字造一页纸'
 
 Page({
   data: {
@@ -317,7 +317,21 @@ Page({
   onLoad() {
     // 读取系统信息（状态栏高度用于Canvas安全区域）
     const windowInfo = wx.getWindowInfo()
-    this.setData({ safeAreaTop: windowInfo.statusBarHeight || 0 })
+    // 获取胶囊按钮位置，计算导航栏总高度
+    let navBarTop = windowInfo.statusBarHeight || 0
+    try {
+      const menuButton = wx.getMenuButtonBoundingClientRect()
+      if (menuButton && menuButton.top > 0) {
+        // 导航栏高度 = 胶囊按钮底部距离 + 间距
+        navBarTop = menuButton.bottom + 8
+      }
+    } catch (e) {
+      console.warn('[luomo] 获取胶囊按钮位置失败，使用状态栏高度')
+      // 兜底：iOS通常44px，Android通常48px
+      navBarTop = (windowInfo.statusBarHeight || 0) + 44
+    }
+    this.setData({ safeAreaTop: navBarTop })
+    console.log('[luomo] 安全区域顶部:', navBarTop, '状态栏:', windowInfo.statusBarHeight)
 
     // 恢复上次模板选择
     const activeTemplateId = loadActiveTemplate()
@@ -421,9 +435,9 @@ Page({
       else if (preset === 'modern-minimal') this.onApplyModernMinimalPreset({ silent: true, remember: false })
     })
 
-    // 恢复草稿
+    // 恢复草稿（仅在文字非空时恢复）
     const draft = loadDraft()
-    if (draft && draft.text) {
+    if (draft && draft.text && draft.text.trim()) {
       this._pendingText = draft.text
       this.setData({ text: draft.text })
     }
@@ -457,13 +471,16 @@ Page({
   },
 
   onShow() {
-    // 同步 tabBar 选中状态
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 })
     }
-    // 每次显示重渲染（模板可能已变更）
-    if (this._canvasReady && this.data.text) {
-      this._triggerRender()
+    if (this.data.text) {
+      if (this._canvasReady) {
+        this._triggerRender()
+      } else {
+        console.warn('[luomo] onShow 但Canvas未就绪，尝试初始化')
+        this._initCanvas()
+      }
     }
   },
 
@@ -479,51 +496,74 @@ Page({
   // ============ Canvas 初始化 ============
 
   _initCanvas() {
-    const query = this.createSelectorQuery()
-    query.select('#bookCanvas')
+    const winInfo = wx.getWindowInfo()
+    const rawDpr = winInfo.pixelRatio || 2
+    const dpr = Math.min(rawDpr, 2)
+    const screenWidth = winInfo.windowWidth
+    const screenHeight = winInfo.windowHeight
+
+    const sizeIndex = this.data.paperSettings.sizeIndex || 0
+    const sizeOptions = [
+      { width: 720, height: 1080, name: '竖版书页' },
+      { width: 1080, height: 720, name: '横版书页' },
+      { width: 900, height: 900, name: '方形书页' },
+      { width: 750, height: 1334, name: '朋友圈适配' }
+    ]
+    const selectedSize = sizeOptions[sizeIndex] || sizeOptions[0]
+
+    const doInit = (canvas) => {
+      if (!canvas) {
+        console.error('[luomo] Canvas节点为null，延迟重试')
+        setTimeout(() => {
+          this.createSelectorQuery().select('#bookCanvas')
+            .fields({ node: true, size: true })
+            .exec((retryRes) => {
+              if (retryRes && retryRes[0] && retryRes[0].node) {
+                doInit(retryRes[0].node)
+              } else {
+                console.error('[luomo] Canvas重试仍失败')
+              }
+            })
+        }, 300)
+        return
+      }
+
+      // 用容器实际尺寸作为viewport
+      const query = this.createSelectorQuery()
+      query.select('.canvas-area').boundingClientRect().exec((areaRes) => {
+        let containerW = screenWidth
+        let containerH = screenHeight * 0.55
+
+        if (areaRes && areaRes[0] && areaRes[0].width > 10 && areaRes[0].height > 10) {
+          containerW = areaRes[0].width
+          containerH = areaRes[0].height
+        }
+
+        console.log('[luomo] Canvas容器:', containerW, containerH)
+        this._initCanvasWithSize(canvas, dpr, selectedSize, containerW, containerH)
+      })
+    }
+
+    this.createSelectorQuery().select('#bookCanvas')
       .fields({ node: true, size: true })
       .exec((res) => {
-        console.log('[luomo] Canvas query结果:', res)
-        if (!res || !res[0] || !res[0].node) {
-          console.error('[luomo] Canvas节点获取失败')
-          return
+        console.log('[luomo] Canvas查询:', res)
+        if (res && res[0] && res[0].node) {
+          doInit(res[0].node)
+        } else {
+          console.error('[luomo] Canvas节点获取失败，延迟重试')
+          setTimeout(() => {
+            this.createSelectorQuery().select('#bookCanvas')
+              .fields({ node: true, size: true })
+              .exec((retryRes) => {
+                if (retryRes && retryRes[0] && retryRes[0].node) {
+                  doInit(retryRes[0].node)
+                } else {
+                  console.error('[luomo] Canvas重试仍失败')
+                }
+              })
+          }, 500)
         }
-        const canvas = res[0].node
-        const rawDpr = wx.getWindowInfo().pixelRatio || 2
-        // 限制 DPR 最大为 2，平衡清晰度与内存占用
-        const dpr = Math.min(rawDpr, 2)
-
-        // 获取纸张尺寸设置
-        const sizeIndex = this.data.paperSettings.sizeIndex || 0
-        const sizeOptions = [
-          { width: 720, height: 1080, name: '竖版书页' },
-          { width: 1080, height: 720, name: '横版书页' },
-          { width: 900, height: 900, name: '方形书页' },
-          { width: 750, height: 1334, name: '朋友圈适配' }
-        ]
-        const selectedSize = sizeOptions[sizeIndex] || sizeOptions[0]
-
-        // 计算Canvas容器尺寸（使用boundingClientRect获取正确尺寸）
-        const canvasRect = res[0].node.getBoundingClientRect ? res[0].node.getBoundingClientRect() : null
-        let containerWidth = canvasRect ? canvasRect.width : res[0].width
-        let containerHeight = canvasRect ? canvasRect.height : res[0].height
-
-        // 如果尺寸仍为0，使用父容器尺寸
-        if (!containerWidth || !containerHeight) {
-          const parentQuery = this.createSelectorQuery()
-          parentQuery.select('.canvas-area').boundingClientRect((rect) => {
-            if (rect && rect.width > 0 && rect.height > 0) {
-              this._initCanvasWithSize(canvas, dpr, selectedSize, rect.width, rect.height)
-            } else {
-              // 使用窗口尺寸作为后备
-              const windowInfo = wx.getWindowInfo()
-              this._initCanvasWithSize(canvas, dpr, selectedSize, windowInfo.windowWidth, windowInfo.windowHeight * 0.65)
-            }
-          }).exec()
-          return
-        }
-
-        this._initCanvasWithSize(canvas, dpr, selectedSize, containerWidth, containerHeight)
       })
   },
 
@@ -531,20 +571,21 @@ Page({
     console.log('[luomo] Canvas容器尺寸:', containerWidth, containerHeight)
     console.log('[luomo] 纸张尺寸:', selectedSize.width, selectedSize.height)
 
-    // 计算缩放比例，使纸张适应容器（保持宽高比）
-    const scaleX = containerWidth / selectedSize.width
-    const scaleY = containerHeight / selectedSize.height
-    const scale = Math.min(scaleX, scaleY, 1) // 最大不放大
+    const safeMargin = 20
+    const safeW = Math.max(10, containerWidth - safeMargin * 2)
+    const safeH = Math.max(10, containerHeight - safeMargin * 2)
+
+    const scaleX = safeW / selectedSize.width
+    const scaleY = safeH / selectedSize.height
+    const scale = Math.min(scaleX, scaleY, 1)
 
     console.log('[luomo] 缩放比例:', scale)
 
-    // CSS显示尺寸（在容器内居中显示）
     const cssWidth = Math.max(1, Math.floor(selectedSize.width * scale))
     const cssHeight = Math.max(1, Math.floor(selectedSize.height * scale))
 
     console.log('[luomo] CSS尺寸:', cssWidth, cssHeight)
 
-    // 物理像素尺寸（用于Canvas绘制）
     const physW = Math.max(1, Math.floor(selectedSize.width * dpr))
     const physH = Math.max(1, Math.floor(selectedSize.height * dpr))
 
@@ -561,7 +602,6 @@ Page({
     this._canvasScale = scale
     this._canvasReady = true
 
-    // 通过setData更新Canvas的CSS尺寸（使用style属性绑定）
     console.log('[luomo] 设置Canvas CSS尺寸:', cssWidth, cssHeight)
     this.setData({
       canvasCssWidth: cssWidth,
@@ -570,7 +610,6 @@ Page({
       console.log('[luomo] Canvas CSS尺寸已更新:', this.data.canvasCssWidth, this.data.canvasCssHeight)
     })
 
-    // Canvas就绪，若有文字则渲染，无文字则启动光标闪烁
     if (this.data.text) {
       this._triggerRender()
     } else {
@@ -628,6 +667,18 @@ Page({
       this._clearCanvas()
       return
     }
+    if (!this._canvasReady) {
+      console.warn('[luomo] Canvas未就绪，延迟渲染')
+      setTimeout(() => {
+        if (this._canvasReady) {
+          this._doRender(this.data.text)
+        } else {
+          console.error('[luomo] Canvas仍未就绪，尝试重新初始化')
+          this._initCanvas()
+        }
+      }, 500)
+      return
+    }
     this._doRender(this.data.text)
   },
 
@@ -649,8 +700,10 @@ Page({
       if (template.font && template.font.family) {
         try {
           const fontFamily = template.font.family
-          // 使用缓存避免重复加载
-          if (this._loadedFontCache[fontFamily]) {
+          // 系统字体跳过加载，直接使用
+          if (fontFamily === 'HeitiSC' || fontFamily === 'SongtiSC') {
+            // 系统字体直接可用
+          } else if (this._loadedFontCache[fontFamily]) {
             template.font.family = this._loadedFontCache[fontFamily]
           } else {
             const loadedFamily = await loadFont(fontFamily)
@@ -659,7 +712,7 @@ Page({
           }
         } catch (fontErr) {
           console.warn('[luomo] 字体加载失败，使用回退字体:', fontErr.message)
-          template.font.family = template.font.fallback || 'serif'
+          template.font.family = 'serif'
         }
       }
 
@@ -891,6 +944,17 @@ Page({
   },
 
   // ============ 翻页交互 ============
+
+  /** 阻止 Canvas 区域的触摸滚动事件冒泡（仅水平翻页滑动） */
+  preventCanvasScroll(e) {
+    if (!this._lastTouchMove) {
+      this._lastTouchMove = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      return
+    }
+    const dx = Math.abs(e.touches[0].clientX - this._lastTouchMove.x)
+    const dy = Math.abs(e.touches[0].clientY - this._lastTouchMove.y)
+    this._lastTouchMove = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  },
 
   onCanvasTouchStart(e) {
     this._touchStartX = e.touches[0].clientX
@@ -1304,13 +1368,14 @@ Page({
     if (this.data.settings.fontSizeMode === 'px') {
       display = `${val}px`
     } else {
-      // 简单的号数转换
       const haoMap = { 72: '初号', 56: '小初', 48: '一号', 44: '小一', 36: '二号', 32: '小二', 28: '三号', 24: '小三', 21: '四号', 18: '小四', 16: '五号', 14: '小五', 12: '六号' }
       display = haoMap[val] || `${val}px`
     }
     this.setData({
       'settings.fontSize': val,
-      'settings.fontSizeDisplay': display
+      'settings.fontSizeDisplay': display,
+      'textSettings.fontSize': val,
+      'textSettings.fontSizeDisplay': display
     })
     this._triggerRender()
   },
@@ -1327,7 +1392,9 @@ Page({
     }
     this.setData({
       'settings.fontSizeMode': mode,
-      'settings.fontSizeDisplay': display
+      'settings.fontSizeDisplay': display,
+      'textSettings.fontSizeMode': mode,
+      'textSettings.fontSizeDisplay': display
     })
   },
 
@@ -1388,11 +1455,6 @@ Page({
     this._triggerRender()
   },
 
-  onWatermarkTypeChange(e) {
-    this.setData({ 'settings.watermarkType': e.currentTarget.dataset.type })
-    this._triggerRender()
-  },
-
   onLineHeightChange(e) {
     const val = e.detail.value
     this.setData({
@@ -1422,12 +1484,6 @@ Page({
 
   onFontWeightChange(e) {
     this.setData({ 'settings.fontWeight': e.currentTarget.dataset.w })
-    this._triggerRender()
-
-  },
-
-  onTextAlignChange(e) {
-    this.setData({ 'settings.textAlign': e.currentTarget.dataset.align })
     this._triggerRender()
 
   },
@@ -1499,12 +1555,6 @@ Page({
   },
 
   // --- 基础纸张 ---
-
-  onPaperColorChange(e) {
-    this.setData({ 'settings.paperBaseColor': e.currentTarget.dataset.color })
-    this._triggerRender()
-
-  },
 
   onMarginTopChange(e) {
     this.setData({ 'settings.marginTopVal': e.detail.value })
@@ -1804,14 +1854,6 @@ Page({
       compactness: 62,
       textAlign: 'left'
     }, '已启用现代极简', 'modern-minimal', opts)
-  },
-
-  // --- 纸张尺寸 ---
-
-  onPaperSizeChange(e) {
-    const sizeId = e.currentTarget.dataset.sizeId
-    this.setData({ 'settings.paperSizeId': sizeId })
-    this._triggerRender()
   },
 
   // ========== Stepper 处理函数（用于 cover-view 面板）==========
@@ -2668,31 +2710,6 @@ Page({
     })
   },
 
-  onFontSizeChange(e) {
-    const val = e.detail.value
-    const mode = this.data.textSettings.fontSizeMode
-    let display = mode === 'px' ? `${val}px` : `${val}号`
-    this.setData({
-      'textSettings.fontSize': val,
-      'textSettings.fontSizeDisplay': display,
-      'settings.fontSize': val
-    }, () => {
-      this._triggerRender()
-    })
-  },
-
-  onFontSizeModeChange(e) {
-    const mode = e.currentTarget.dataset.mode
-    const val = this.data.textSettings.fontSize
-    let display = mode === 'px' ? `${val}px` : `${val}号`
-    this.setData({
-      'textSettings.fontSizeMode': mode,
-      'textSettings.fontSizeDisplay': display,
-      'settings.fontSizeMode': mode,
-      'settings.fontSizeDisplay': display
-    })
-  },
-
   onTextWeightChange(e) {
     const index = e.detail.value
     const weights = ['300', '400', '500', '700']
@@ -2721,16 +2738,6 @@ Page({
       'textSettings.inkOpacity': val,
       'settings.inkOpacity': val / 100,
       'settings.inkOpacityVal': val
-    }, () => {
-      this._triggerRender()
-    })
-  },
-
-  onTextAlignChange(e) {
-    const align = e.detail.value
-    this.setData({
-      'textSettings.textAlign': align,
-      'settings.textAlign': align
     }, () => {
       this._triggerRender()
     })
@@ -2772,48 +2779,6 @@ Page({
     this.setData({
       'textSettings.watermarkIndex': index,
       'settings.watermarkType': typeMap[index] || 'none'
-    }, () => {
-      this._triggerRender()
-    })
-  },
-
-  onStrokeToggle(e) {
-    const enabled = e.detail.value
-    this.setData({
-      'textSettings.strokeEnabled': enabled,
-      'settings.strokeEnabled': enabled
-    }, () => {
-      this._triggerRender()
-    })
-  },
-
-  onStrokeWidthChange(e) {
-    const val = e.detail.value
-    this.setData({
-      'textSettings.strokeWidth': val,
-      'settings.strokeWidth': val,
-      'textSettings.strokeDisplay': `${val}px`
-    }, () => {
-      this._triggerRender()
-    })
-  },
-
-  onLineBreakToggle() {
-    const newValue = !this.data.textSettings.preserveLineBreaks
-    this.setData({
-      'textSettings.preserveLineBreaks': newValue,
-      'settings.preserveLineBreaks': newValue
-    }, () => {
-      this._triggerRender()
-    })
-  },
-
-  onTextSkewChange(e) {
-    const val = e.detail.value
-    this.setData({
-      'textSettings.textSkew': val,
-      'settings.textSkew': val,
-      'textSettings.textSkewDisplay': `${val}°`
     }, () => {
       this._triggerRender()
     })

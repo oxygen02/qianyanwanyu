@@ -4,6 +4,7 @@
   height: 100vh;
   background-color: #FAF7F2;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* ===== 顶部固定区域 ===== */

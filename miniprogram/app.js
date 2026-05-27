@@ -48,5 +48,19 @@ App({
 
     // 底部安全区
     this.globalData.safeAreaBottom = windowInfo.screenHeight - (windowInfo.safeArea ? windowInfo.safeArea.bottom : windowInfo.screenHeight)
+
+    // 计算导航栏总高度（状态栏 + 胶囊按钮 + 间距）
+    let navBarHeight = (windowInfo.statusBarHeight || 0) + 44 // 默认值
+    try {
+      const menuButton = wx.getMenuButtonBoundingClientRect()
+      if (menuButton && menuButton.top > 0) {
+        // 导航栏高度 = 胶囊按钮底部 + 8px间距
+        navBarHeight = menuButton.bottom + 8
+      }
+    } catch (e) {
+      console.warn('[app] 获取胶囊按钮位置失败，使用默认导航栏高度')
+    }
+    this.globalData.navBarHeight = navBarHeight
+    console.log('[app] 导航栏总高度:', navBarHeight, '状态栏:', windowInfo.statusBarHeight)
   }
 })

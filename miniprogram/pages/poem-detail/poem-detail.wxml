@@ -1,8 +1,5 @@
 <!-- pages/poem-detail/poem-detail.wxml -->
 <view class="page-root">
-  <!-- 顶部安全区域占位 -->
-  <view class="safe-area-top" style="height: {{statusBarHeight}}px"></view>
-
   <!-- 固定区域：诗词标题和正文 -->
   <view class="poem-fixed-area" wx:if="{{poem}}">
     <view class="paper-sheet-fixed">
@@ -16,7 +13,7 @@
       </view>
 
       <!-- 原文 -->
-      <view class="poem-content">
+      <view class="poem-content {{poem.alignClass}}">
         <text class="poem-line" wx:for="{{poem.lines}}" wx:key="index">{{item}}</text>
         <view class="copy-btn" bindtap="onCopyPoem">
           <image class="copy-icon-img" src="/images/copy.png" mode="aspectFit" />
@@ -73,16 +70,13 @@
   <!-- 底部诗词切换导航栏 -->
   <view class="poem-nav-bar" wx:if="{{poem}}">
     <view class="poem-nav-item {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="onPrevPoem">
-      <text class="poem-nav-icon">‹</text>
       <text class="poem-nav-text">上一篇</text>
     </view>
     <view class="poem-nav-item poem-nav-center" bindtap="onRandomPoem">
-      <text class="poem-nav-icon">⟳</text>
       <text class="poem-nav-text">漫游</text>
     </view>
     <view class="poem-nav-item {{currentIndex === totalCount - 1 ? 'disabled' : ''}}" bindtap="onNextPoem">
       <text class="poem-nav-text">下一篇</text>
-      <text class="poem-nav-icon">›</text>
     </view>
   </view>
 

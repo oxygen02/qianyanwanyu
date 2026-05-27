@@ -5,6 +5,8 @@
   flex-direction: column;
   height: 100vh;
   background-color: #E8E0D4;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* ===== 顶部安全区域占位 ===== */
@@ -17,14 +19,14 @@
 /* ===== 固定区域：诗词标题和正文 ===== */
 .poem-fixed-area {
   flex-shrink: 0;
-  padding: 16rpx 16rpx 0;
+  padding: calc(102rpx + env(safe-area-inset-top)) 16rpx 0;
   background-color: #E8E0D4;
 }
 
 .paper-sheet-fixed {
   background-color: #FAF7F2;
   border-radius: 8rpx 8rpx 0 0;
-  padding: 32rpx 20rpx 24rpx;
+  padding: 40rpx 20rpx 24rpx;
   box-shadow:
     0 1rpx 3rpx rgba(0, 0, 0, 0.12),
     0 4rpx 12rpx rgba(0, 0, 0, 0.08),
@@ -41,7 +43,8 @@
   flex: 1;
   min-height: 0;
   padding: 0 16rpx 8rpx;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
 }
 
@@ -154,6 +157,24 @@
   padding: 0 16rpx;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+/* 对仗工整的诗词居中显示 */
+.poem-content.poem-center {
+  align-items: center;
+}
+
+.poem-content.poem-center .poem-line {
+  text-align: center;
+}
+
+/* 句长不一致的词和散文左对齐 */
+.poem-content.poem-left {
+  align-items: flex-start;
+}
+
+.poem-content.poem-left .poem-line {
+  text-align: left;
 }
 
 /* 复制按钮 */
@@ -273,10 +294,12 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 0;
+  padding: 16rpx 0;
   background-color: #F5F0E8;
   border-top: 1rpx solid rgba(158, 148, 136, 0.2);
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .poem-nav-item {
@@ -285,9 +308,10 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 8rpx;
-  padding: 10rpx 20rpx;
+  gap: 4rpx;
+  padding: 16rpx 20rpx;
   position: relative;
+  z-index: 10;
 }
 
 .poem-nav-item.disabled {
@@ -299,17 +323,11 @@
   border-right: 1rpx solid rgba(158, 148, 136, 0.2);
 }
 
-.poem-nav-icon {
-  font-size: 28rpx;
-  color: #6B5B4F;
-  line-height: 1;
-}
-
 .poem-nav-text {
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #6B5B4F;
   font-family: serif;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
 }
 
 /* 选中指示条 */
@@ -322,10 +340,12 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 0 0 calc(4rpx + env(safe-area-inset-bottom));
+  padding: 12rpx 0 calc(8rpx + env(safe-area-inset-bottom));
   background-color: #F5F0E8;
   border-top: 1rpx solid rgba(158, 148, 136, 0.2);
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .home-tab-item {

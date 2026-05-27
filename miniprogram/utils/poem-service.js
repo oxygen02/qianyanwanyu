@@ -94,11 +94,29 @@ function formatLocalData(list, total, offset, limit) {
   return {
     list: list.map(item => ({
       ...item,
-      lines: item.content ? item.content.split('\n').filter(line => line.trim()) : []
+      lines: item.content ? item.content.split('\n').filter(line => line.trim()) : [],
+      alignClass: getAlignClass(item)
     })),
     total,
     hasMore: offset + list.length < total
   }
+}
+
+function getAlignClass(item) {
+  if (!item.content) return 'poem-left'
+  const lines = item.content.split('\n').filter(line => line.trim())
+  if (lines.length < 2) return 'poem-left'
+  
+  // 计算每行的字数（去除标点）
+  const charCounts = lines.map(line => {
+    return line.replace(/[，。！？、；：""''（）【】《》]/g, '').trim().length
+  })
+  
+  // 如果所有行字数相同，认为是工整的对仗诗词，居中显示
+  const firstCount = charCounts[0]
+  const allSame = charCounts.every(count => count === firstCount)
+  
+  return allSame ? 'poem-center' : 'poem-left'
 }
 
 /**
@@ -112,6 +130,12 @@ async function getList(limit = 20, offset = 0) {
   // 优先使用本地数据
   const list = contentDB.slice(offset, offset + limit)
   const data = formatLocalData(list, contentDB.length, offset, limit)
+  
+  // 为列表结果添加 alignClass
+  data.list = data.list.map(item => ({
+    ...item,
+    alignClass: getAlignClass(item)
+  }))
 
   setCache(cacheKey, data)
   return data
@@ -130,7 +154,8 @@ async function getById(id) {
   if (poem) {
     const data = {
       ...poem,
-      lines: poem.content ? poem.content.split('\n').filter(line => line.trim()) : []
+      lines: poem.content ? poem.content.split('\n').filter(line => line.trim()) : [],
+      alignClass: getAlignClass(poem)
     }
     setCache(cacheKey, data)
     return data
@@ -158,6 +183,12 @@ async function getByCategory(category, limit = 20, offset = 0) {
   const filtered = category === 'all' ? contentDB : contentDB.filter(item => item.category === category)
   const list = filtered.slice(offset, offset + limit)
   const data = formatLocalData(list, filtered.length, offset, limit)
+  
+  // 为分类结果添加 alignClass
+  data.list = data.list.map(item => ({
+    ...item,
+    alignClass: getAlignClass(item)
+  }))
 
   setCache(cacheKey, data)
   return data
@@ -183,7 +214,15 @@ async function searchPoems(keyword, limit = 20, offset = 0) {
   )
 
   const list = filtered.slice(offset, offset + limit)
-  return formatLocalData(list, filtered.length, offset, limit)
+  const result = formatLocalData(list, filtered.length, offset, limit)
+  
+  // 为搜索结果添加 alignClass
+  result.list = result.list.map(item => ({
+    ...item,
+    alignClass: getAlignClass(item)
+  }))
+  
+  return result
 }
 
 /**
@@ -200,7 +239,8 @@ async function getRandom() {
     const poem = contentDB[randomIndex]
     const data = {
       ...poem,
-      lines: poem.content ? poem.content.split('\n').filter(line => line.trim()) : []
+      lines: poem.content ? poem.content.split('\n').filter(line => line.trim()) : [],
+      alignClass: getAlignClass(poem)
     }
     setCache(cacheKey, data)
     return data

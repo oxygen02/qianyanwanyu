@@ -26,8 +26,14 @@ Component({
   methods: {
     switchTab(e) {
       const data = e.currentTarget.dataset
-      const url = data.path
-      wx.switchTab({ url })
+      const url = data.pagePath || data.path
+      console.log('[tabBar] 切换到:', url)
+      wx.switchTab({
+        url,
+        fail: (err) => {
+          console.error('[tabBar] 切换失败:', err)
+        }
+      })
     }
   }
 })

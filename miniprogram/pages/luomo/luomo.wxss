@@ -6,28 +6,35 @@
   background-color: #F5F0E8;
   overflow: hidden;
   position: relative;
+  box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 /* ========== 书页展示区（Canvas 区域）========== */
 .canvas-area {
-  flex: 0 0 65%;
-  max-height: 65%;
+  flex: 1 1 auto;
+  min-height: 0;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 8rpx 16rpx;
+  padding-bottom: calc(56rpx + 26vh + 96rpx + env(safe-area-inset-bottom) + 20rpx);
   overflow: hidden;
 }
 
 .canvas-wrapper {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
+  pointer-events: auto;
 }
 
 .book-canvas {
@@ -39,6 +46,8 @@
   background-color: #FAF7F2;
   transition: transform 0.3s ease, opacity 0.25s ease;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+  display: block;
+  flex-shrink: 0;
 }
 
 .book-canvas.zoomed {
@@ -79,6 +88,7 @@
   justify-content: center;
   background-color: rgba(250, 247, 242, 0.7);
   z-index: 20;
+  pointer-events: none;
 }
 
 .loading-dot-wrap { display: flex; gap: 16rpx; }
@@ -109,22 +119,32 @@
 .empty-text { font-size: 36rpx; color: rgba(107,91,79,0.5); letter-spacing: 4rpx; }
 .empty-sub { font-size: 24rpx; color: rgba(158,148,136,0.6); letter-spacing: 2rpx; }
 
-/* ========== 中间工具栏 ========== */
+/* ========== 中间工具栏（cover-view，在 Canvas 原生组件之上）========== */
 .middle-toolbar {
-  flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(26vh + 96rpx + env(safe-area-inset-bottom));
   height: 56rpx;
   background-color: rgba(250, 247, 242, 0.98);
   border-top: 1rpx solid rgba(158, 148, 136, 0.2);
   border-bottom: 1rpx solid rgba(158, 148, 136, 0.15);
-  display: flex; align-items: center; justify-content: space-evenly;
-  padding: 0 12rpx; z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 0 12rpx;
+  z-index: 100000;
 }
 
 .toolbar-btn {
-  display: flex; flex-direction: row; align-items: center; justify-content: center;
-  gap: 4rpx; padding: 6rpx 18rpx; border-radius: 10rpx;
-  min-width: 80rpx; height: 40rpx; box-sizing: border-box;
-  transition: background-color 0.15s ease;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 6rpx 18rpx;
+  border-radius: 10rpx;
+  min-width: 80rpx;
+  height: 40rpx;
 }
 .toolbar-btn:active { background-color: rgba(158,148,136,0.2); }
 
@@ -132,38 +152,26 @@
 .toolbar-btn--active .toolbar-btn-label { color: #3D2B1F; font-weight: 600; }
 .toolbar-btn--save:active { background-color: rgba(107,91,79,0.15); }
 
-.toolbar-btn-icon {
-  width: 22rpx; height: 22rpx; flex-shrink: 0;
-  position: relative; display: flex; align-items: center; justify-content: center;
-}
-
-/* 文字图标 */
-.toolbar-icon-text::before { content: 'A'; font-size: 18rpx; font-weight: 700; color: #6B5B4F; font-family: serif; }
-
-/* 纸张图标 */
-.toolbar-icon-paper { background-color: #E8E4DE; border: 2rpx solid #6B5B4F; border-radius: 3rpx; }
-.toolbar-icon-paper::before { content: ''; position: absolute; top: 4rpx; left: 4rpx; right: 4rpx; height: 2rpx; background-color: rgba(107,91,79,0.4); }
-.toolbar-icon-paper::after { content: ''; position: absolute; top: 9rpx; left: 4rpx; right: 6rpx; height: 2rpx; background-color: rgba(107,91,79,0.4); }
-
-/* 排版图标 */
-.toolbar-icon-layout::before { content: ''; position: absolute; top: 4rpx; left: 3rpx; right: 3rpx; height: 2.5rpx; background-color: #6B5B4F; border-radius: 1rpx; }
-.toolbar-icon-layout::after { content: ''; position: absolute; bottom: 4rpx; left: 7rpx; right: 7rpx; height: 2.5rpx; background-color: #6B5B4F; border-radius: 1rpx; }
-
-/* 保存图标 */
-.toolbar-icon-save { border: 2rpx solid #6B5B4F; border-radius: 3rpx; }
-.toolbar-icon-save::before { content: ''; position: absolute; bottom: 3rpx; left: 4rpx; width: 14rpx; height: 2rpx; background-color: #6B5B4F; }
-
 .toolbar-btn-label { font-size: 20rpx; color: #6B5B4F; font-weight: 500; white-space: nowrap; }
 
 /* ========== 底部区域（输入框 + 设置面板互斥）========== */
+/* 注意：bottom-area 使用 position: fixed 定位在屏幕底部，
+   避免被 Canvas 原生组件覆盖 */
 .bottom-area {
-  flex: 1;
-  max-height: 26%;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(96rpx + env(safe-area-inset-bottom));
+  height: 26vh;
+  max-height: 360px;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
-  position: relative;
-  z-index: 20;
+  background-color: #FAF7F2;
+  z-index: 100001;
+  border-top: 1rpx solid rgba(158, 148, 136, 0.2);
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 /* ========== 设置面板（内嵌式，不遮挡 Canvas）========== */
@@ -528,6 +536,8 @@
   border-top: 1rpx solid rgba(158, 148, 136, 0.2);
   padding: 10rpx 16rpx 16rpx;
   overflow: hidden;
+  position: relative;
+  z-index: 10;
 }
 
 .input-area--hidden {
@@ -1630,12 +1640,12 @@
 }
 
 .setting-label {
-  font-size: 18rpx;
+  font-size: 22rpx;
   color: #3D2B1F;
   font-weight: 500;
   flex-shrink: 0;
   line-height: 1.4;
-  height: 26rpx;
+  min-height: 30rpx;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -1659,7 +1669,7 @@
 }
 
 .value-text-mini {
-  font-size: 17rpx;
+  font-size: 20rpx;
   color: #6B5B4F;
   flex: 1;
   white-space: nowrap;
@@ -1716,10 +1726,10 @@ picker .setting-value {
 }
 
 .slider-value-mini {
-  font-size: 17rpx;
+  font-size: 20rpx;
   color: #6B5B4F;
   font-weight: 500;
-  min-width: 56rpx;
+  min-width: 60rpx;
   text-align: right;
   line-height: 1.4;
   padding-left: 8rpx;
@@ -1746,7 +1756,7 @@ picker .setting-value {
   align-items: center;
   flex-shrink: 0;
   gap: 12rpx;
-  font-size: 18rpx;
+  font-size: 22rpx;
   color: #6B5B4F;
   line-height: 1.4;
   padding: 0;
@@ -1821,17 +1831,17 @@ picker .setting-value {
 }
 
 .settings-cell-align .align-option text {
-  font-size: 18rpx;
+  font-size: 22rpx;
   color: #6B5B4F;
 }
 
 .input-field-mini {
   flex: 1;
-  height: 32rpx;
+  height: 36rpx;
   padding: 0 8rpx;
   background-color: rgba(158, 148, 136, 0.1);
   border-radius: 4rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #3D2B1F;
   min-width: 0;
 }
@@ -1900,7 +1910,7 @@ picker .setting-value {
 }
 
 .arrow {
-  font-size: 28rpx;
+  font-size: 32rpx;
   color: #9E9488;
   line-height: 1.2;
 }

@@ -25,7 +25,7 @@ Page({
 
   onLoad() {
     const app = getApp()
-    const statusBarHeight = app.globalData.statusBarHeight || 0
+    const statusBarHeight = app.globalData.navBarHeight || app.globalData.statusBarHeight || 0
     this.setData({ statusBarHeight })
   },
 

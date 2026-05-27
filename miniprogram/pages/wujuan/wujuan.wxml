@@ -142,7 +142,7 @@
         <text class="setting-arrow">v1.0</text>
       </view>
       <view class="setting-item">
-        <text class="setting-label">让文字回到纸上</text>
+        <text class="setting-label">为文字造一页纸</text>
       </view>
       <view class="setting-item">
         <text class="setting-label">让阅读回到阅读</text>
