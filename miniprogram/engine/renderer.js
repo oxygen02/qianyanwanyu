@@ -2,7 +2,7 @@
 // 主渲染器 - 协调 paper.js + ink-effect.js + typesetter.js
 
 const { generatePaperTexture, drawBorder, drawGrid, drawLineGuide } = require('./paper')
-const { drawInkBlock, drawInkBlockWithOpenType, drawStamp, drawWatermarkWithLogo, drawPageNumber } = require('./ink-effect')
+const { drawInkBlock, drawInkBlockWithOpenType, drawStamp, drawWatermarkWithLogo, drawPageNumber, canUseOpenTypeFont } = require('./ink-effect')
 const { typesetAllPages } = require('./typesetter')
 const { TEMPLATES } = require('../utils/constants')
 const { loadImageFromFileID } = require('../utils/image-loader')
@@ -210,7 +210,7 @@ async function renderPage(params) {
   if (currentPage && currentPage.glyphs.length > 0) {
     const fontId = template.font && template.font.family
     const isSystemFont = !fontId || ['serif', 'sans-serif', 'monospace'].includes(fontId)
-    const useOpenType = !isSystemFont && currentPage.glyphs.length <= 1500
+    const useOpenType = !isSystemFont && currentPage.glyphs.length <= 1500 && canUseOpenTypeFont(fontId)
     if (useOpenType) {
       try {
         await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, fontId, template.layout.fontSize, template.layout)

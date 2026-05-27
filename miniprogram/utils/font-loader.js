@@ -8,6 +8,8 @@ const { BUILT_IN_FONTS } = require('./constants')
 const _loadedFonts = {}
 // 临时链接缓存：{ fontId: { url: string, timestamp: number } }
 const _tempUrls = {}
+// 字体加载失败时间戳（用于防止短时间内重复尝试）
+const _fontFailTimes = {}
 
 // 临时链接有效期（毫秒），保守估计5分钟（微信实际有效期通常为2小时）
 const TEMP_URL_MAX_AGE = 5 * 60 * 1000
@@ -346,6 +348,7 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
           } else {
             _loadedFonts[fontConfig.id] = 'failed'
             _loadedFonts[fontConfig.id + '_failed'] = true
+            _fontFailTimes[fontConfig.id] = Date.now()
             console.warn('[font-loader] 回退到系统字体:', FALLBACK_FONT)
             safeResolve(FALLBACK_FONT)
           }
@@ -387,6 +390,14 @@ function loadFont(fontId) {
   // 未配置 fileID 或 fileID 为空，直接降级
   if (!fontConfig.fileID) {
     console.warn('[font-loader] 字体未配置 fileID:', fontConfig.name, '，使用系统字体回退:', FALLBACK_FONT)
+    return Promise.resolve(FALLBACK_FONT)
+  }
+
+  // 检查失败冷却期：如果网络持续失败，1分钟内不重试
+  const now = Date.now()
+  const failTime = _fontFailTimes[fontId]
+  if (failTime && (now - failTime) < 60000) {
+    console.warn('[font-loader] 字体', fontConfig.name, '网络失败不久，跳过重试，使用系统字体:', FALLBACK_FONT)
     return Promise.resolve(FALLBACK_FONT)
   }
 
@@ -441,6 +452,7 @@ function loadFont(fontId) {
           console.error('  3. 确认 project.config.json 中的 appid 不是 touristappid')
           _loadedFonts[fontId] = 'failed'
           _loadedFonts[fontId + '_failed'] = true
+          _fontFailTimes[fontId] = Date.now()
           
           if (typeof wx !== 'undefined' && wx.showToast) {
             wx.showToast({

@@ -142,8 +142,14 @@ Page({
       let result
 
       if (contentType.type === 'url') {
-        // 网址：调用云函数提取
-        result = await this._fetchFromUrl(input)
+        // 网址：优先调用云函数提取，失败自动降级到文本清洗
+        try {
+          result = await this._fetchFromUrl(contentType.url || input)
+        } catch (urlErr) {
+          console.warn('[shiwen] URL提取失败，降级文本清洗:', urlErr)
+          wx.showToast({ title: '链接抓取失败，已按文本清洗', icon: 'none', duration: 1500 })
+          result = cleanText(input)
+        }
       } else {
         // 纯文本：前端清洗
         result = cleanText(input)
@@ -189,55 +195,59 @@ Page({
   async _fetchFromUrl(url) {
     wx.showLoading({ title: '正在抓取文章...', mask: true })
 
+    let timeoutTimer = null
     try {
-      const { result } = await wx.cloud.callFunction({
+      const callPromise = wx.cloud.callFunction({
         name: 'fetchArticle',
         data: { url }
       })
-
-      wx.hideLoading()
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutTimer = setTimeout(() => {
+          reject(new Error('链接抓取超时，请稍后重试或直接粘贴正文'))
+        }, 12000)
+      })
+      const { result } = await Promise.race([callPromise, timeoutPromise])
 
       if (result.code !== 0) {
         throw new Error(result.message || '抓取失败')
       }
 
-      const data = result.data
+      const data = result.data || {}
 
-      // 转换为前端统一的blocks格式
-      const blocks = []
-
-      // 添加标题
+      // 将云函数结构化结果重建为“可清洗文本”
+      const rebuiltParts = []
       if (data.title && data.title !== '未命名文章') {
-        blocks.push({ type: 'h1', text: data.title })
+        rebuiltParts.push(data.title)
       }
-
-      // 添加正文内容
-      if (data.content && Array.isArray(data.content)) {
-        for (const block of data.content) {
+      if (Array.isArray(data.content) && data.content.length > 0) {
+        data.content.forEach((block) => {
+          if (!block) return
           if (block.type === 'img' && block.url) {
-            blocks.push({ type: 'img', url: block.url, alt: block.alt || '' })
+            rebuiltParts.push(`![插图](${block.url})`)
           } else if (block.text && block.text.trim()) {
-            blocks.push({ type: block.type === 'h1' ? 'h1' : 'p', text: block.text.trim() })
+            rebuiltParts.push(block.text.trim())
           }
-        }
+        })
+      } else if (data.textContent) {
+        rebuiltParts.push(data.textContent)
       }
 
-      // 如果没有结构化内容，从纯文本重建
-      if (blocks.length === 0 && data.textContent) {
-        return cleanText(data.textContent)
-      }
+      const rebuiltText = rebuiltParts.join('\n\n')
+      const cleaned = cleanText(rebuiltText)
 
+      // 云端元信息兜底
       return {
-        blocks,
-        title: data.title,
-        author: data.author,
-        wordCount: data.wordCount || 0,
-        removedAds: []
+        ...cleaned,
+        title: cleaned.title || (data.title && data.title !== '未命名文章' ? data.title : ''),
+        author: data.author || '',
+        wordCount: cleaned.wordCount || data.wordCount || 0
       }
 
     } catch (err) {
-      wx.hideLoading()
       throw err
+    } finally {
+      if (timeoutTimer) clearTimeout(timeoutTimer)
+      wx.hideLoading()
     }
   },
 

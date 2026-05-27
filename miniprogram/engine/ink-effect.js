@@ -17,6 +17,78 @@ function getFS() {
 }
 
 let _cachedFonts = {}
+const _opentypeDisabledFonts = {}
+
+function getPixelRatio() {
+  try {
+    if (wx.getWindowInfo) {
+      return wx.getWindowInfo().pixelRatio || 2
+    }
+    if (wx.getDeviceInfo) {
+      return wx.getDeviceInfo().pixelRatio || 2
+    }
+    if (wx.getSystemInfoSync) {
+      return wx.getSystemInfoSync().pixelRatio || 2
+    }
+  } catch (e) {}
+  return 2
+}
+
+function toArrayBuffer(data) {
+  if (!data) throw new Error('字体数据为空')
+
+  if (data instanceof ArrayBuffer) return data
+
+  if (ArrayBuffer.isView(data)) {
+    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+  }
+
+  if (typeof data === 'string') {
+    const bytes = new Uint8Array(data.length)
+    for (let i = 0; i < data.length; i++) {
+      bytes[i] = data.charCodeAt(i) & 0xff
+    }
+    return bytes.buffer
+  }
+
+  if (Array.isArray(data)) {
+    return new Uint8Array(data).buffer
+  }
+
+  if (typeof data === 'object') {
+    // 兼容 Node 风格 Buffer 序列化对象：{ type: 'Buffer', data: [...] }
+    if (data.type === 'Buffer' && Array.isArray(data.data)) {
+      return new Uint8Array(data.data).buffer
+    }
+
+    // 兼容嵌套 data 字段（部分运行时返回 { data: ... }）
+    if (data.data != null && data.data !== data) {
+      return toArrayBuffer(data.data)
+    }
+
+    // 兼容 array-like 对象
+    if (typeof data.length === 'number' && data.length >= 0) {
+      const bytes = new Uint8Array(data.length)
+      for (let i = 0; i < data.length; i++) {
+        bytes[i] = Number(data[i]) & 0xff
+      }
+      return bytes.buffer
+    }
+
+    // 兼容纯数字 key 对象
+    const numericKeys = Object.keys(data).filter((k) => /^\d+$/.test(k))
+    if (numericKeys.length > 0) {
+      const maxIdx = Math.max(...numericKeys.map((k) => Number(k)))
+      const bytes = new Uint8Array(maxIdx + 1)
+      for (const k of numericKeys) {
+        bytes[Number(k)] = Number(data[k]) & 0xff
+      }
+      return bytes.buffer
+    }
+  }
+
+  throw new Error(`不支持的字体数据类型: ${typeof data}`)
+}
 
 async function loadFontFromCache(fontId) {
   if (_cachedFonts[fontId]) {
@@ -55,11 +127,10 @@ async function loadFontFromCache(fontId) {
     
     fs.readFile({
       filePath: filePath,
-      encoding: 'binary',
       success: (res) => {
         try {
-          const buffer = Buffer.from(res.data, 'binary')
-          const font = opentype.parse(buffer)
+          const fontBuffer = toArrayBuffer(res.data)
+          const font = opentype.parse(fontBuffer)
           _cachedFonts[fontId] = font
           resolve(font)
         } catch (err) {
@@ -486,7 +557,7 @@ function drawStamp(ctx, width, height, stampConfig) {
   const color = stampConfig.color || '#C41E3A'
   const opacity = stampConfig.opacity || 0.7
   
-  const dpr = wx.getSystemInfoSync().pixelRatio || 2
+  const dpr = getPixelRatio()
   const size = 36 / 2 * dpr
 
   let sx, sy
@@ -549,7 +620,7 @@ function drawWatermark(ctx, width, height, watermarkConfig, dateStr, layoutConfi
   const text = watermarkConfig.text || '铅言万语'
   const opacity = watermarkConfig.opacity || 0.15
   
-  const dpr = wx.getSystemInfoSync().pixelRatio || 2
+  const dpr = getPixelRatio()
   const defaultFontSize = 36 / 2 * dpr
   const fontSize = watermarkConfig.userSetFontSize ? ((watermarkConfig.fontSize || 36) / 2 * dpr) : defaultFontSize
   const position = watermarkConfig.userSetPosition ? (watermarkConfig.position || 'bottomRight') : 'bottomRight'
@@ -599,7 +670,7 @@ async function drawWatermarkWithLogo(ctx, width, height, watermarkConfig, dateSt
   const text = watermarkConfig.text || '铅言万语'
   const opacity = Math.min((watermarkConfig.opacity || 0.15) * 2, 0.4)
   
-  const dpr = wx.getSystemInfoSync().pixelRatio || 2
+  const dpr = getPixelRatio()
   const defaultFontSize = 36 / 2 * dpr
   const fontSize = watermarkConfig.userSetFontSize ? ((watermarkConfig.fontSize || 36) / 2 * dpr) : defaultFontSize
   const position = watermarkConfig.userSetPosition ? (watermarkConfig.position || 'bottomRight') : 'bottomRight'
@@ -748,6 +819,9 @@ function drawPageNumber(ctx, width, height, pageNum, totalPages, decorationConfi
  */
 async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontId, fontSize, layoutConfig) {
   if (!glyphs || glyphs.length === 0) return
+  if (fontId && _opentypeDisabledFonts[fontId]) {
+    throw new Error(`opentype_disabled:${fontId}`)
+  }
   
   try {
     const font = await loadFontFromCache(fontId)
@@ -791,9 +865,17 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontId, fontSize
     console.log('[ink-effect] 使用 opentype.js 渲染完成，字符数:', paths.length)
     
   } catch (err) {
-    console.error('[ink-effect] opentype.js 渲染失败:', err)
-    drawInkBlock(ctx, glyphs, inkConfig, { family: 'serif', weight: '400' }, fontSize, layoutConfig)
+    if (fontId && !_opentypeDisabledFonts[fontId]) {
+      _opentypeDisabledFonts[fontId] = true
+      console.warn('[ink-effect] opentype.js 渲染失败，已对该字体停用并回退:', fontId, err && err.message ? err.message : err)
+    }
+    throw err
   }
+}
+
+function canUseOpenTypeFont(fontId) {
+  if (!fontId) return false
+  return !_opentypeDisabledFonts[fontId]
 }
 
 module.exports = {
@@ -805,5 +887,6 @@ module.exports = {
   drawWatermark,
   drawWatermarkWithLogo,
   drawPageNumber,
-  loadFontFromCache
+  loadFontFromCache,
+  canUseOpenTypeFont
 }

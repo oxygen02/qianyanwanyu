@@ -176,7 +176,8 @@ function extractArticle(html, baseUrl) {
   const content = extractByTextDensity(cleanHtml)
 
   // 转换为结构化数据
-  const blocks = htmlToBlocks(content.html, baseUrl)
+  const rawBlocks = htmlToBlocks(content.html, baseUrl)
+  const blocks = cleanExtractedBlocks(rawBlocks)
 
   // 提取纯文本
   const textContent = blocks
@@ -196,80 +197,91 @@ function extractArticle(html, baseUrl) {
 }
 
 /**
- * 基于文本密度的正文提取算法
+ * 基于内容块评分的正文提取算法
  */
 function extractByTextDensity(html) {
-  // 将HTML分割为行
-  const lines = html.split('\n')
+  const blockPattern = /<(article|main|section|div)[^>]*>([\s\S]*?)<\/\1>/gi
   const candidates = []
+  let match
 
-  // 滑动窗口，计算每个区域的文本密度
-  const windowSize = 5
+  while ((match = blockPattern.exec(html)) !== null) {
+    const full = match[0]
+    const inner = match[2] || ''
+    const plain = inner.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    if (plain.length < 80) continue
+
+    const linkCount = (inner.match(/<a\s/gi) || []).length
+    const punctuationCount = (plain.match(/[，。！？；：,.!?;:]/g) || []).length
+    const classId = (full.match(/(?:class|id)=['\"]([^'\"]+)['\"]/gi) || []).join(' ').toLowerCase()
+    const adLike = /(nav|menu|footer|comment|related|recommend|advert|banner|copyright)/.test(classId)
+    const contentLike = /(article|content|post|entry|detail|main)/.test(classId)
+    const linkDensity = plain.length > 0 ? linkCount / plain.length : 1
+
+    let score = plain.length * 0.7 + punctuationCount * 10 - linkCount * 5 - linkDensity * 180
+    if (contentLike) score += 120
+    if (adLike) score -= 200
+
+    candidates.push({ score, html: full, text: plain })
+  }
+
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => b.score - a.score)
+    const best = candidates[0]
+    if (best.score > 60) {
+      return { html: best.html, text: best.text }
+    }
+  }
+
+  // 兜底：按行密度提取
+  const lines = html.split('\n')
+  let bestStart = 0
+  let bestScore = -Infinity
+  const win = 8
   for (let i = 0; i < lines.length; i++) {
-    let textLen = 0
-    let tagLen = 0
-    let linkCount = 0
+    const slice = lines.slice(i, i + win).join('\n')
+    const plain = slice.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    if (plain.length < 40) continue
+    const linkCount = (slice.match(/<a\s/gi) || []).length
+    const punct = (plain.match(/[，。！？；：,.!?;:]/g) || []).length
+    const score = plain.length + punct * 8 - linkCount * 10
+    if (score > bestScore) {
+      bestScore = score
+      bestStart = i
+    }
+  }
+  const fallbackLines = lines.slice(bestStart, Math.min(lines.length, bestStart + win * 6))
+  return {
+    html: fallbackLines.join('\n'),
+    text: fallbackLines.map(l => l.replace(/<[^>]+>/g, '')).join('\n')
+  }
+}
 
-    for (let j = i; j < Math.min(i + windowSize, lines.length); j++) {
-      const line = lines[j]
-      // 去除标签后的纯文本长度
-      const text = line.replace(/<[^>]+>/g, '')
-      textLen += text.length
-      tagLen += line.length - text.length
-      linkCount += (line.match(/<a\s/gi) || []).length
+function cleanExtractedBlocks(blocks) {
+  const adKeywords = ['广告', '推广', '赞助', '阅读原文', '点赞', '在看', '分享', '扫码', '关注', '推荐阅读', '更多精彩']
+  const cutKeywords = ['推荐阅读', '相关阅读', '更多精彩', '往期回顾', '延伸阅读', '免责声明', '版权声明']
+  const out = []
+
+  for (let i = 0; i < (blocks || []).length; i++) {
+    const b = blocks[i]
+    if (!b) continue
+    if (b.type === 'img') {
+      out.push(b)
+      continue
     }
 
-    // 密度 = 文本长度 / (标签长度 + 1)
-    const density = textLen / (tagLen + 1)
-    // 链接密度 = 链接数 / 文本长度
-    const linkDensity = textLen > 0 ? linkCount / textLen : 0
+    const text = (b.text || '').replace(/\s+/g, ' ').trim()
+    if (!text) continue
+    if (text.length < 2) continue
 
-    candidates.push({
-      index: i,
-      density,
-      linkDensity,
-      textLen,
-      lines: lines.slice(i, Math.min(i + windowSize, lines.length))
-    })
+    if (cutKeywords.some((k) => text.includes(k))) break
+    if (adKeywords.filter((k) => text.includes(k)).length >= 2) continue
+    if (/^https?:\/\//i.test(text)) continue
+    if (/^(来源|作者|编辑|责任编辑|发布时间)[：:]/.test(text)) continue
+
+    out.push({ ...b, text })
   }
 
-  // 过滤掉链接密度过高的区域（通常是导航栏）
-  const filtered = candidates.filter(c => c.linkDensity < 0.3 && c.textLen > 20)
-
-  // 按密度排序
-  filtered.sort((a, b) => b.density - a.density)
-
-  // 取密度最高的区域，并扩展边界
-  if (filtered.length === 0) {
-    return { html: '', text: '' }
-  }
-
-  const best = filtered[0]
-  let start = best.index
-  let end = Math.min(best.index + windowSize, lines.length)
-
-  // 向上扩展，直到遇到密度骤降的区域
-  while (start > 0) {
-    const prevLine = lines[start - 1]
-    const prevText = prevLine.replace(/<[^>]+>/g, '')
-    if (prevText.length < 5) break
-    start--
-  }
-
-  // 向下扩展
-  while (end < lines.length) {
-    const nextLine = lines[end]
-    const nextText = nextLine.replace(/<[^>]+>/g, '')
-    if (nextText.length < 5) break
-    end++
-  }
-
-  const contentLines = lines.slice(start, end)
-
-  return {
-    html: contentLines.join('\n'),
-    text: contentLines.map(l => l.replace(/<[^>]+>/g, '')).join('\n')
-  }
+  return out
 }
 
 /**

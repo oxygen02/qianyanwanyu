@@ -1,303 +1,401 @@
 // utils/content-cleaner.js
-// 智能内容清洗与结构化 - 拾文功能核心
+// 拾文内容清洗与结构化（正文优先、广告剔除、图片抽离）
 
-/**
- * 广告/推广内容识别模式
- * 按优先级排序，越具体的模式越靠前
- */
-const AD_PATTERNS = [
-  // 微信公众号推广（高置信度）
-  /[\s\S]*?(点击关注|长按识别|扫码关注|关注公众号|关注.+公众号|↓点击|阅读原文)[\s\S]*$/i,
-  // 二维码/图片推广
-  /[\s\S]*?(二维码|QR码|qrcode|扫码进群|添加微信|客服微信)[\s\S]*$/i,
-  // 社交互动推广
-  /[\s\S]*?(欢迎转发|转发给朋友|分享到朋友圈|点赞|在看|收藏|分享|赞赏|打赏)[\s\S]*$/i,
-  // 广告标记
-  /[\s\S]*?(广告|推广|赞助商|SPONSORED|ADVERTISEMENT)[\s\S]*$/i,
-  // 版权/声明尾部
-  /[\s\S]*?(版权声明|版权所有|未经授权|转载声明|免责声明|法律顾问)[\s\S]*$/i,
-  // 社群引流
-  /[\s\S]*?(关注我们|加入社群|扫码进群|添加微信|客服微信|免费咨询)[\s\S]*$/i,
-  // 推荐阅读/更多内容
-  /[\s\S]*?(更多精彩|推荐阅读|相关阅读|延伸阅读|往期回顾)[\s\S]*$/i
+const URL_PATTERN = /https?:\/\/[^\s]+/i
+const URL_GLOBAL_PATTERN = /https?:\/\/[^\s]+/gi
+const RAW_IMAGE_URL_PATTERN = /(https?:\/\/[^\s"'<>]+?\.(?:jpg|jpeg|png|gif|webp|bmp))(?:\?[^\s"'<>]*)?/gi
+const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/gi
+const HTML_IMAGE_PATTERN = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi
+
+const AD_KEYWORDS = [
+  '广告', '推广', '赞助', '商务合作', '投放',
+  '点击关注', '长按识别', '扫码关注', '关注公众号',
+  '阅读原文', '点赞', '在看', '转发', '分享', '打赏', '赞赏',
+  '扫码进群', '添加微信', '客服微信', '私信',
+  '免责声明', '版权声明', '未经授权', '转载',
+  '相关推荐', '推荐阅读', '更多精彩', '往期回顾'
 ]
 
-/**
- * 图片URL匹配模式
- */
-const IMAGE_URL_PATTERN = /(https?:\/\/[^\s"'<>]+?\.(?:jpg|jpeg|png|gif|webp|bmp))(?:\?[^\s"'<>]*)?/gi
+const NOISE_LINE_PATTERNS = [
+  /^来源[：:]/,
+  /^作者[：:]/,
+  /^编辑[：:]/,
+  /^责任编辑[：:]/,
+  /^发布时间[：:]/,
+  /^发表于/,
+  /^阅读\s*\d+/,
+  /^点赞\s*\d+/,
+  /^本文/, 
+  /^原标题[：:]/,
+  /^http[s]?:\/\//i,
+  /^微信号[：:]/,
+  /^公众号[：:]/
+]
 
-/**
- * 判断是否为URL
- */
+const SECTION_CUT_PATTERNS = [
+  /^推荐阅读[：:]?/,
+  /^相关阅读[：:]?/,
+  /^更多精彩[：:]?/,
+  /^往期回顾[：:]?/,
+  /^延伸阅读[：:]?/,
+  /^你可能还想看[：:]?/,
+  /^本文完[。！!]?$/,
+  /^-{3,}$/,
+  /^\*{3,}$/
+]
+
 function isUrl(str) {
-  return /^https?:\/\/[^\s]+/.test(str.trim())
+  return /^https?:\/\/[^\s]+$/i.test((str || '').trim())
 }
 
-/**
- * 主入口：清洗原始输入
- * @param {string} rawInput - 用户粘贴的内容
- * @returns {{type: 'url'|'text', url?: string, blocks?: Array}}
- */
-function cleanContent(rawInput) {
-  const trimmed = rawInput.trim()
+function extractFirstUrl(input) {
+  const match = String(input || '').match(URL_PATTERN)
+  return match ? match[0] : ''
+}
 
-  if (isUrl(trimmed)) {
-    return { type: 'url', url: trimmed }
+function cleanContent(rawInput) {
+  const text = normalizeInput(rawInput)
+  if (!text) return { type: 'text' }
+
+  if (isUrl(text)) {
+    return { type: 'url', url: text }
   }
 
-  return cleanText(trimmed)
+  const url = extractFirstUrl(text)
+  if (url) {
+    const noUrlText = text.replace(URL_GLOBAL_PATTERN, '').trim()
+    // 只要正文文本非常短，优先按网址抓取
+    if (noUrlText.length <= 40) {
+      return { type: 'url', url }
+    }
+  }
+
+  return { type: 'text' }
 }
 
-/**
- * 文本清洗与结构化
- * @param {string} rawText
- * @returns {{type: 'text', blocks: Array, title: string, wordCount: number, removedAds: Array}}
- */
 function cleanText(rawText) {
-  let text = rawText.trim()
+  let text = normalizeInput(rawText)
 
-  // 1. 提取图片URL（在清洗前提取，避免误删）
   const images = extractImagesFromText(text)
+  text = stripHtmlAndImageTokens(text)
 
-  // 2. 去除HTML标签（如果有）
-  text = text.replace(/<[^>]+>/g, '\n')
+  const lines = text
+    .split('\n')
+    .map(normalizeLine)
+    .filter(Boolean)
 
-  // 3. 合并多余空行（超过2个换行合并为2个）
-  text = text.replace(/\n{3,}/g, '\n\n')
+  // 先按行去噪
+  const denoisedLines = lines.filter((line) => !isNoiseLine(line))
 
-  // 4. 去除行首行尾空格
-  text = text.split('\n').map(line => line.trim()).join('\n')
+  // 合并为段落（空行已在 normalize 中压缩，按句长进行智能合并）
+  const paragraphs = buildParagraphs(denoisedLines)
 
-  // 5. 识别并去除广告
-  const { cleanedText, removedAds } = removeAds(text)
+  // 广告与尾部推荐区清洗
+  const { cleanedParagraphs, removedAds } = filterParagraphs(paragraphs)
 
-  // 6. 结构化分块
-  const blocks = structureContent(cleanedText, images)
+  // 标题提取
+  const { title, bodyParagraphs } = extractTitleAndBody(cleanedParagraphs)
 
-  // 7. 提取标题
-  const titleBlock = blocks.find(b => b.type === 'h1')
+  // 结构化
+  const blocks = []
+  if (title) blocks.push({ type: 'h1', text: title })
+
+  const textBlocks = bodyParagraphs
+    .map((p) => ({ type: 'p', text: p }))
+    .filter((b) => b.text && b.text.length >= 2)
+
+  const mergedBlocks = mergeShortParagraphBlocks(textBlocks)
+
+  // 图片插入：按数量均匀分布到段落之间，避免全挤在开头/末尾
+  const contentBlocks = injectImagesBetweenBlocks(mergedBlocks, images)
+  blocks.push(...contentBlocks)
+
+  const textOnly = blocksToText(blocks)
 
   return {
     type: 'text',
     blocks,
-    title: titleBlock ? titleBlock.text : '',
-    wordCount: cleanedText.length,
+    title,
+    wordCount: textOnly.replace(/\s+/g, '').length,
     removedAds,
     images
   }
 }
 
-/**
- * 从文本中提取图片URL
- * @param {string} text
- * @returns {Array<{url: string, position: number}>}
- */
-function extractImagesFromText(text) {
-  const matches = []
-  let match
-
-  while ((match = IMAGE_URL_PATTERN.exec(text)) !== null) {
-    matches.push({
-      url: match[1],
-      position: match.index
-    })
-  }
-
-  // 重置正则lastIndex
-  IMAGE_URL_PATTERN.lastIndex = 0
-
-  return matches
+function normalizeInput(raw) {
+  return String(raw || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
-/**
- * 广告识别与去除
- * @param {string} text
- * @returns {{cleanedText: string, removedAds: Array<string>}}
- */
-function removeAds(text) {
-  let cleaned = text
+function stripHtmlAndImageTokens(text) {
+  let out = String(text || '')
+  out = out.replace(/<script[\s\S]*?<\/script>/gi, '\n')
+  out = out.replace(/<style[\s\S]*?<\/style>/gi, '\n')
+  out = out.replace(/<!--([\s\S]*?)-->/g, '\n')
+  out = out.replace(HTML_IMAGE_PATTERN, '\n')
+  out = out.replace(MARKDOWN_IMAGE_PATTERN, '\n')
+  out = out.replace(/<\s*br\s*\/?>/gi, '\n')
+  out = out.replace(/<\/(p|div|h[1-6]|li|section|article)>/gi, '\n')
+  out = out.replace(/<(p|div|h[1-6]|li|section|article)[^>]*>/gi, '')
+  out = out.replace(/<[^>]+>/g, '')
+  out = out.replace(RAW_IMAGE_URL_PATTERN, '\n')
+  out = out.replace(/\n{3,}/g, '\n\n')
+  return out
+}
+
+function normalizeLine(line) {
+  return String(line || '')
+    .replace(/\s+/g, ' ')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .trim()
+}
+
+function isNoiseLine(line) {
+  if (!line) return true
+  if (line.length === 1 && /[，。！？、；：,.!?;:'"“”‘’（）()【】\-—]/.test(line)) return true
+
+  for (const p of NOISE_LINE_PATTERNS) {
+    if (p.test(line)) return true
+  }
+
+  // 纯链接行
+  if (/^https?:\/\//i.test(line)) return true
+
+  // 有效字符过少
+  const meaningful = line.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '')
+  if (meaningful.length <= 1 && line.length <= 8) return true
+
+  return false
+}
+
+function buildParagraphs(lines) {
+  const paragraphs = []
+  let buf = ''
+
+  for (const line of lines) {
+    const isLikelyStandalone = line.length >= 28 || /[。！？!?；;]$/.test(line)
+
+    if (!buf) {
+      buf = line
+      if (isLikelyStandalone) {
+        paragraphs.push(buf)
+        buf = ''
+      }
+      continue
+    }
+
+    // 诗词/短句：保持句读边界
+    const canAppend = !/[。！？!?；;]$/.test(buf) && line.length <= 22
+
+    if (canAppend) {
+      buf = `${buf}${line}`
+    } else {
+      paragraphs.push(buf)
+      buf = line
+      if (isLikelyStandalone) {
+        paragraphs.push(buf)
+        buf = ''
+      }
+    }
+  }
+
+  if (buf) paragraphs.push(buf)
+
+  return paragraphs.map((p) => p.trim()).filter(Boolean)
+}
+
+function filterParagraphs(paragraphs) {
+  const kept = []
   const removedAds = []
 
-  for (const pattern of AD_PATTERNS) {
-    const match = cleaned.match(pattern)
-    if (match && match.index > cleaned.length * 0.4) {
-      // 只去掉后60%才出现的推广内容（避免误删正文）
-      const adText = cleaned.slice(match.index)
-      // 记录被删除的内容摘要（前50字）
-      const summary = adText.replace(/\n/g, ' ').slice(0, 50)
-      if (summary.length > 5) {
-        removedAds.push(summary + (adText.length > 50 ? '...' : ''))
-      }
-      cleaned = cleaned.slice(0, match.index).trim()
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i]
+
+    if (shouldCutFromHere(p) && i >= Math.max(2, Math.floor(paragraphs.length * 0.4))) {
+      const tail = paragraphs.slice(i)
+      const summary = tail.join(' ').slice(0, 80)
+      removedAds.push(summary + (tail.join(' ').length > 80 ? '...' : ''))
+      break
     }
+
+    if (isAdParagraph(p, i, paragraphs.length)) {
+      removedAds.push(p.slice(0, 80) + (p.length > 80 ? '...' : ''))
+      continue
+    }
+
+    kept.push(p)
   }
 
-  // 去除纯符号行（保留空行作为段落分隔）
-  cleaned = cleaned.split('\n').filter(line => {
-    if (!line.trim()) return true
-    const meaningfulChars = line.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '')
-    return meaningfulChars.length > 0
-  }).join('\n')
-
-  return { cleanedText: cleaned, removedAds }
+  return { cleanedParagraphs: kept, removedAds }
 }
 
-/**
- * 内容结构化分块
- * @param {string} text
- * @param {Array} images
- * @returns {Array<{type: 'h1'|'p'|'img', text?: string, url?: string}>}
- */
-function structureContent(text, images) {
-  const blocks = []
-  const lines = text.split('\n')
-  let currentPara = []
-  let isFirstLine = true
-  let titleFound = false
-  let currentPos = 0
+function shouldCutFromHere(paragraph) {
+  return SECTION_CUT_PATTERNS.some((p) => p.test(paragraph))
+}
 
-  // 记录每行在原文中的位置
-  const linePositions = []
-  let pos = 0
-  for (const line of lines) {
-    linePositions.push(pos)
-    pos += line.length + 1 // +1 for \n
+function isAdParagraph(paragraph, index, total) {
+  const lower = paragraph.toLowerCase()
+  let hit = 0
+  for (const k of AD_KEYWORDS) {
+    if (lower.includes(k.toLowerCase())) hit++
   }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-    currentPos = linePositions[i]
+  const atTail = index >= Math.floor(total * 0.5)
+  const veryLinky = (paragraph.match(/https?:\/\//g) || []).length >= 1
+  const socialCTA = /关注|点赞|在看|转发|分享|扫码|添加微信|阅读原文/.test(paragraph)
 
-    if (!line) {
-      // 空行：段落结束
-      if (currentPara.length > 0) {
-        blocks.push({
-          type: 'p',
-          text: currentPara.join('\n')
-        })
-        currentPara = []
-      }
+  if (hit >= 2 && atTail) return true
+  if (veryLinky && atTail) return true
+  if (socialCTA && atTail) return true
+
+  return false
+}
+
+function extractTitleAndBody(paragraphs) {
+  if (!paragraphs.length) return { title: '', bodyParagraphs: [] }
+
+  const first = paragraphs[0]
+  const second = paragraphs[1] || ''
+
+  const firstLikeTitle = first.length >= 4 && first.length <= 36 && !/[。！？!?]/.test(first)
+  const secondLooksBody = second.length >= 12 || /[。！？!?]/.test(second)
+
+  if (firstLikeTitle && secondLooksBody) {
+    return { title: first, bodyParagraphs: paragraphs.slice(1) }
+  }
+
+  return { title: '', bodyParagraphs: paragraphs }
+}
+
+function mergeShortParagraphBlocks(blocks) {
+  const merged = []
+
+  for (const block of blocks) {
+    if (!merged.length) {
+      merged.push(block)
       continue
     }
 
-    // 标题识别规则
-    const isTitle = isFirstLine && line.length < 60 && line.length > 0 && !titleFound
-    const isMarkdownHeader = line.startsWith('#')
-    const isBracketTitle = line.startsWith('【') && line.endsWith('】') && line.length < 40
+    const prev = merged[merged.length - 1]
+    const shortPrev = prev.type === 'p' && prev.text.length <= 14
+    const shortCurr = block.type === 'p' && block.text.length <= 14
 
-    if (isTitle || isMarkdownHeader || isBracketTitle) {
-      // 先结束当前段落
-      if (currentPara.length > 0) {
-        blocks.push({ type: 'p', text: currentPara.join('\n') })
-        currentPara = []
-      }
-
-      const titleText = line.replace(/^#+\s*/, '').replace(/[【】]/g, '')
-      blocks.push({ type: 'h1', text: titleText })
-      titleFound = true
-      isFirstLine = false
-      continue
+    if (shortPrev && shortCurr) {
+      prev.text = `${prev.text}\n${block.text}`
+    } else {
+      merged.push(block)
     }
-
-    isFirstLine = false
-    currentPara.push(line)
   }
 
-  // 处理最后一段
-  if (currentPara.length > 0) {
-    blocks.push({ type: 'p', text: currentPara.join('\n') })
+  return merged
+}
+
+function injectImagesBetweenBlocks(textBlocks, images) {
+  if (!images || images.length === 0) return textBlocks
+  if (!textBlocks || textBlocks.length === 0) {
+    return images.map((img) => ({ type: 'img', url: img.url, alt: img.alt || '' }))
   }
 
-  // 插入图片块（按位置排序）
-  const sortedImages = [...images].sort((a, b) => a.position - b.position)
-  for (const img of sortedImages) {
-    const insertIndex = findInsertIndex(blocks, img.position, text)
-    blocks.splice(insertIndex, 0, {
+  const blocks = [...textBlocks]
+  const cleanImages = dedupeImages(images)
+  const slots = blocks.length + 1
+
+  cleanImages.forEach((img, idx) => {
+    // 均匀分布插图位置，避免集中
+    const ratio = (idx + 1) / (cleanImages.length + 1)
+    const insertPos = Math.max(1, Math.min(blocks.length, Math.round(ratio * slots)))
+    blocks.splice(insertPos, 0, {
       type: 'img',
-      url: img.url
+      url: img.url,
+      alt: img.alt || ''
     })
-  }
+  })
 
   return blocks
 }
 
-/**
- * 根据图片在原文中的位置，找到合适的插入点
- */
-function findInsertIndex(blocks, position, originalText) {
-  let currentPos = 0
+function dedupeImages(images) {
+  const seen = new Set()
+  const out = []
 
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i]
-    if (block.text) {
-      currentPos += block.text.length + 2 // +2 for \n\n
-    }
-    if (currentPos >= position) {
-      return i + 1
-    }
+  for (const img of images) {
+    const url = (img.url || '').trim()
+    if (!url || seen.has(url)) continue
+    seen.add(url)
+
+    // 过滤疑似广告/图标
+    const lower = url.toLowerCase()
+    if (lower.includes('logo') || lower.includes('icon') || lower.includes('avatar')) continue
+
+    out.push({ url, alt: img.alt || '' })
   }
 
-  return blocks.length
+  return out
 }
 
-/**
- * 将结构化内容块转换为纯文本（用于排版引擎）
- * @param {Array} blocks
- * @returns {string}
- */
+function extractImagesFromText(text) {
+  const images = []
+
+  const pushImg = (url, position, alt = '') => {
+    if (!url) return
+    images.push({ url, position: Math.max(0, position || 0), alt })
+  }
+
+  let m
+  while ((m = MARKDOWN_IMAGE_PATTERN.exec(text)) !== null) {
+    pushImg(m[2], m.index, m[1] || '')
+  }
+  MARKDOWN_IMAGE_PATTERN.lastIndex = 0
+
+  while ((m = HTML_IMAGE_PATTERN.exec(text)) !== null) {
+    const fullTag = m[0]
+    const altMatch = fullTag.match(/alt=["']([^"']*)["']/i)
+    pushImg(m[1], m.index, altMatch ? altMatch[1] : '')
+  }
+  HTML_IMAGE_PATTERN.lastIndex = 0
+
+  while ((m = RAW_IMAGE_URL_PATTERN.exec(text)) !== null) {
+    pushImg(m[1], m.index, '')
+  }
+  RAW_IMAGE_URL_PATTERN.lastIndex = 0
+
+  return dedupeImages(images)
+}
+
 function blocksToText(blocks) {
-  return blocks
-    .filter(b => b.type === 'h1' || b.type === 'p')
-    .map(b => b.text)
+  return (blocks || [])
+    .filter((b) => b.type === 'h1' || b.type === 'p')
+    .map((b) => b.text)
     .join('\n\n')
 }
 
-/**
- * 提取图片块
- * @param {Array} blocks
- * @returns {Array}
- */
 function extractImageBlocks(blocks) {
-  return blocks.filter(b => b.type === 'img')
+  return (blocks || []).filter((b) => b.type === 'img')
 }
 
-/**
- * 构建页面序列（文字页和图片页交错）
- * @param {Array} blocks
- * @returns {Array<{type: 'text'|'image', blocks?: Array, url?: string, caption?: string}>}
- */
 function buildPageSequence(blocks) {
   const pages = []
   let currentTextBlocks = []
 
-  for (const block of blocks) {
+  for (const block of blocks || []) {
     if (block.type === 'img') {
-      // 先输出累积的文字页
       if (currentTextBlocks.length > 0) {
-        pages.push({
-          type: 'text',
-          blocks: [...currentTextBlocks]
-        })
+        pages.push({ type: 'text', blocks: [...currentTextBlocks] })
         currentTextBlocks = []
       }
-      // 图片单独一页
-      pages.push({
-        type: 'image',
-        url: block.url,
-        caption: block.alt || ''
-      })
-    } else {
-      currentTextBlocks.push(block)
+      pages.push({ type: 'image', url: block.url, caption: block.alt || '' })
+      continue
     }
+    currentTextBlocks.push(block)
   }
 
-  // 最后一批文字
   if (currentTextBlocks.length > 0) {
-    pages.push({
-      type: 'text',
-      blocks: [...currentTextBlocks]
-    })
+    pages.push({ type: 'text', blocks: [...currentTextBlocks] })
   }
 
   return pages
