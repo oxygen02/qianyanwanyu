@@ -59,8 +59,20 @@ Page({
       // 为每条数据生成摘要（如果没有的话）
       const processedList = result.list.map(item => {
         if (!item.excerpt && item.content) {
-          // 取前30个字作为摘要
-          const excerpt = item.content.replace(/\n/g, ' ').substring(0, 30) + (item.content.length > 30 ? '...' : '')
+          // 智能生成摘要：保留换行结构，取前两行内容
+          const lines = item.content.split('\n').filter(line => line.trim())
+          let excerpt = ''
+          if (lines.length >= 2) {
+            // 取前两行
+            excerpt = lines.slice(0, 2).join(' ')
+          } else if (lines.length === 1) {
+            // 只有一行，取前50字
+            excerpt = lines[0].substring(0, 50)
+          }
+          // 如果内容过长，添加省略号
+          if (item.content.length > excerpt.length) {
+            excerpt += '...'
+          }
           return { ...item, excerpt }
         }
         return item

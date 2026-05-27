@@ -3,8 +3,9 @@
   <!-- 顶部安全区域占位 -->
   <view class="safe-area-top" style="height: {{statusBarHeight}}px"></view>
 
-  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}" wx:if="{{poem}}" scroll-top="0">
-    <view class="paper-sheet">
+  <!-- 固定区域：诗词标题和正文 -->
+  <view class="poem-fixed-area" wx:if="{{poem}}">
+    <view class="paper-sheet-fixed">
       <!-- 诗词标题 -->
       <view class="poem-header">
         <text class="poem-title">{{poem.title}}</text>
@@ -21,7 +22,12 @@
           <image class="copy-icon-img" src="/images/copy.png" mode="aspectFit" />
         </view>
       </view>
+    </view>
+  </view>
 
+  <!-- 滚动区域：注释、译文、赏析等 -->
+  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}" wx:if="{{poem}}" scroll-top="0">
+    <view class="paper-sheet-scroll">
       <!-- 注释 -->
       <view class="poem-section" wx:if="{{poem.annotations}}">
         <view class="section-title">注释</view>
