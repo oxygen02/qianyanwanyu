@@ -3,7 +3,7 @@
   <!-- 顶部安全区域占位 -->
   <view class="safe-area-top" style="height: {{statusBarHeight}}px"></view>
 
-  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}" wx:if="{{poem}}">
+  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}" wx:if="{{poem}}" scroll-top="0">
     <view class="paper-sheet">
       <!-- 诗词标题 -->
       <view class="poem-header">
@@ -74,6 +74,19 @@
     <view class="poem-nav-item {{currentIndex === totalCount - 1 ? 'disabled' : ''}}" bindtap="onNextPoem">
       <text class="poem-nav-text">下一篇</text>
       <text class="poem-nav-icon">›</text>
+    </view>
+  </view>
+
+  <!-- 首页导航栏 -->
+  <view class="home-tab-bar">
+    <view class="home-tab-item {{activeTab === 'luomo' ? 'active' : ''}}" bindtap="onGoLuomo">
+      <text class="home-tab-text">落墨</text>
+    </view>
+    <view class="home-tab-item {{activeTab === 'wendian' ? 'active' : ''}}" bindtap="onGoWendian">
+      <text class="home-tab-text">问典</text>
+    </view>
+    <view class="home-tab-item {{activeTab === 'wujuan' ? 'active' : ''}}" bindtap="onGoWujuan">
+      <text class="home-tab-text">吾卷</text>
     </view>
   </view>
 </view>

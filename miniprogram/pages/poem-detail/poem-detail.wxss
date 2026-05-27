@@ -18,16 +18,19 @@
 .content-scroll {
   flex: 1;
   min-height: 0;
-  padding: 16rpx 24rpx;
+  padding: 72rpx 16rpx 8rpx;
   overflow: hidden;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 /* ===== 书页纸张 ===== */
 .paper-sheet {
   background-color: #FAF7F2;
   border-radius: 8rpx;
-  padding: 32rpx 28rpx;
+  padding: 40rpx 20rpx;
   box-shadow:
     0 1rpx 3rpx rgba(0, 0, 0, 0.12),
     0 4rpx 12rpx rgba(0, 0, 0, 0.08),
@@ -94,18 +97,22 @@
 /* ===== 原文 ===== */
 .poem-content {
   margin-bottom: 24rpx;
-  padding: 20rpx 16rpx;
+  padding: 48rpx 24rpx;
   background-color: rgba(255, 255, 255, 0.4);
   border-radius: 8rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.15);
+  min-height: 200rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .poem-line {
   display: block;
-  font-size: 28rpx;
+  font-size: 32rpx;
   color: #2C1810;
-  line-height: 1.8;
-  letter-spacing: 4rpx;
+  line-height: 2.2;
+  letter-spacing: 6rpx;
   text-align: center;
   font-family: 'Songti SC', 'SimSun', serif;
   word-wrap: break-word;
@@ -204,7 +211,7 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 12rpx 0 calc(12rpx + env(safe-area-inset-bottom));
+  padding: 0;
   background-color: #F5F0E8;
   border-top: 1rpx solid rgba(158, 148, 136, 0.2);
   flex-shrink: 0;
@@ -217,7 +224,7 @@
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  padding: 16rpx 20rpx;
+  padding: 10rpx 20rpx;
   position: relative;
 }
 
@@ -246,4 +253,50 @@
 /* 选中指示条 */
 .poem-nav-item:active {
   background-color: rgba(158, 148, 136, 0.15);
+}
+
+/* ===== 首页导航栏 ===== */
+.home-tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 0 calc(4rpx + env(safe-area-inset-bottom));
+  background-color: #F5F0E8;
+  border-top: 1rpx solid rgba(158, 148, 136, 0.2);
+  flex-shrink: 0;
+}
+
+.home-tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72rpx;
+  position: relative;
+}
+
+.home-tab-text {
+  font-size: 28rpx;
+  color: #9E9488;
+  font-family: serif;
+  letter-spacing: 0.1em;
+  transition: color 0.3s;
+}
+
+.home-tab-item.active .home-tab-text {
+  color: #3D2B1F;
+  font-weight: 600;
+}
+
+/* 选中指示条 */
+.home-tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 12rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 4rpx;
+  background-color: #3D2B1F;
+  border-radius: 2rpx;
 }

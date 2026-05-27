@@ -260,3 +260,14 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
 /bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
 shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
 /bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
+========================================
+[2026-05-27 13:26:30] 开始检查...
+当前分支: master
+检测到变更，开始提交...
+变更文件:
+ M .workbuddy/automations/automation-1779716386594/memory.md
+ M miniprogram/pages/poem-detail/poem-detail.js
+ M miniprogram/pages/poem-detail/poem-detail.wxml
+ M miniprogram/pages/poem-detail/poem-detail.wxss
+ M miniprogram/utils/content-data.js
+ M push.log
