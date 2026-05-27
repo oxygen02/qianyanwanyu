@@ -556,10 +556,10 @@
       <view class="font-panel-header">
         <text class="font-panel-back" bind:tap="onCloseFontPanel">‹ 返回</text>
         <text class="font-panel-title">选择字体</text>
-        <text class="font-panel-close" bind:tap="onCloseFontPanel">✕</text>
+        <text class="font-panel-close" bind:tap="onCloseFontPanel">×</text>
       </view>
       <view class="font-tip">
-        <text class="font-tip-text">💡 字体下载需消耗流量，建议在Wi-Fi环境下下载</text>
+        <text class="font-tip-text">字体下载需消耗流量，建议在Wi-Fi环境下下载</text>
       </view>
       <scroll-view scroll-y class="font-grid">
         <view class="font-grid-inner">
@@ -577,7 +577,7 @@
             <view class="font-meta">
               <text class="font-size" wx:if="{{item.fileSize}}">{{item.fileSizeLabel}}</text>
             </view>
-            <view class="font-check" wx:if="{{activeFontId === item.id}}">✓</view>
+            <view class="font-check" wx:if="{{activeFontId === item.id}}">已选</view>
           </view>
         </view>
       </scroll-view>
@@ -589,7 +589,7 @@
     <view class="template-panel-content" catch:tap="_stopProp">
       <view class="template-panel-header">
         <text class="template-panel-title">选择模板</text>
-        <text class="template-panel-close" bind:tap="onCloseTemplates">✕</text>
+        <text class="template-panel-close" bind:tap="onCloseTemplates">×</text>
       </view>
       <scroll-view scroll-y class="template-grid">
         <view class="template-grid-inner">
@@ -606,7 +606,7 @@
             <view class="template-info">
               <text class="template-name">{{item.name}}</text>
             </view>
-            <view class="template-check" wx:if="{{activeTemplateId === item.id}}">✓</view>
+            <view class="template-check" wx:if="{{activeTemplateId === item.id}}">已选</view>
           </view>
         </view>
       </scroll-view>
@@ -618,15 +618,15 @@
     <view class="save-panel-content" catch:tap="_stopProp">
       <view class="save-panel-header">
         <text class="save-panel-title">保存作品</text>
-        <text class="save-panel-close" bind:tap="onCloseSavePanel">✕</text>
+        <text class="save-panel-close" bind:tap="onCloseSavePanel">×</text>
       </view>
       <view class="save-options">
         <view class="save-option" bind:tap="onSaveToAlbum">
-          <view class="save-option-icon">📷</view>
+          <view class="save-option-icon">保存</view>
           <text class="save-option-label">保存到相册</text>
         </view>
         <view class="save-option" bind:tap="onShareToFriends">
-          <view class="save-option-icon">↗️</view>
+          <view class="save-option-icon">分享</view>
           <text class="save-option-label">分享给好友</text>
         </view>
       </view>

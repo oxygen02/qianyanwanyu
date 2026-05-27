@@ -4,15 +4,21 @@ Component({
     list: [
       {
         pagePath: '/pages/luomo/luomo',
-        text: '落墨'
+        text: '落墨',
+        iconPath: '/images/tab-luomo.png',
+        selectedIconPath: '/images/tab-luomo-active.png'
       },
       {
-        pagePath: '/pages/shiwen/shiwen',
-        text: '拾文'
+        pagePath: '/pages/wendian/wendian',
+        text: '问典',
+        iconPath: '/images/tab-wendian.png',
+        selectedIconPath: '/images/tab-wendian-active.png'
       },
       {
         pagePath: '/pages/wujuan/wujuan',
-        text: '吾卷'
+        text: '吾卷',
+        iconPath: '/images/tab-wujuan.png',
+        selectedIconPath: '/images/tab-wujuan-active.png'
       }
     ]
   },

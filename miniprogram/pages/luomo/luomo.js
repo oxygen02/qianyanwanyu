@@ -428,6 +428,14 @@ Page({
       this.setData({ text: draft.text })
     }
 
+    // 检查是否有从问典页面跳转过来的文字
+    const wendianText = wx.getStorageSync('wendian_pending_text')
+    if (wendianText) {
+      this._pendingText = wendianText
+      this.setData({ text: wendianText })
+      wx.removeStorageSync('wendian_pending_text')
+    }
+
     // 预加载当前模板字体（提前初始化，避免首次渲染等待）
     if (template.font && template.font.family) {
       loadFont(template.font.family).catch(err => {

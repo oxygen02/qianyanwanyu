@@ -1,0 +1,124 @@
+<!-- pages/wendian/wendian.wxml -->
+<view class="page-root">
+  <!-- 顶部区域 -->
+  <view class="header" style="padding-top: {{statusBarHeight}}px">
+    <view class="header-inner">
+      <text class="header-title">问典</text>
+      <text class="header-subtitle">向经典发问，寻文字之典</text>
+    </view>
+  </view>
+
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text class="search-icon">搜索</text>
+      <input 
+        class="search-input" 
+        placeholder="搜索诗词、名句、作者..." 
+        placeholder-class="search-placeholder"
+        value="{{searchKeyword}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+      />
+      <text class="search-clear" wx:if="{{searchKeyword}}" bindtap="onClearSearch">×</text>
+    </view>
+  </view>
+
+  <!-- 分类Tab -->
+  <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="category-list">
+      <view 
+        wx:for="{{categories}}" 
+        wx:key="id"
+        class="category-item {{activeCategory === item.id ? 'active' : ''}}"
+        data-cat="{{item.id}}"
+        bindtap="onCategoryTap"
+      >
+        <text class="cat-name">{{item.name}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 标签筛选栏 -->
+  <view class="tags-bar" wx:if="{{tags.length > 0}}">
+    <scroll-view scroll-x class="tags-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="tags-list">
+        <view 
+          class="tag-item {{activeTag === '' ? 'active' : ''}}" 
+          bindtap="onClearTag"
+        >全部</view>
+        <view 
+          wx:for="{{tags}}" 
+          wx:key="*this"
+          class="tag-item {{activeTag === item ? 'active' : ''}}"
+          data-tag="{{item}}"
+          bindtap="onTagTap"
+        >{{item}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 结果统计 -->
+  <view class="result-info">
+    <text>共 {{filteredList.length}} 条</text>
+    <text wx:if="{{activeTag}}" class="active-tag-text"> · 标签: {{activeTag}}</text>
+  </view>
+
+  <!-- 内容列表 -->
+  <scroll-view 
+    scroll-y 
+    class="content-scroll" 
+    enhanced 
+    show-scrollbar="{{false}}"
+  >
+    <view class="content-list">
+      <view 
+        wx:for="{{filteredList}}" 
+        wx:key="id"
+        class="content-card {{copiedId === item.id ? 'copied' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onItemTap"
+      >
+        <!-- 卡片头部 -->
+        <view class="card-header">
+          <view class="card-title-row">
+            <text class="card-title">{{item.title}}</text>
+            <text class="card-dynasty" wx:if="{{item.dynasty}}">{{item.dynasty}}</text>
+          </view>
+          <text class="card-author" wx:if="{{item.author}}">{{item.author}}</text>
+        </view>
+
+        <!-- 内容主体 -->
+        <view class="card-body">
+          <text class="card-content">{{item.content}}</text>
+        </view>
+
+        <!-- 标签 -->
+        <view class="card-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+          <text 
+            wx:for="{{item.tags}}" 
+            wx:key="*this" 
+            wx:for-item="tag"
+            class="card-tag"
+          >#{{tag}}</text>
+        </view>
+
+        <!-- 操作按钮 -->
+        <view class="card-actions">
+          <view class="action-btn copy-btn" data-id="{{item.id}}" catchtap="onCopyContent">
+            <text class="action-icon">{{copiedId === item.id ? '已复制' : '复制'}}</text>
+          </view>
+          <view class="action-btn luomo-btn" data-id="{{item.id}}" catchtap="onGoToLuomo">
+            <text class="action-icon">落墨书写</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{filteredList.length === 0}}">
+        <text class="empty-text">没有找到相关内容</text>
+        <text class="empty-hint">试试其他关键词或分类</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

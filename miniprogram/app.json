@@ -1,7 +1,7 @@
 {
   "pages": [
     "pages/luomo/luomo",
-    "pages/shiwen/shiwen",
+    "pages/wendian/wendian",
     "pages/wujuan/wujuan"
   ],
   "window": {
@@ -24,8 +24,8 @@
         "text": "落墨"
       },
       {
-        "pagePath": "pages/shiwen/shiwen",
-        "text": "拾文"
+        "pagePath": "pages/wendian/wendian",
+        "text": "问典"
       },
       {
         "pagePath": "pages/wujuan/wujuan",
