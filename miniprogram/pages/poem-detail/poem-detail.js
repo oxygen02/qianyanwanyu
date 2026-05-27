@@ -4,53 +4,53 @@ const { contentDB } = require('../../utils/content-data')
 Page({
   data: {
     poem: null,
-    showTranslation: false,
-    showAppreciation: false,
-    showAnnotations: false,
-    copied: false
+    currentIndex: 0,
+    totalCount: contentDB.length
   },
 
   onLoad(options) {
-    const id = options.id
-    const poem = contentDB.find(item => item.id === id)
-    if (!poem) {
+    this._loadPoemById(options.id)
+  },
+
+  _loadPoemById(id) {
+    const index = contentDB.findIndex(item => item.id === id)
+    if (index === -1) {
       wx.showToast({ title: '诗词未找到', icon: 'none' })
       setTimeout(() => wx.navigateBack(), 1500)
       return
     }
-    this.setData({ poem })
+    this._loadPoemByIndex(index)
   },
 
-  onToggleTranslation() {
-    this.setData({ showTranslation: !this.data.showTranslation })
-  },
-
-  onToggleAppreciation() {
-    this.setData({ showAppreciation: !this.data.showAppreciation })
-  },
-
-  onToggleAnnotations() {
-    this.setData({ showAnnotations: !this.data.showAnnotations })
-  },
-
-  onCopyContent() {
-    const poem = this.data.poem
-    if (!poem) return
-    wx.setClipboardData({
-      data: poem.content,
-      success: () => {
-        this.setData({ copied: true })
-        wx.showToast({ title: '已复制原文', icon: 'none' })
-        setTimeout(() => this.setData({ copied: false }), 1500)
-      }
+  _loadPoemByIndex(index) {
+    const poem = contentDB[index]
+    const lines = poem.content.split('\n')
+    this.setData({
+      poem: { ...poem, lines },
+      currentIndex: index,
+      totalCount: contentDB.length
     })
   },
 
-  onGoToLuomo() {
-    const poem = this.data.poem
-    if (!poem) return
-    wx.setStorageSync('wendian_pending_text', poem.content)
-    wx.switchTab({ url: '/pages/luomo/luomo' })
+  onPrevPoem() {
+    const newIndex = this.data.currentIndex > 0 ? this.data.currentIndex - 1 : contentDB.length - 1
+    this._loadPoemByIndex(newIndex)
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 })
+  },
+
+  onRandomPoem() {
+    let newIndex
+    do {
+      newIndex = Math.floor(Math.random() * contentDB.length)
+    } while (newIndex === this.data.currentIndex && contentDB.length > 1)
+    this._loadPoemByIndex(newIndex)
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 })
+  },
+
+  onNextPoem() {
+    const newIndex = this.data.currentIndex < contentDB.length - 1 ? this.data.currentIndex + 1 : 0
+    this._loadPoemByIndex(newIndex)
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 })
   },
 
   onShareAppMessage() {

@@ -2,7 +2,8 @@
   "pages": [
     "pages/luomo/luomo",
     "pages/wendian/wendian",
-    "pages/wujuan/wujuan"
+    "pages/wujuan/wujuan",
+    "pages/poem-detail/poem-detail"
   ],
   "window": {
     "backgroundTextStyle": "dark",

@@ -62,3 +62,12 @@
 - **修改文件**: app.json、custom-tab-bar/index.js、luomo.js、luomo.wxml、push.log、memory.md
 - **推送范围**: dcaa51e..6ef2f78 master -> master
 - **备注**: 拾文(shiwen)页面被删除，新增文典(wendian)页面，Tab结构发生重大变更
+
+## 2026-05-27 11:58 (UTC+8)
+- **Status**: 推送成功
+- **Commit**: `c4e6e91` - "Auto push: 2026-05-27 11:58:17"
+- **变更文件**: 10 files changed, 560 insertions(+), 97 deletions(-)
+- **新增文件**: poem-detail/（4个文件：js/json/wxml/wxss）
+- **修改文件**: memory.md、wendian.wxml、wendian.wxss、content-data.js、push.log、以及新增 poem-detail 页面
+- **推送范围**: 6ef2f78..c4e6e91 master -> master
+- **备注**: pull 时远程已最新，新增诗词详情页(poem-detail)及相关代码更新

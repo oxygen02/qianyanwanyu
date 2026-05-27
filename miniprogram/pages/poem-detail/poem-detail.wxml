@@ -1,17 +1,11 @@
 <!-- pages/poem-detail/poem-detail.wxml -->
 <view class="page-root">
-  <!-- 返回按钮 -->
-  <view class="nav-bar" style="padding-top: {{statusBarHeight}}px">
-    <view class="nav-back" bindtap="onNavigateBack">
-      <text class="nav-back-icon">返回</text>
-    </view>
-    <text class="nav-title">诗词详情</text>
-    <view class="nav-placeholder"></view>
-  </view>
+  <!-- 顶部安全区域占位 -->
+  <view class="safe-area-top" style="height: {{statusBarHeight}}px"></view>
 
-  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}">
-    <view class="poem-container" wx:if="{{poem}}">
-      <!-- 诗词标题区 -->
+  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}" wx:if="{{poem}}">
+    <view class="paper-sheet">
+      <!-- 诗词标题 -->
       <view class="poem-header">
         <text class="poem-title">{{poem.title}}</text>
         <view class="poem-meta">
@@ -20,21 +14,15 @@
         </view>
       </view>
 
-      <!-- 诗词原文 -->
-      <view class="poem-content-section">
-        <view class="section-label">原文</view>
-        <view class="poem-content">
-          <text class="poem-line" wx:for="{{poem.content.split('\n')}}" wx:key="index">{{item}}</text>
-        </view>
+      <!-- 原文 -->
+      <view class="poem-content">
+        <text class="poem-line" wx:for="{{poem.lines}}" wx:key="index">{{item}}</text>
       </view>
 
       <!-- 注释 -->
       <view class="poem-section" wx:if="{{poem.annotations}}">
-        <view class="section-header" bindtap="onToggleAnnotations">
-          <text class="section-title">注释</text>
-          <text class="section-toggle">{{showAnnotations ? '收起' : '展开'}}</text>
-        </view>
-        <view class="section-body" wx:if="{{showAnnotations}}">
+        <view class="section-title">注释</view>
+        <view class="section-body">
           <view class="annotation-item" wx:for="{{poem.annotations}}" wx:key="index" wx:for-item="value" wx:for-index="key">
             <text class="annotation-word">{{key}}</text>
             <text class="annotation-meaning">：{{value}}</text>
@@ -44,34 +32,25 @@
 
       <!-- 译文 -->
       <view class="poem-section" wx:if="{{poem.translation}}">
-        <view class="section-header" bindtap="onToggleTranslation">
-          <text class="section-title">译文</text>
-          <text class="section-toggle">{{showTranslation ? '收起' : '展开'}}</text>
-        </view>
-        <view class="section-body" wx:if="{{showTranslation}}">
-          <text class="poem-translation">{{poem.translation}}</text>
+        <view class="section-title">译文</view>
+        <view class="section-body">
+          <text class="section-text">{{poem.translation}}</text>
         </view>
       </view>
 
       <!-- 赏析 -->
       <view class="poem-section" wx:if="{{poem.appreciation}}">
-        <view class="section-header" bindtap="onToggleAppreciation">
-          <text class="section-title">赏析</text>
-          <text class="section-toggle">{{showAppreciation ? '收起' : '展开'}}</text>
-        </view>
-        <view class="section-body" wx:if="{{showAppreciation}}">
-          <text class="poem-appreciation">{{poem.appreciation}}</text>
+        <view class="section-title">赏析</view>
+        <view class="section-body">
+          <text class="section-text">{{poem.appreciation}}</text>
         </view>
       </view>
 
       <!-- 创作背景 -->
       <view class="poem-section" wx:if="{{poem.backgroundStory}}">
-        <view class="section-header" bindtap="onToggleBackground">
-          <text class="section-title">创作背景</text>
-          <text class="section-toggle">{{showBackground ? '收起' : '展开'}}</text>
-        </view>
-        <view class="section-body" wx:if="{{showBackground}}">
-          <text class="poem-background">{{poem.backgroundStory}}</text>
+        <view class="section-title">创作背景</view>
+        <view class="section-body">
+          <text class="section-text">{{poem.backgroundStory}}</text>
         </view>
       </view>
 
@@ -80,15 +59,21 @@
         <text class="poem-tag" wx:for="{{poem.tags}}" wx:key="*this">{{item}}</text>
       </view>
     </view>
-
-    <!-- 底部操作栏 -->
-    <view class="action-bar" wx:if="{{poem}}">
-      <view class="action-btn copy-btn {{copied ? 'copied' : ''}}" bindtap="onCopyContent">
-        <text>{{copied ? '已复制' : '复制原文'}}</text>
-      </view>
-      <view class="action-btn luomo-btn" bindtap="onGoToLuomo">
-        <text>落墨书写</text>
-      </view>
-    </view>
   </scroll-view>
+
+  <!-- 底部诗词切换导航栏 -->
+  <view class="poem-nav-bar" wx:if="{{poem}}">
+    <view class="poem-nav-item {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="onPrevPoem">
+      <text class="poem-nav-icon">‹</text>
+      <text class="poem-nav-text">上一篇</text>
+    </view>
+    <view class="poem-nav-item poem-nav-center" bindtap="onRandomPoem">
+      <text class="poem-nav-icon">⟳</text>
+      <text class="poem-nav-text">漫游</text>
+    </view>
+    <view class="poem-nav-item {{currentIndex === totalCount - 1 ? 'disabled' : ''}}" bindtap="onNextPoem">
+      <text class="poem-nav-text">下一篇</text>
+      <text class="poem-nav-icon">›</text>
+    </view>
+  </view>
 </view>
