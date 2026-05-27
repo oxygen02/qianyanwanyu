@@ -1,7 +1,7 @@
 // pages/wendian/wendian.js
 // 问典页 - 经典诗词名句素材库（云端加载版）
 
-const poemService = require('../../utils/poem-service')
+const poemService = require('../../utils/poem-service.js')
 
 Page({
   data: {

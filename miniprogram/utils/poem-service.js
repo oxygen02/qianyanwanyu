@@ -1,7 +1,7 @@
 // utils/poem-service.js
 // 诗词数据服务 - 优先使用本地数据，云端作为扩展
 
-const { contentDB, getAllTags, getByCategory, search } = require('./content-data')
+const { contentDB, getAllTags, getByCategory: getLocalByCategory, search: localSearch } = require('./content-data.js')
 
 const CLOUD_FUNCTION_NAME = 'fetchPoems'
 
