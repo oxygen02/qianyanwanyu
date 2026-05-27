@@ -1598,7 +1598,13 @@ Page({
       settings: newSettings,
       'textSettings.fontSize': newSettings.fontSize,
       'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
-      'textSettings.inkOpacity': newSettings.inkOpacityVal
+      'textSettings.inkOpacity': newSettings.inkOpacityVal,
+      lastStylePreset: ''
+    })
+    const current = loadSettings()
+    saveSettings({
+      ...current,
+      lastStylePreset: ''
     })
     this._triggerRender()
 

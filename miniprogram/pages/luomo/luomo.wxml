@@ -540,11 +540,11 @@
       <!-- 底部操作栏 -->
       <view class="sp-footer">
         <view class="sp-footer-btn sp-footer-btn--reset" bind:tap="onResetTab">重置</view>
-        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyLightPrintPreset">清雅轻印</view>
-        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyImmersivePreset">印刷沉浸</view>
-        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyAncientBoldPreset">古籍厚墨</view>
-        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onApplyModernMinimalPreset">现代极简</view>
-        <view class="sp-footer-btn sp-footer-btn--default" bind:tap="onResetSettings">恢复默认</view>
+        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'light-print' ? 'active' : ''}}" bind:tap="onApplyLightPrintPreset">清雅轻印</view>
+        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'immersive' ? 'active' : ''}}" bind:tap="onApplyImmersivePreset">印刷沉浸</view>
+        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'ancient-bold' ? 'active' : ''}}" bind:tap="onApplyAncientBoldPreset">古籍厚墨</view>
+        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'modern-minimal' ? 'active' : ''}}" bind:tap="onApplyModernMinimalPreset">现代极简</view>
+        <view class="sp-footer-btn sp-footer-btn--default {{!lastStylePreset ? 'active' : ''}}" bind:tap="onResetSettings">恢复默认</view>
         <view class="sp-footer-btn sp-footer-btn--done" bind:tap="onCloseSettings">确定</view>
       </view>
     </view>

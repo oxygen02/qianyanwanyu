@@ -499,6 +499,12 @@
   border: 1rpx solid rgba(158,148,136,0.15);
 }
 
+.sp-footer-btn--default.active {
+  background-color: #6B5B4F;
+  color: #FAF7F2;
+  border-color: #6B5B4F;
+}
+
 .sp-footer-btn--default:active {
   background-color: rgba(158,148,136,0.25);
 }
