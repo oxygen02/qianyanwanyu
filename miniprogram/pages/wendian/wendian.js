@@ -131,24 +131,8 @@ Page({
 
   onItemTap(e) {
     const id = e.currentTarget.dataset.id
-    const item = this.data.contentList.find(c => c.id === id)
-    if (!item) return
-
-    wx.showActionSheet({
-      itemList: ['复制文字', '跳转落墨书写', '分享给朋友'],
-      success: (res) => {
-        switch (res.tapIndex) {
-          case 0:
-            this.onCopyContent(e)
-            break
-          case 1:
-            this.onGoToLuomo(e)
-            break
-          case 2:
-            this.onShareContent(item)
-            break
-        }
-      }
+    wx.navigateTo({
+      url: `/pages/poem-detail/poem-detail?id=${id}`
     })
   },
 

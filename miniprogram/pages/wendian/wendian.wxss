@@ -6,33 +6,63 @@
   overflow: hidden;
 }
 
-.header {
+/* ===== 顶部固定区域 ===== */
+.top-area {
   flex-shrink: 0;
-  padding: 20rpx 24rpx 16rpx;
   background-color: #FAF7F2;
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid rgba(158, 148, 136, 0.1);
 }
 
+/* ===== 搜索栏 ===== */
 .search-bar {
   display: flex;
   align-items: center;
-  height: 72rpx;
-  background-color: rgba(255, 255, 255, 0.85);
-  border-radius: 36rpx;
-  border: 1rpx solid rgba(158, 148, 136, 0.2);
-  padding: 0 24rpx;
+  padding: 12rpx 24rpx 8rpx;
 }
 
 .search-input-wrap {
   flex: 1;
   display: flex;
   align-items: center;
+  height: 64rpx;
+  background-color: rgba(255, 255, 255, 0.85);
+  border-radius: 32rpx;
+  border: 1rpx solid rgba(158, 148, 136, 0.2);
+  padding: 0 20rpx;
 }
 
+.search-icon {
+  font-size: 22rpx;
+  color: rgba(107, 91, 79, 0.5);
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: #3D2B1F;
+  height: 40rpx;
+}
+
+.search-placeholder {
+  color: rgba(158, 148, 136, 0.5);
+  font-size: 26rpx;
+}
+
+.search-clear {
+  font-size: 24rpx;
+  color: rgba(158, 148, 136, 0.6);
+  padding: 8rpx;
+  flex-shrink: 0;
+}
+
+/* ===== 分类Tab ===== */
 .category-scroll {
   flex-shrink: 0;
   white-space: nowrap;
-  background-color: #FAF7F2;
-  padding: 12rpx 0 8rpx;
+  padding: 8rpx 0 6rpx;
 }
 
 .category-list {
@@ -45,11 +75,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10rpx 28rpx;
-  font-size: 26rpx;
+  padding: 8rpx 20rpx;
+  font-size: 24rpx;
   color: #6B5B4F;
   background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 32rpx;
+  border-radius: 28rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.18);
   transition: all 0.25s ease;
   white-space: nowrap;
@@ -61,10 +91,10 @@
   border-color: #6B5B4F;
 }
 
+/* ===== 标签筛选 ===== */
 .tags-bar {
   flex-shrink: 0;
-  background-color: #FAF7F2;
-  padding: 4rpx 0 8rpx;
+  padding: 4rpx 0 6rpx;
 }
 
 .tags-scroll {
@@ -73,7 +103,7 @@
 
 .tags-list {
   display: inline-flex;
-  gap: 14rpx;
+  gap: 10rpx;
   padding: 0 24rpx;
 }
 
@@ -81,11 +111,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8rpx 22rpx;
-  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  font-size: 18rpx;
   color: #6B5B4F;
   background-color: rgba(255, 255, 255, 0.65);
-  border-radius: 24rpx;
+  border-radius: 16rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.15);
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -98,14 +128,16 @@
   font-weight: 600;
 }
 
+/* ===== 结果统计 ===== */
 .result-info {
   flex-shrink: 0;
-  padding: 8rpx 24rpx;
-  font-size: 22rpx;
-  color: rgba(107, 91, 79, 0.5);
+  padding: 6rpx 24rpx 0;
+  font-size: 20rpx;
+  color: rgba(107, 91, 79, 0.45);
   line-height: 1.4;
 }
 
+/* ===== 内容列表 ===== */
 .content-scroll {
   flex: 1;
   min-height: 0;
@@ -114,9 +146,10 @@
 }
 
 .content-list {
-  padding: 8rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  padding: 12rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
 }
 
+/* ===== 内容卡片 ===== */
 .content-card {
   margin-bottom: 20rpx;
   background-color: #FFFFFF;
@@ -181,6 +214,7 @@
   white-space: nowrap;
 }
 
+/* ===== 操作按钮 ===== */
 .card-actions {
   display: flex;
   align-items: center;
@@ -241,6 +275,7 @@
   opacity: 0.85;
 }
 
+/* ===== 空状态 ===== */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -250,13 +285,13 @@
   gap: 20rpx;
 }
 
-.empty-state-text {
+.empty-text {
   font-size: 30rpx;
   color: rgba(107, 91, 79, 0.45);
   letter-spacing: 4rpx;
 }
 
-.empty-state-sub {
+.empty-hint {
   font-size: 24rpx;
   color: rgba(158, 148, 136, 0.5);
   letter-spacing: 2rpx;

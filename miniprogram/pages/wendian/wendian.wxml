@@ -1,67 +1,62 @@
 <!-- pages/wendian/wendian.wxml -->
 <view class="page-root">
-  <!-- 顶部区域 -->
-  <view class="header" style="padding-top: {{statusBarHeight}}px">
-    <view class="header-inner">
-      <text class="header-title">问典</text>
-      <text class="header-subtitle">向经典发问，寻文字之典</text>
-    </view>
-  </view>
-
-  <!-- 搜索栏 -->
-  <view class="search-bar">
-    <view class="search-input-wrap">
-      <text class="search-icon">搜索</text>
-      <input 
-        class="search-input" 
-        placeholder="搜索诗词、名句、作者..." 
-        placeholder-class="search-placeholder"
-        value="{{searchKeyword}}"
-        bindinput="onSearchInput"
-        confirm-type="search"
-      />
-      <text class="search-clear" wx:if="{{searchKeyword}}" bindtap="onClearSearch">×</text>
-    </view>
-  </view>
-
-  <!-- 分类Tab -->
-  <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
-    <view class="category-list">
-      <view 
-        wx:for="{{categories}}" 
-        wx:key="id"
-        class="category-item {{activeCategory === item.id ? 'active' : ''}}"
-        data-cat="{{item.id}}"
-        bindtap="onCategoryTap"
-      >
-        <text class="cat-name">{{item.name}}</text>
+  <!-- 顶部固定区域 -->
+  <view class="top-area" style="padding-top: {{statusBarHeight + 44}}px">
+    <!-- 搜索栏 -->
+    <view class="search-bar">
+      <view class="search-input-wrap">
+        <text class="search-icon">搜索</text>
+        <input 
+          class="search-input" 
+          placeholder="搜索诗词、名句、作者..." 
+          placeholder-class="search-placeholder"
+          value="{{searchKeyword}}"
+          bindinput="onSearchInput"
+          confirm-type="search"
+        />
+        <text class="search-clear" wx:if="{{searchKeyword}}" bindtap="onClearSearch">×</text>
       </view>
     </view>
-  </scroll-view>
 
-  <!-- 标签筛选栏 -->
-  <view class="tags-bar" wx:if="{{tags.length > 0}}">
-    <scroll-view scroll-x class="tags-scroll" enhanced show-scrollbar="{{false}}">
-      <view class="tags-list">
+    <!-- 分类Tab -->
+    <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="category-list">
         <view 
-          class="tag-item {{activeTag === '' ? 'active' : ''}}" 
-          bindtap="onClearTag"
-        >全部</view>
-        <view 
-          wx:for="{{tags}}" 
-          wx:key="*this"
-          class="tag-item {{activeTag === item ? 'active' : ''}}"
-          data-tag="{{item}}"
-          bindtap="onTagTap"
-        >{{item}}</view>
+          wx:for="{{categories}}" 
+          wx:key="id"
+          class="category-item {{activeCategory === item.id ? 'active' : ''}}"
+          data-cat="{{item.id}}"
+          bindtap="onCategoryTap"
+        >
+          <text class="cat-name">{{item.name}}</text>
+        </view>
       </view>
     </scroll-view>
-  </view>
 
-  <!-- 结果统计 -->
-  <view class="result-info">
-    <text>共 {{filteredList.length}} 条</text>
-    <text wx:if="{{activeTag}}" class="active-tag-text"> · 标签: {{activeTag}}</text>
+    <!-- 标签筛选栏 -->
+    <view class="tags-bar" wx:if="{{tags.length > 0}}">
+      <scroll-view scroll-x class="tags-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="tags-list">
+          <view 
+            class="tag-item {{activeTag === '' ? 'active' : ''}}" 
+            bindtap="onClearTag"
+          >全部</view>
+          <view 
+            wx:for="{{tags}}" 
+            wx:key="*this"
+            class="tag-item {{activeTag === item ? 'active' : ''}}"
+            data-tag="{{item}}"
+            bindtap="onTagTap"
+          >{{item}}</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 结果统计 -->
+    <view class="result-info">
+      <text>共 {{filteredList.length}} 条</text>
+      <text wx:if="{{activeTag}}" class="active-tag-text"> · 标签: {{activeTag}}</text>
+    </view>
   </view>
 
   <!-- 内容列表 -->
