@@ -105,6 +105,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  position: relative;
 }
 
 .poem-line {
@@ -117,6 +118,31 @@
   font-family: 'Songti SC', 'SimSun', serif;
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+
+/* 复制按钮 */
+.copy-btn {
+  position: absolute;
+  bottom: 12rpx;
+  right: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.copy-btn:active {
+  opacity: 0.6;
+}
+
+.copy-icon-img {
+  width: 36rpx;
+  height: 36rpx;
+  opacity: 0.5;
 }
 
 /* ===== 各区块 ===== */

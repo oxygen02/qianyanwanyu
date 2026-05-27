@@ -1,7 +1,7 @@
 // pages/wendian/wendian.js
-// 问典页 - 经典诗词名句素材库
+// 问典页 - 经典诗词名句素材库（云端加载版）
 
-const { contentDB, categories, getAllTags } = require('../../utils/content-data')
+const poemService = require('../../utils/poem-service')
 
 Page({
   data: {
@@ -11,22 +11,26 @@ Page({
     activeTag: '',
     contentList: [],
     filteredList: [],
-    categories: categories,
+    categories: [],
     tags: [],
     showTagsPanel: false,
-    copiedId: null
+    copiedId: null,
+    isLoading: false,
+    hasMore: true,
+    offset: 0,
+    limit: 20
   },
 
-  onLoad() {
+  async onLoad() {
     const app = getApp()
     const statusBarHeight = app.globalData.statusBarHeight || 0
-    
+
     this.setData({
       statusBarHeight,
-      contentList: contentDB,
-      filteredList: contentDB,
-      tags: getAllTags()
+      categories: poemService.getCategories()
     })
+
+    await this._loadPoems()
   },
 
   onShow() {
@@ -35,23 +39,86 @@ Page({
     }
   },
 
-  onCategoryTap(e) {
-    const category = e.currentTarget.dataset.cat
-    this.setData({ 
-      activeCategory: category,
-      showTagsPanel: false
+  async _loadPoems(reset = false) {
+    if (this.data.isLoading) return
+
+    const offset = reset ? 0 : this.data.offset
+
+    this.setData({ isLoading: true })
+
+    try {
+      let result
+
+      if (this.data.searchKeyword) {
+        result = await poemService.search(this.data.searchKeyword, this.data.limit, offset)
+      } else if (this.data.activeCategory !== 'all') {
+        result = await poemService.getByCategory(this.data.activeCategory, this.data.limit, offset)
+      } else {
+        result = await poemService.getList(this.data.limit, offset)
+      }
+
+    // 为每条数据生成摘要（如果没有的话）
+    const processedList = result.list.map(item => {
+      if (!item.excerpt && item.content) {
+        // 取前30个字作为摘要
+        const excerpt = item.content.replace(/\n/g, ' ').substring(0, 30) + (item.content.length > 30 ? '...' : '')
+        return { ...item, excerpt }
+      }
+      return item
     })
-    this._filterContent()
+
+    const newList = reset ? processedList : [...this.data.contentList, ...processedList]
+
+    this.setData({
+      contentList: newList,
+      filteredList: newList,
+      hasMore: result.hasMore,
+      offset: offset + result.list.length,
+      isLoading: false
+    })
+
+      // 提取标签
+      this._extractTags(newList)
+    } catch (err) {
+      this.setData({ isLoading: false })
+      wx.showToast({ title: '加载失败', icon: 'none' })
+    }
   },
 
-  onSearchInput(e) {
-    this.setData({ searchKeyword: e.detail.value })
-    this._filterContent()
+  _extractTags(list) {
+    const tagSet = new Set()
+    list.forEach(item => {
+      if (item.tags) {
+        item.tags.forEach(tag => tagSet.add(tag))
+      }
+    })
+    this.setData({ tags: Array.from(tagSet).sort() })
   },
 
-  onClearSearch() {
-    this.setData({ searchKeyword: '' })
-    this._filterContent()
+  async onCategoryTap(e) {
+    const category = e.currentTarget.dataset.cat
+    this.setData({
+      activeCategory: category,
+      showTagsPanel: false,
+      offset: 0
+    })
+    await this._loadPoems(true)
+  },
+
+  async onSearchInput(e) {
+    this.setData({
+      searchKeyword: e.detail.value,
+      offset: 0
+    })
+    await this._loadPoems(true)
+  },
+
+  async onClearSearch() {
+    this.setData({
+      searchKeyword: '',
+      offset: 0
+    })
+    await this._loadPoems(true)
   },
 
   onToggleTags() {
@@ -65,39 +132,30 @@ Page({
     } else {
       this.setData({ activeTag: tag, showTagsPanel: false })
     }
-    this._filterContent()
+    this._filterByTag()
   },
 
   onClearTag() {
-    this.setData({ activeTag: '' })
-    this._filterContent()
+    this.setData({ activeTag: '', showTagsPanel: false })
+    this._filterByTag()
   },
 
-  _filterContent() {
-    let list = [...this.data.contentList]
-    
-    const cat = this.data.activeCategory
-    if (cat && cat !== 'all') {
-      list = list.filter(item => item.category === cat)
-    }
-
+  _filterByTag() {
     const tag = this.data.activeTag
-    if (tag) {
-      list = list.filter(item => item.tags && item.tags.includes(tag))
+    if (!tag) {
+      this.setData({ filteredList: this.data.contentList })
+      return
     }
 
-    const keyword = this.data.searchKeyword.trim()
-    if (keyword) {
-      const kw = keyword.toLowerCase()
-      list = list.filter(item => 
-        (item.title && item.title.toLowerCase().includes(kw)) ||
-        (item.author && item.author.toLowerCase().includes(kw)) ||
-        (item.content && item.content.toLowerCase().includes(kw)) ||
-        (item.tags && item.tags.some(t => t.toLowerCase().includes(kw)))
-      )
-    }
+    const filtered = this.data.contentList.filter(item =>
+      item.tags && item.tags.includes(tag)
+    )
+    this.setData({ filteredList: filtered })
+  },
 
-    this.setData({ filteredList: list })
+  async onLoadMore() {
+    if (!this.data.hasMore || this.data.isLoading) return
+    await this._loadPoems()
   },
 
   onCopyContent(e) {
@@ -105,7 +163,7 @@ Page({
     const item = this.data.contentList.find(c => c.id === id)
     if (!item) return
 
-    const text = item.content.replace(/\n/g, '\n')
+    const text = item.content
     wx.setClipboardData({
       data: text,
       success: () => {
@@ -137,7 +195,6 @@ Page({
   },
 
   onShareContent(item) {
-    // 预留：后续可实现生成卡片后分享
     wx.showToast({ title: '功能开发中', icon: 'none' })
   },
 

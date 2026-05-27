@@ -271,3 +271,11 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
  M miniprogram/pages/poem-detail/poem-detail.wxss
  M miniprogram/utils/content-data.js
  M push.log
+[master 5a803e9] Auto push: 2026-05-27 13:26:30
+ 6 files changed, 732 insertions(+), 10 deletions(-)
+remote: Powered by [01;33mGITEE.COM [0m[1.1.23]        
+remote: Set trace flag 34457ba5        
+To https://gitee.com/oxygen02/qianyanwanyu.git
+   b1ff5f4..5a803e9  master -> master
+[✓] 推送成功 at 2026-05-27 13:26:33
+

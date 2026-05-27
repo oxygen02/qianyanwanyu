@@ -17,6 +17,9 @@
       <!-- 原文 -->
       <view class="poem-content">
         <text class="poem-line" wx:for="{{poem.lines}}" wx:key="index">{{item}}</text>
+        <view class="copy-btn" bindtap="onCopyPoem">
+          <image class="copy-icon-img" src="/images/copy.png" mode="aspectFit" />
+        </view>
       </view>
 
       <!-- 注释 -->

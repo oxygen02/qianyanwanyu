@@ -195,6 +195,18 @@
   letter-spacing: 1rpx;
 }
 
+.card-excerpt {
+  font-size: 26rpx;
+  color: rgba(61, 43, 31, 0.65);
+  line-height: 1.6;
+  letter-spacing: 1rpx;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .card-tags {
   display: flex;
   flex-wrap: wrap;
@@ -294,5 +306,19 @@
 .empty-hint {
   font-size: 24rpx;
   color: rgba(158, 148, 136, 0.5);
+  letter-spacing: 2rpx;
+}
+
+/* ===== 加载更多 ===== */
+.load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx 0;
+}
+
+.load-text {
+  font-size: 24rpx;
+  color: rgba(107, 91, 79, 0.5);
   letter-spacing: 2rpx;
 }
