@@ -302,6 +302,11 @@ Page({
   _cursorTimer: null,
   // 光标是否可见（闪烁状态）
   _cursorVisible: false,
+  // 渲染防重入：防止多个渲染请求同时执行
+  _rendering: false,
+  _needsRerender: false,
+  // 设置变更防抖定时器
+  _settingsDebounceTimer: null,
 
   onLoad() {
     const windowInfo = wx.getWindowInfo()
@@ -384,11 +389,16 @@ Page({
       'textSettings.inkOpacity': initialSettings.inkOpacityVal,
       'paperSettings.templateOptions': templateOptions
     }, () => {
-      // setData 完成后，异步恢复草稿和预加载字体（不阻塞首屏渲染）
+      // setData 完成后，恢复草稿（如果 Canvas 已就绪则直接渲染，否则等 Canvas 初始化后自动渲染）
       const draft = loadDraft()
       if (draft && draft.text) {
+        this._stopCursorBlink()
         this._pendingText = draft.text
-        this.setData({ text: draft.text })
+        this.setData({ text: draft.text }, () => {
+          if (this._canvasReady) {
+            this._triggerRender()
+          }
+        })
       }
 
       // 异步预加载字体
@@ -536,11 +546,25 @@ Page({
       this._clearCanvas()
       return
     }
-    this._doRender(text)
+    // 防抖：100ms 内的连续 _triggerRender 调用合并为一次渲染
+    // 解决滑块拖动时每秒数十次渲染请求导致的主线程过载
+    clearTimeout(this._settingsDebounceTimer)
+    this._settingsDebounceTimer = setTimeout(() => {
+      this._doRender(text)
+      this._settingsDebounceTimer = null
+    }, 100)
   },
 
   async _doRender(text) {
     if (!this._canvasReady || !text) return
+    // 防重入：如果正在渲染中，跳过本次请求（设置变更时会通过 debounce 触发新渲染）
+    if (this._rendering) {
+      // 标记需要重新渲染（上一个渲染完成后自动重试）
+      this._needsRerender = true
+      return
+    }
+    this._rendering = true
+    this._needsRerender = false
 
     this.setData({ isRendering: true, renderError: null })
 
@@ -595,7 +619,6 @@ Page({
     } catch (err) {
       console.error('[luomo] 渲染失败', err)
       this.setData({ renderError: err.message || '渲染失败' })
-      // 显示错误提示
       wx.showToast({
         title: '渲染失败，请重试',
         icon: 'none',
@@ -603,6 +626,15 @@ Page({
       })
     } finally {
       this.setData({ isRendering: false })
+      this._rendering = false
+      // 如果渲染期间有新的渲染请求，立即触发重渲染
+      if (this._needsRerender && this._canvasReady) {
+        const currentText = this._pendingText || this.data.text
+        if (currentText) {
+          this._needsRerender = false
+          this._doRender(currentText)
+        }
+      }
     }
   },
 
@@ -790,14 +822,25 @@ Page({
   },
 
   /**
-   * 清除光标（重绘当前页内容来覆盖光标）
+   * 清除光标（仅在无文字时通过重绘覆盖光标线）
+   * 性能优化：不再触发整页重绘，仅用底色覆盖光标区域
    */
   _clearCursor() {
-    if (!this._canvasReady) return
-    // 有文字时，光标不应该在Canvas上显示，所以不需要处理
-    // 无文字时才需要清除光标
-    if (!this.data.text) {
-      this._clearCanvas()
+    if (!this._canvasReady || this.data.text) return
+    // 简单用底色填充覆盖上一次的光标位置（避免触发完整的 _renderEmptyTemplate）
+    try {
+      const ctx = this._canvas.getContext('2d')
+      const template = this._getEffectiveTemplate()
+      const baseColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.fillStyle = baseColor
+      // 覆盖光标可能的区域（顶部版心位置的细条）
+      const dpr = wx.getWindowInfo().pixelRatio || 2
+      const marginTop = ((template.layout && template.layout.marginTop) || 60) * dpr
+      const fontSize = ((template.layout && template.layout.fontSize) || 36) * dpr
+      ctx.fillRect(0, marginTop, this._canvasWidth, fontSize * 2)
+    } catch (e) {
+      // 静默失败
     }
   },
 
@@ -855,21 +898,26 @@ Page({
         : 0
 
       if (keyboardHeight > 0) {
-        // 键盘弹出：
-        // canvas-area 高度 = 屏幕高度 - 键盘高度 - 工具栏高度 - 安全区
-        const canvasAreaHeight = windowHeight - keyboardHeight - toolbarHeight - safeAreaBottom
+        // 键盘弹出：canvas-area 高度 = 全屏高度 - 键盘高度 - 工具栏 - 安全区
+        // 注意：不能用 windowHeight（键盘弹出后 windowHeight 会缩小），必须用 screenHeight
+        const screenHeight = windowInfo.screenHeight
+        const statusBarHeight = windowInfo.statusBarHeight || 0
 
-        // bottom-area 高度 = 键盘高度 + 工具栏高度(safe-area已由input-area内的padding处理)
-        // 注意：input-area本身需要padding，所以实际底部区域 = 键盘 + 工具栏 + padding
-        const bottomAreaHeight = keyboardHeight + toolbarHeight + (54 * rpxRatio)  // 额外间距给input padding
+        // canvas-area 获得键盘之上的所有剩余空间
+        const canvasAreaHeight = screenHeight - keyboardHeight - toolbarHeight - statusBarHeight
 
-        // 文本输入框高度 = 键盘高度（使输入区与键盘视觉上对齐）
-        const textInputHeight = Math.max(80, keyboardHeight - inputToolbarHeight - (34 * rpxRatio))
-        // 总输入区高度 = 键盘高度 + 输入工具栏
-        const inputAreaHeight = keyboardHeight + inputToolbarHeight + (34 * rpxRatio)
+        // 确保 canvas-area 至少有 100px 的最小显示高度
+        const minCanvasHeight = Math.max(100, canvasAreaHeight)
+
+        // bottom-area 紧贴键盘上方
+        const bottomAreaHeight = keyboardHeight + toolbarHeight + (34 * rpxRatio)
+
+        // 文本输入框：填入输入区的剩余空间
+        const textInputHeight = Math.max(60, keyboardHeight - inputToolbarHeight - (44 * rpxRatio))
+        const inputAreaHeight = keyboardHeight + inputToolbarHeight + (24 * rpxRatio)
 
         this.setData({
-          canvasAreaStyle: `height: ${canvasAreaHeight}px; flex: none;`,
+          canvasAreaStyle: `height: ${minCanvasHeight}px; flex: none;`,
           bottomAreaStyle: `height: ${bottomAreaHeight}px; flex-shrink: 0;`,
           inputAreaHeight: inputAreaHeight,
           textInputHeight: textInputHeight,

@@ -500,14 +500,14 @@
   opacity: 0.85;
 }
 
-/* ========== 输入区 - 固定在底部，设置面板打开时隐藏 ========== */
+/* ========== 输入区 - 键盘弹出时动态适配 ========== */
 .input-area {
   display: flex;
   flex-direction: column;
   background-color: #FAF7F2;
   border-top: none;
-  padding: 14rpx 20rpx 20rpx;
-  overflow: hidden;
+  padding: 10rpx 20rpx 0;
+  overflow: visible;
   flex-shrink: 0;
   transition: height 0.2s ease-out;
 }
@@ -519,7 +519,7 @@
 .text-input {
   flex: 1;
   width: 100%;
-  min-height: 120rpx;
+  min-height: 80rpx;
   background-color: #FFFFFF;
   border-radius: 10rpx;
   padding: 16rpx 18rpx;
@@ -535,7 +535,9 @@
 
 .input-toolbar {
   display: flex; align-items: center; justify-content: space-between;
-  margin-top: 10rpx; padding: 0 4rpx;
+  padding: 8rpx 4rpx 12rpx;
+  flex-shrink: 0;
+  min-height: 44rpx;
 }
 .input-toolbar--hidden { display: none; }
 .input-actions-left { display: flex; align-items: center; }
