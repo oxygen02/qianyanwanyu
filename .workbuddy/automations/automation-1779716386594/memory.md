@@ -129,3 +129,12 @@
 - **修改文件**: app.js、custom-tab-bar（js/wxss）、luomo（js/json/wxml/wxss）、poem-detail（wxml/wxss）、wendian（js/wxss）、wujuan（js/wxml/wxss）、content-data.js、poem-service.js、automation memory.md、push.log
 - **推送范围**: 8af5a6e..ce13b3d master -> master
 - **备注**: pull 时远程已最新，多个页面和模块有较大规模更新
+
+## 2026-05-29 13:01 (UTC+8)
+- **Status**: 推送成功
+- **Commit**: `18e531b` - "Auto push: 2026-05-29 13:01:41"
+- **变更文件**: 18 files changed, 553 insertions(+), 1401 deletions(-)
+- **修改文件**: ink-effect.js、renderer.js、typesetter.js、luomo.js/wxml/wxss、poem-detail.js/wxml、constants.js、font-loader.js、push.log、automation memory.md
+- **新增文件**: 2026-05-28.md、test/ 目录（5个文件）
+- **推送范围**: ce13b3d..18e531b master -> master
+- **备注**: pull 时远程已最新，引擎、落墨、诗词详情页有迭代更新，新增 test 测试页面

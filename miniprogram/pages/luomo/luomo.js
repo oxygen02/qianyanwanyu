@@ -64,13 +64,13 @@ Page({
       fontId: '上古宋体-Regular',
 
       // === 基础排版 ===
-      fontSize: 40,
+      fontSize: 36,
       fontSizeMode: 'px',
-      fontSizeDisplay: '40px',
+      fontSizeDisplay: '36px',
       lineHeight: null,
-      lineHeightVal: 200,
+      lineHeightVal: 180,
       letterSpacing: null,
-      letterSpacingVal: 5,
+      letterSpacingVal: 2,
       direction: null,
       fontWeight: '400',
       textAlign: 'left',
@@ -93,10 +93,10 @@ Page({
 
       // === 基础纸张 ===
       paperBaseColor: '#FAF7F2',
-      marginTopVal: 50,
-      marginBottomVal: 50,
-      marginLeftVal: 50,
-      marginRightVal: 50,
+      marginTopVal: 60,
+      marginBottomVal: 60,
+      marginLeftVal: 55,
+      marginRightVal: 55,
 
       // === 质感效果 ===
       aging: null,
@@ -146,12 +146,18 @@ Page({
     toolbarTop: 0,
 
     // ===== 键盘适配 =====
+    // Canvas区域动态样式（键盘弹出时调整）
+    canvasAreaStyle: '',
+    // 底部区域动态样式（键盘弹出时调整）
+    bottomAreaStyle: '',
     // 输入区高度（用于热区避让）
     inputAreaHeight: 210,
     // 文本输入框实际高度
     textInputHeight: 180,
     // 键盘是否可见
     keyboardVisible: false,
+    // 当前键盘高度（px，0表示键盘收起）
+    keyboardHeight: 0,
     // 自动保存指示（用于UI提示）
     autoSaveIndicator: false,
 
@@ -159,9 +165,9 @@ Page({
     textSettings: {
       fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
       fontIndex: 0,
-      fontSize: 32,
+      fontSize: 36,
       fontSizeMode: 'px',
-      fontSizeDisplay: '32px',
+      fontSizeDisplay: '36px',
       weightOptions: ['纤细', '常规', '中等', '加粗'],
       weightIndex: 1,
       inkColorOptions: [
@@ -223,7 +229,7 @@ Page({
       shadowEnabled: false,
       shadowIntensity: 50,
       marginVertical: 60,
-      marginHorizontal: 60,
+      marginHorizontal: 55,
       formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
       formIndex: 0,
       foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -249,8 +255,8 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 160,
-      lineHeightDisplay: '1.6倍',
+      lineHeight: 180,
+      lineHeightDisplay: '1.8倍',
       letterSpacing: 2,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
@@ -322,7 +328,7 @@ Page({
   _initPageData() {
     const activeTemplateId = loadActiveTemplate()
 
-    // 构建模板列表
+    // 构建模板列表（轻量版，仅 id + name + desc + paper color）
     const templateList = TEMPLATE_ORDER.map(id => {
       const t = TEMPLATES[id]
       return {
@@ -336,30 +342,18 @@ Page({
     // 构建纸张尺寸列表
     const paperSizeList = Object.values(PAPER_SIZES)
 
-    // 构建字体列表（纯信息展示，标记已下载状态）
-    const weightMap = { '200': '极细', '300': '细体', '400': '常规', '500': '中等', '600': '半粗', '700': '粗体', '900': '特粗' }
-    const fontList = BUILT_IN_FONTS.map(f => ({
-      id: f.id,
-      name: f.name,
-      displayName: f.name + '-' + (weightMap[f.weight] || f.weight),
-      weight: f.weight,
-      weightLabel: weightMap[f.weight] || f.weight,
-      family: f.family,
-      fileSize: f.fileSize,
-      fileSizeLabel: formatFileSize(f.fileSize),
-      isLoaded: getFontStatus(f.id) === 'loaded'
-    }))
+    // 字体列表：延迟构建（首次打开字体面板时才构建完整列表）
+    // 这里只设置一个轻量标记，减少首次 setData 数据量
+    const fontCount = BUILT_IN_FONTS.length
 
     // 读取用户设置
     const userSettings = loadSettings()
 
     const template = TEMPLATES[activeTemplateId] || TEMPLATES['modern-prose']
-    // 当前字体ID = 模板中的 family
     const currentFontId = template.font && template.font.family ? template.font.family : '上古宋体-Regular'
-
-    // 判断当前字体的下载状态
     const currentFontStatus = getFontStatus(currentFontId)
 
+    // 构建简约的模板预览选项（仅用于纸张设置内嵌展示，8个）
     const templateOptions = [
       { id: 'modern-prose', name: '现代散文', paperColor: '#FAF7F2', hasFiber: true, fiberOpacity: 0.18, hasWatermark: true, watermarkText: '纸' },
       { id: 'vintage-letter', name: '复古书信', paperColor: '#FEF9E7', hasFiber: true, fiberOpacity: 0.15, hasWatermark: true, watermarkText: '古' },
@@ -370,24 +364,16 @@ Page({
       { id: 'typewriter', name: '打字机', paperColor: '#FFFFFF', hasFiber: true, fiberOpacity: 0.05, hasWatermark: true, watermarkText: 'TYPE' },
       { id: 'japanese-washi', name: '日式和纸', paperColor: '#FAF8F5', hasFiber: true, fiberOpacity: 0.20, hasWatermark: true, watermarkText: '和' }
     ]
-    
-    let idx = 0
-    const templateSwiperItems = []
-    for (let i = 0; i < templateOptions.length; i += 4) {
-      templateSwiperItems.push({
-        pageIndex: Math.floor(i / 4),
-        templates: templateOptions.slice(i, i + 4).map(item => ({ ...item, globalIndex: idx++ }))
-      })
-    }
 
-    // 构建设置并同步 textSettings
+    // 合并在一次 setData 中完成所有初始化
     const initialSettings = this._buildSettingsFromTemplate(template, currentFontId)
     
     this.setData({
       activeTemplateId,
       activeTemplateName: template.name,
       templateList,
-      fontList,
+      fontList: [],  // 延迟构建，打开面板时再填充
+      fontCount,
       paperSizeList,
       activeFontId: currentFontId,
       activeFontDownloadStatus: currentFontStatus === 'loaded' ? 'loaded' : 'idle',
@@ -396,43 +382,46 @@ Page({
       'textSettings.fontSize': initialSettings.fontSize,
       'textSettings.fontSizeDisplay': initialSettings.fontSizeDisplay,
       'textSettings.inkOpacity': initialSettings.inkOpacityVal,
-      'paperSettings.templateOptions': templateOptions,
-      'paperSettings.templateSwiperItems': templateSwiperItems,
-      'paperSettings.currentSwiperIndex': 0
-    })
+      'paperSettings.templateOptions': templateOptions
+    }, () => {
+      // setData 完成后，异步恢复草稿和预加载字体（不阻塞首屏渲染）
+      const draft = loadDraft()
+      if (draft && draft.text) {
+        this._pendingText = draft.text
+        this.setData({ text: draft.text })
+      }
 
-    // 恢复草稿
-    const draft = loadDraft()
-    if (draft && draft.text) {
-      this._pendingText = draft.text
-      this.setData({ text: draft.text })
-    }
-
-    // 第四阶段：异步预加载字体（空闲时加载）
-    if (template.font && template.font.family) {
-      setTimeout(() => {
-        loadFont(template.font.family).then(fontFamily => {
-          if (fontFamily && fontFamily !== getFallbackFont()) {
-            this._loadedFontCache[template.font.family] = fontFamily
-            if (this.data.text) {
-              this._triggerRender()
+      // 异步预加载字体
+      if (template.font && template.font.family) {
+        setTimeout(() => {
+          loadFont(template.font.family).then(fontFamily => {
+            if (fontFamily && fontFamily !== getFallbackFont()) {
+              this._loadedFontCache[template.font.family] = fontFamily
+              if (this.data.text) {
+                this._triggerRender()
+              }
             }
-          }
-        }).catch(err => {
-          console.warn('[luomo] 预加载字体失败（使用默认字体）:', err)
-        })
-      }, 200)
-    }
+          }).catch(err => {
+            console.warn('[luomo] 预加载字体失败（使用默认字体）:', err)
+          })
+        }, 100)
+      }
+    })
 
     // 注册键盘高度变化监听
     this._registerKeyboardListener()
-    // 启动定时自动保存（每5秒）
+    // 启动定时自动保存
     this._startAutoSave()
   },
 
   onReady() {
-    // 优化：立即初始化Canvas，减少延迟
-    setTimeout(() => this._initCanvas(), 50)
+    // 性能优化：使用 wx.nextTick 替代 setTimeout，在下一帧立即初始化 Canvas
+    if (typeof wx.nextTick === 'function') {
+      wx.nextTick(() => this._initCanvas())
+    } else {
+      // 兼容低版本基础库
+      setTimeout(() => this._initCanvas(), 16)
+    }
   },
 
   onShow() {
@@ -459,12 +448,15 @@ Page({
       .exec((res) => {
         if (!res || !res[0] || !res[0].node) {
           console.warn('[luomo] Canvas节点未就绪，稍后重试')
-          // 优化：减少重试间隔，加快初始化速度
-          setTimeout(() => this._initCanvas(), 200)
+          setTimeout(() => this._initCanvas(), 100)
           return
         }
         const canvas = res[0].node
-        const dpr = Math.min(wx.getWindowInfo().pixelRatio || 2, 2)
+        // 性能优化：DPR 上限为 2，避免高 DPR 设备上 Canvas 像素数暴增导致渲染卡死
+        // iPhone 14 Pro DPR=3 → Canvas 像素数 = 1179×2044 = 240万
+        // DPR=2 → Canvas 像素数 = 786×1362 = 107万，性能提升 55%
+        const rawDpr = wx.getWindowInfo().pixelRatio || 2
+        const dpr = Math.min(rawDpr, 2)
         const w = Math.floor((res[0].width || 375) * dpr)
         const h = Math.floor((res[0].height || 500) * dpr)
         canvas.width = w
@@ -497,11 +489,11 @@ Page({
       saveDraft(text)
     }, 800)
 
-    // 防抖渲染（50ms，快速响应用户输入变化，包括删除操作）
+    // 防抖渲染（200ms，避免连续输入时频繁触发昂贵的Canvas渲染）
     clearTimeout(_renderDebounceTimer)
     _renderDebounceTimer = setTimeout(() => {
       this._triggerRender()
-    }, 50)
+    }, 200)
   },
 
   /**
@@ -622,6 +614,7 @@ Page({
 
   /**
    * 渲染空模板背景（无文字时显示纸张样式）
+   * 性能优化：先立即显示纯色背景，再异步生成纹理（避免主线程阻塞）
    */
   async _renderEmptyTemplate() {
     if (!this._canvasReady) return
@@ -633,7 +626,11 @@ Page({
       // 清空画布
       ctx.clearRect(0, 0, this._canvasWidth, this._canvasHeight)
 
-      // 渲染纸张背景
+      // 阶段1：立即填充纯色背景（< 1ms），用户马上看到响应
+      const baseColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
+      ctx.fillStyle = baseColor
+      ctx.fillRect(0, 0, this._canvasWidth, this._canvasHeight)
+
       let bgReady = false
       if (template.paper && template.paper.backgroundImage && template.paper.backgroundImage.fileID) {
         try {
@@ -646,28 +643,35 @@ Page({
         }
       }
 
+      // 阶段2：异步生成纸张纹理（setTimeout 让出主线程给 UI 响应）
       if (!bgReady) {
-        // 使用 paper.js 生成纸张纹理
-        const { generatePaperTexture } = require('../../engine/paper')
-        const paperOffscreen = wx.createOffscreenCanvas({ type: '2d', width: this._canvasWidth, height: this._canvasHeight })
-        generatePaperTexture({
-          width: this._canvasWidth,
-          height: this._canvasHeight,
-          paperConfig: template.paper,
-          offscreenCanvas: paperOffscreen
-        })
-        ctx.drawImage(paperOffscreen, 0, 0)
+        setTimeout(() => {
+          try {
+            const { generatePaperTexture } = require('../../engine/paper')
+            const paperOffscreen = wx.createOffscreenCanvas({ type: '2d', width: this._canvasWidth, height: this._canvasHeight })
+            generatePaperTexture({
+              width: this._canvasWidth,
+              height: this._canvasHeight,
+              paperConfig: template.paper,
+              offscreenCanvas: paperOffscreen
+            })
+            ctx.drawImage(paperOffscreen, 0, 0)
+          } catch (e) {
+            console.warn('[luomo] 纹理生成失败，使用纯色背景', e)
+          }
+        }, 0)
       }
 
-      // 渲染边框
+      // 边框渲染（轻量操作，同步完成）
       const { drawBorder } = require('../../engine/paper')
       drawBorder(ctx, this._canvasWidth, this._canvasHeight, template.paper.border)
 
     } catch (err) {
       console.error('[luomo] 渲染空模板失败', err)
-      // 回退：清空画布
       const ctx = this._canvas.getContext('2d')
       ctx.clearRect(0, 0, this._canvasWidth, this._canvasHeight)
+      ctx.fillStyle = '#FAF7F2'
+      ctx.fillRect(0, 0, this._canvasWidth, this._canvasHeight)
     }
   },
 
@@ -827,41 +831,60 @@ Page({
   // ============ 键盘适配 ============
 
   /**
-   * 注册键盘高度变化监听
-   * 键盘弹起时：输入框固定在底部，高度自适应可用空间
-   * 键盘收起时：恢复完整输入区
+   * 注册键盘高度变化监听（全面重构版）
+   * 核心原则：键盘弹出时，canvas-area 和 bottom-area 重新分配空间
+   * - canvas-area：获得剩余可视空间，保证用户能同时看到输入和输出
+   * - bottom-area：紧贴键盘上方，input-area 高度 = keyboardHeight
+   * - 工具栏始终在 bottom-area 顶部可见
    */
   _registerKeyboardListener() {
     _keyboardChangeCallback = (res) => {
       const keyboardHeight = res.height
       const windowInfo = wx.getWindowInfo()
       const windowHeight = windowInfo.windowHeight
-      // 工具栏固定高度（约56rpx转换为px）
-      const toolbarHeight = Math.floor(56 * (windowInfo.windowWidth / 750))
-      // 输入框工具栏（字数统计、清空按钮）高度约30px
-      const inputToolbarHeight = 30
-      // 底部安全区域
-      const safeAreaBottom = windowInfo.safeArea ? (windowInfo.windowHeight - windowInfo.safeArea.bottom) : 0
+      const screenWidth = windowInfo.windowWidth
+      const rpxRatio = screenWidth / 750
+
+      // 工具栏高度（rpx转px）
+      const toolbarHeight = Math.floor(56 * rpxRatio)
+      // 输入框工具栏（字数统计+清空按钮行）高度
+      const inputToolbarHeight = 36
+      // 底部安全区域高度
+      const safeAreaBottom = windowInfo.safeArea 
+        ? Math.max(0, windowInfo.screenHeight - windowInfo.safeArea.bottom) 
+        : 0
 
       if (keyboardHeight > 0) {
-        // 键盘弹出：计算可用空间 = 屏幕高度 - 键盘高度 - 安全区域 - 工具栏
-        const availableHeight = windowHeight - keyboardHeight - safeAreaBottom - toolbarHeight
-        // 文本输入框高度 = 可用空间 - 输入工具栏高度，最小120px保证可输入
-        const textInputHeight = Math.max(120, availableHeight - inputToolbarHeight)
-        // 总输入区高度 = 工具栏 + 文本输入框 + 输入工具栏 + 安全区
-        const inputAreaHeight = keyboardHeight + toolbarHeight + textInputHeight + inputToolbarHeight
+        // 键盘弹出：
+        // canvas-area 高度 = 屏幕高度 - 键盘高度 - 工具栏高度 - 安全区
+        const canvasAreaHeight = windowHeight - keyboardHeight - toolbarHeight - safeAreaBottom
+
+        // bottom-area 高度 = 键盘高度 + 工具栏高度(safe-area已由input-area内的padding处理)
+        // 注意：input-area本身需要padding，所以实际底部区域 = 键盘 + 工具栏 + padding
+        const bottomAreaHeight = keyboardHeight + toolbarHeight + (54 * rpxRatio)  // 额外间距给input padding
+
+        // 文本输入框高度 = 键盘高度（使输入区与键盘视觉上对齐）
+        const textInputHeight = Math.max(80, keyboardHeight - inputToolbarHeight - (34 * rpxRatio))
+        // 总输入区高度 = 键盘高度 + 输入工具栏
+        const inputAreaHeight = keyboardHeight + inputToolbarHeight + (34 * rpxRatio)
 
         this.setData({
+          canvasAreaStyle: `height: ${canvasAreaHeight}px; flex: none;`,
+          bottomAreaStyle: `height: ${bottomAreaHeight}px; flex-shrink: 0;`,
           inputAreaHeight: inputAreaHeight,
           textInputHeight: textInputHeight,
-          keyboardVisible: true
+          keyboardVisible: true,
+          keyboardHeight: keyboardHeight
         })
       } else {
-        // 键盘收起：恢复正常状态
+        // 键盘收起：恢复默认布局
         this.setData({
+          canvasAreaStyle: '',
+          bottomAreaStyle: '',
           inputAreaHeight: 210,
           textInputHeight: 180,
-          keyboardVisible: false
+          keyboardVisible: false,
+          keyboardHeight: 0
         })
       }
     }
@@ -1091,8 +1114,24 @@ Page({
   onOpenFontPanel() {
     const { activeFontId, fontList } = this.data
 
-    // 先打开面板展示列表
-    this.setData({ fontPanelVisible: true })
+    // 延迟构建：首次打开字体面板时才构建完整列表
+    if (!fontList || fontList.length === 0) {
+      const weightMap = { '200': '极细', '300': '细体', '400': '常规', '500': '中等', '600': '半粗', '700': '粗体', '900': '特粗' }
+      const fullFontList = BUILT_IN_FONTS.map(f => ({
+        id: f.id,
+        name: f.name,
+        displayName: f.name + '-' + (weightMap[f.weight] || f.weight),
+        weight: f.weight,
+        weightLabel: weightMap[f.weight] || f.weight,
+        family: f.family,
+        fileSize: f.fileSize,
+        fileSizeLabel: formatFileSize(f.fileSize),
+        isLoaded: getFontStatus(f.id) === 'loaded'
+      }))
+      this.setData({ fontList: fullFontList, fontPanelVisible: true })
+    } else {
+      this.setData({ fontPanelVisible: true })
+    }
 
     // 检查当前选中字体是否已加载
     const currentStatus = getFontStatus(activeFontId)
@@ -1222,7 +1261,9 @@ Page({
     }
     this.setData({
       'settings.fontSize': val,
-      'settings.fontSizeDisplay': display
+      'settings.fontSizeDisplay': display,
+      'textSettings.fontSize': val,
+      'textSettings.fontSizeDisplay': display
     })
     this._triggerRender()
   },
@@ -1537,7 +1578,7 @@ Page({
 
   onFontSizeStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.fontSize + delta, 20, 48)
+    const newVal = this._clamp(this.data.settings.fontSize + delta, 20, 72)
     const mode = this.data.textSettings.fontSizeMode
     const display = mode === 'px' ? `${newVal}px` : `${newVal}号`
     this.setData({
@@ -1758,10 +1799,10 @@ Page({
 
       // 基础纸张
       paperBaseColor: t.paper.baseColor || '#FAF7F2',
-      marginTopVal: 50,
-      marginBottomVal: 50,
-      marginLeftVal: 50,
-      marginRightVal: 50,
+      marginTopVal: t.layout.marginTop || 60,
+      marginBottomVal: t.layout.marginBottom || 60,
+      marginLeftVal: t.layout.marginLeft || 55,
+      marginRightVal: t.layout.marginRight || 55,
 
       // 质感效果
       aging: t.paper.ageOpacity || 0,
@@ -1826,10 +1867,31 @@ Page({
 
   /**
    * 获取当前生效的模板（含设置覆盖）
+   * 性能优化：使用浅拷贝替代 JSON 深度克隆
    */
   _getEffectiveTemplate() {
     const base = TEMPLATES[this.data.activeTemplateId] || TEMPLATES['modern-prose']
-    const tpl = JSON.parse(JSON.stringify(base))
+    // 替代 JSON.parse(JSON.stringify(base)) 的浅层拷贝（约 50x 更快）
+    const tpl = {
+      id: base.id,
+      name: base.name,
+      desc: base.desc,
+      category: base.category,
+      layout: { ...base.layout },
+      paper: { ...base.paper,
+        light: base.paper.light ? { ...base.paper.light } : undefined,
+        border: base.paper.border ? { ...base.paper.border } : undefined,
+        stain: base.paper.stain ? { ...base.paper.stain } : undefined,
+        edges: base.paper.edges ? { ...base.paper.edges } : undefined
+      },
+      font: { ...base.font },
+      ink: { ...base.ink },
+      decoration: base.decoration ? {
+        ...base.decoration,
+        stamp: base.decoration.stamp ? { ...base.decoration.stamp } : null,
+        watermark: base.decoration.watermark ? { ...base.decoration.watermark } : null
+      } : null
+    }
     const s = this.data.settings
 
     // === 基础排版（不受布局模式影响的）===

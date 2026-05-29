@@ -116,27 +116,42 @@ function generatePaperTexture(params) {
     return ctx
   }
 
-  // 第二层：纤维纹理（用ImageData直接写像素，避免影响底色）
-  // 这里使用整体透明度叠加，后续在主Canvas上用multiply模式叠加
+  // 第二层：纤维纹理（降采样 stride=2，性能提升 4x）
+  // 高 DPR 设备上采样率自动调整，避免主线程长时间阻塞
   const noise = new SimplexNoise(seed)
   const imageData = ctx.createImageData(width, height)
   const data = imageData.data
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+  // 自适应步长：DPR≥3 时 stride=3，否则 stride=2
+  const dpr = wx.getWindowInfo ? (wx.getWindowInfo().pixelRatio || 2) : 2
+  const stride = dpr >= 3 ? 3 : 2
+
+  for (let y = 0; y < height; y += stride) {
+    for (let x = 0; x < width; x += stride) {
       const idx = (y * width + x) * 4
       // 多层噪声叠加，模拟纸张纤维
       const n1 = noise.noise2D(x * freq, y * freq)                // 粗纤维
       const n2 = noise.noise2D(x * freq * 3, y * freq * 3) * 0.5  // 细纤维
       const n3 = noise.noise2D(x * freq * 8, y * freq * 8) * 0.25 // 微纹理
-      const n = (n1 + n2 + n3) / 1.75  // 归一化到 [-1, 1]
+      const n = (n1 + n2 + n3) / 1.75
 
-      // 映射到纸色范围（暗化/提亮纸张底色）
-      const brightness = n * 55  // ±55灰度变化，提高纤维对比度
-      data[idx] = Math.max(0, Math.min(255, baseColor.r + brightness))
-      data[idx + 1] = Math.max(0, Math.min(255, baseColor.g + brightness * 0.95))
-      data[idx + 2] = Math.max(0, Math.min(255, baseColor.b + brightness * 0.9))
-      data[idx + 3] = Math.floor(fiberOpacity * 255)
+      // 映射到纸色范围
+      const brightness = n * 55
+      const r = Math.max(0, Math.min(255, baseColor.r + brightness))
+      const g = Math.max(0, Math.min(255, baseColor.g + brightness * 0.95))
+      const b = Math.max(0, Math.min(255, baseColor.b + brightness * 0.9))
+      const a = Math.floor(fiberOpacity * 255)
+
+      // 填充整个 stride 块为同一颜色
+      for (let dy = 0; dy < stride && y + dy < height; dy++) {
+        for (let dx = 0; dx < stride && x + dx < width; dx++) {
+          const bidx = ((y + dy) * width + (x + dx)) * 4
+          data[bidx] = r
+          data[bidx + 1] = g
+          data[bidx + 2] = b
+          data[bidx + 3] = a
+        }
+      }
     }
   }
 
