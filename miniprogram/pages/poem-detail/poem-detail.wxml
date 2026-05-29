@@ -23,7 +23,7 @@
   </view>
 
   <!-- 滚动区域：注释、译文、赏析等 -->
-  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}" wx:if="{{poem}}" scroll-top="0">
+  <scroll-view scroll-y class="content-scroll" enhanced show-scrollbar="{{false}}" wx:if="{{poem}}">
     <view class="paper-sheet-scroll">
       <!-- 注释 -->
       <view class="poem-section" wx:if="{{poem.annotations}}">
@@ -68,7 +68,7 @@
   </scroll-view>
 
   <!-- 底部诗词切换导航栏 -->
-  <view class="poem-nav-bar" wx:if="{{poem}}">
+  <view class="poem-nav-bar" wx:if="{{poem}}" catchtouchmove="preventTouchMove">
     <view class="poem-nav-item {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="onPrevPoem">
       <text class="poem-nav-text">上一篇</text>
     </view>

@@ -1,630 +1,221 @@
 <!-- pages/luomo/luomo.wxml -->
 <view class="page-root">
 
-  <!-- 书页展示区 - 始终可见，固定高度 -->
-  <view class="canvas-area {{settingsPanelVisible ? 'canvas-area--collapsed' : ''}}" style="padding-top: calc(12rpx + {{safeAreaTop}}px)">
-    <!-- 翻页指示点（多页时显示） -->
+  <!-- 书页展示区 -->
+  <view class="canvas-area {{settingsPanelVisible ? 'canvas-area--collapsed' : ''}}" style="padding-top: calc(6rpx + {{safeAreaTop}}px)">
     <view class="page-dots" wx:if="{{totalPages > 1 && !settingsPanelVisible}}">
-      <view
-        wx:for="{{pageDots}}"
-        wx:key="index"
-        class="page-dot {{currentPage === index ? 'active' : ''}}"
-      />
+      <view wx:for="{{pageDots}}" wx:key="index" class="page-dot {{currentPage === index ? 'active' : ''}}"/>
     </view>
 
-    <!-- 主 Canvas -->
-    <view class="canvas-wrapper" bindtouchmove="preventCanvasScroll">
-      <canvas
-        id="bookCanvas"
-        type="2d"
-        class="book-canvas {{canvasZoomed ? 'zoomed' : ''}}"
-        style="width: {{canvasCssWidth}}px; height: {{canvasCssHeight}}px;"
-        bindtouchstart="onCanvasTouchStart"
-        bindtouchend="onCanvasTouchEnd"
-      />
+    <view class="canvas-wrapper">
+      <canvas id="bookCanvas" type="2d" class="book-canvas {{canvasZoomed ? 'zoomed' : ''}}"
+        bindtouchstart="onCanvasTouchStart" bindtouchend="onCanvasTouchEnd"/>
     </view>
 
-    <!-- 加载中遮罩 -->
     <view class="loading-mask" wx:if="{{isRendering}}">
       <view class="loading-dot-wrap">
-        <view class="loading-dot d1"/>
-        <view class="loading-dot d2"/>
-        <view class="loading-dot d3"/>
+        <view class="loading-dot d1"/><view class="loading-dot d2"/><view class="loading-dot d3"/>
       </view>
     </view>
 
-    <!-- 空状态提示 -->
     <view class="empty-hint" wx:if="{{!text && !isRendering}}">
       <text class="empty-text">在此写下文字</text>
       <text class="empty-sub">点击下方工具栏进行文字与纸张设置</text>
     </view>
   </view>
 
-  <!-- 中间工具栏 - 使用 cover-view 确保在 Canvas 原生组件之上可点击 -->
-<cover-view class="middle-toolbar">
-    <cover-view class="toolbar-btn {{settingsTab === 'text' && settingsPanelVisible ? 'toolbar-btn--active' : ''}}" bindtap="onToggleSettings" data-tab="text">
-      <cover-view class="toolbar-btn-label">文字</cover-view>
-    </cover-view>
-    <cover-view class="toolbar-btn {{settingsTab === 'paper' && settingsPanelVisible ? 'toolbar-btn--active' : ''}}" bindtap="onToggleSettings" data-tab="paper">
-      <cover-view class="toolbar-btn-label">纸张</cover-view>
-    </cover-view>
-    <cover-view class="toolbar-btn {{settingsTab === 'layout' && settingsPanelVisible ? 'toolbar-btn--active' : ''}}" bindtap="onToggleSettings" data-tab="layout">
-      <cover-view class="toolbar-btn-label">排版</cover-view>
-    </cover-view>
-    <cover-view class="toolbar-btn toolbar-btn--save" bindtap="onExport">
-      <cover-view class="toolbar-btn-label">保存</cover-view>
-    </cover-view>
-  </cover-view>
-
-  <!-- ===== 底部区域：输入框 + 设置面板（互斥显示）===== -->
+  <!-- 底部区域 -->
   <view class="bottom-area">
-    <!-- 输入区：设置面板关闭时显示 -->
-    <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}">
-      <textarea
-        class="text-input"
-        model:value="{{text}}"
-        placeholder="在此写下文字..."
-        placeholder-class="input-placeholder"
-        auto-height="{{false}}"
-        fixed="{{false}}"
-        show-confirm-bar="{{false}}"
-        adjust-position="{{true}}"
-        bindinput="onTextInput"
-        maxlength="{{-1}}"
-        cursor-spacing="10"
-      />
-
-      <!-- 底部操作栏 -->
-      <view class="input-toolbar">
-        <view class="input-actions-left">
-          <text class="char-count">{{text.length}} 字</text>
-        </view>
-        <view class="input-actions-right">
-          <text class="action-btn" bindtap="onClearDraft">清空</text>
-        </view>
+    <!-- 工具栏 - 嵌入底部区域顶端 -->
+    <view class="toolbar-embedded">
+      <view class="tb-btn {{settingsTab === 'text' && settingsPanelVisible ? 'tb-btn--on' : ''}}" bindtap="onToggleSettings" data-tab="text">
+        <text class="tb-txt">文字</text>
+      </view>
+      <view class="tb-btn {{settingsTab === 'paper' && settingsPanelVisible ? 'tb-btn--on' : ''}}" bindtap="onToggleSettings" data-tab="paper">
+        <text class="tb-txt">纸张</text>
+      </view>
+      <view class="tb-btn {{settingsTab === 'layout' && settingsPanelVisible ? 'tb-btn--on' : ''}}" bindtap="onToggleSettings" data-tab="layout">
+        <text class="tb-txt">排版</text>
+      </view>
+      <view class="tb-btn tb-btn--save" bindtap="onExport">
+        <text class="tb-txt">保存</text>
       </view>
     </view>
 
-    <!-- 设置面板：设置面板打开时显示 -->
+    <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}" style="height: {{inputAreaHeight}}px;">
+      <textarea class="text-input" model:value="{{text}}" placeholder="在此写下文字..."
+        placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{true}}"
+        show-confirm-bar="{{false}}" adjust-position="{{false}}"
+        bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
+        maxlength="{{-1}}" cursor-spacing="10" style="height: {{textInputHeight}}px;"/>
+      <view class="input-toolbar">
+        <view class="input-actions-left"><text class="char-count">{{text.length}} 字</text></view>
+        <view class="input-actions-right"><text class="action-btn" bindtap="onClearDraft">清空</text></view>
+      </view>
+    </view>
+
     <view class="settings-panel {{settingsPanelVisible ? 'settings-panel--visible' : ''}}" wx:if="{{settingsPanelVisible}}">
       <view class="settings-body">
-        <!-- ===== 文字设置 ===== -->
         <block wx:if="{{settingsTab === 'text'}}">
           <view class="settings-content">
-            <!-- 第一行：字体、字重、墨色、对齐 -->
             <view class="settings-row">
               <view class="settings-cell">
                 <view class="setting-label">字体</view>
                 <picker mode="selector" range="{{textSettings.fontOptions}}" range-key="name" bindchange="onTextFontChange" value="{{textSettings.fontIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{textSettings.fontOptions[textSettings.fontIndex].name}}</text>
-                    <text class="arrow">›</text>
-                  </view>
+                  <view class="setting-value"><text class="value-text-mini">{{textSettings.fontOptions[textSettings.fontIndex].name}}</text><text class="arrow">›</text></view>
                 </picker>
               </view>
               <view class="settings-cell">
                 <view class="setting-label">字重</view>
                 <picker mode="selector" range="{{textSettings.weightOptions}}" bindchange="onTextWeightChange" value="{{textSettings.weightIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{textSettings.weightOptions[textSettings.weightIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
+                  <view class="setting-value"><text class="value-text-mini">{{textSettings.weightOptions[textSettings.weightIndex]}}</text><text class="arrow">›</text></view>
                 </picker>
               </view>
               <view class="settings-cell">
                 <view class="setting-label">墨色</view>
                 <picker mode="selector" range="{{textSettings.inkColorOptions}}" range-key="name" bindchange="onTextInkColorChange" value="{{textSettings.inkColorIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{textSettings.inkColorOptions[textSettings.inkColorIndex].name}}</text>
-                    <text class="arrow">›</text>
-                  </view>
+                  <view class="setting-value"><text class="value-text-mini">{{textSettings.inkColorOptions[textSettings.inkColorIndex].name}}</text><text class="arrow">›</text></view>
                 </picker>
               </view>
               <view class="settings-cell settings-cell-align">
                 <view class="setting-label">对齐</view>
                 <view class="align-options">
-                  <view class="align-option {{textSettings.textAlign === 'left' ? 'active' : ''}}" bindtap="onTextAlignTap" data-align="left">
-                    <text>左</text>
-                  </view>
-                  <view class="align-option {{textSettings.textAlign === 'center' ? 'active' : ''}}" bindtap="onTextAlignTap" data-align="center">
-                    <text>中</text>
-                  </view>
+                  <view class="align-option {{textSettings.textAlign === 'left' ? 'active' : ''}}" bindtap="onTextAlignTap" data-align="left"><text>左</text></view>
+                  <view class="align-option {{textSettings.textAlign === 'center' ? 'active' : ''}}" bindtap="onTextAlignTap" data-align="center"><text>中</text></view>
                 </view>
               </view>
             </view>
-
-            <!-- 第二行：开关项 -->
             <view class="settings-row">
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">水印</view>
-                <switch checked="{{textSettings.watermarkEnabled}}" bindchange="onWatermarkToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">繁简</view>
-                <switch checked="{{textSettings.traditionalChinese}}" bindchange="onTraditionalChineseToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">描边</view>
-                <switch checked="{{textSettings.strokeEnabled}}" bindchange="onStrokeToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch">
-                <view class="setting-label">换行</view>
-                <switch checked="{{textSettings.preserveLineBreaks}}" bindchange="onLineBreakToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
+              <view class="settings-cell settings-cell-switch"><view class="setting-label">水印</view><switch checked="{{textSettings.watermarkEnabled}}" bindchange="onWatermarkToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell-switch"><view class="setting-label">繁简</view><switch checked="{{textSettings.traditionalChinese}}" bindchange="onTraditionalChineseToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell-switch"><view class="setting-label">描边</view><switch checked="{{textSettings.strokeEnabled}}" bindchange="onStrokeToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell-switch"><view class="setting-label">换行</view><switch checked="{{textSettings.preserveLineBreaks}}" bindchange="onLineBreakToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
-
-            <!-- 第三行：字号、深浅、倾斜 -->
             <view class="settings-row">
-              <view class="settings-cell">
-                <view class="setting-label">字号</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.fontSizeMin}}" max="{{uiRanges.fontSizeMax}}" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onFontSizeChange"/>
-                  <text class="slider-value-mini">{{textSettings.fontSize}}px</text>
-                </view>
-              </view>
-              <view class="settings-cell">
-                <view class="setting-label">深浅</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.inkOpacityMin}}" max="{{uiRanges.inkOpacityMax}}" step="1" value="{{textSettings.inkOpacity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onTextInkOpacityChange"/>
-                  <text class="slider-value-mini">{{textSettings.inkOpacity}}%</text>
-                </view>
-              </view>
-              <view class="settings-cell">
-                <view class="setting-label">倾斜</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.textSkewMin}}" max="{{uiRanges.textSkewMax}}" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onTextSkewChange"/>
-                  <text class="slider-value-mini">{{textSettings.textSkewDisplay}}</text>
-                </view>
-              </view>
+              <view class="settings-cell"><view class="setting-label">字号</view><view class="setting-value"><slider class="slider-mini" min="18" max="60" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onFontSizeChange"/><text class="slider-value-mini">{{textSettings.fontSize}}px</text></view></view>
+              <view class="settings-cell"><view class="setting-label">深浅</view><view class="setting-value"><slider class="slider-mini" min="10" max="100" step="5" value="{{textSettings.inkOpacity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onTextInkOpacityChange"/><text class="slider-value-mini">{{textSettings.inkOpacity}}%</text></view></view>
+              <view class="settings-cell"><view class="setting-label">倾斜</view><view class="setting-value"><slider class="slider-mini" min="-10" max="10" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onTextSkewChange"/><text class="slider-value-mini">{{textSettings.textSkewDisplay}}</text></view></view>
             </view>
-
-            <!-- 第四行：水印样式（条件显示） -->
             <view class="settings-row" wx:if="{{textSettings.watermarkEnabled}}">
-              <view class="settings-cell settings-cell--wide">
-                <view class="setting-label">水印样式</view>
-                <picker mode="selector" range="{{textSettings.watermarkOptions}}" bindchange="onWatermarkTypeChange" value="{{textSettings.watermarkIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{textSettings.watermarkOptions[textSettings.watermarkIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
+              <view class="settings-cell settings-cell--wide"><view class="setting-label">水印样式</view><picker mode="selector" range="{{textSettings.watermarkOptions}}" bindchange="onWatermarkTypeChange" value="{{textSettings.watermarkIndex}}"><view class="setting-value"><text class="value-text-mini">{{textSettings.watermarkOptions[textSettings.watermarkIndex]}}</text><text class="arrow">›</text></view></picker></view>
             </view>
-
-            <!-- 第五行：描边粗细（条件显示） -->
             <view class="settings-row" wx:if="{{textSettings.strokeEnabled}}">
-              <view class="settings-cell settings-cell--wide">
-                <view class="setting-label">描边粗细</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.strokeWidthMin}}" max="{{uiRanges.strokeWidthMax}}" step="{{uiRanges.strokeWidthStep}}" value="{{textSettings.strokeWidth}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onStrokeWidthChange"/>
-                  <text class="slider-value-mini">{{textSettings.strokeWidth}}px</text>
-                </view>
-              </view>
+              <view class="settings-cell settings-cell--wide"><view class="setting-label">描边粗细</view><view class="setting-value"><slider class="slider-mini" min="0" max="5" step="0.5" value="{{textSettings.strokeWidth}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onStrokeWidthChange"/><text class="slider-value-mini">{{textSettings.strokeWidth}}px</text></view></view>
             </view>
-
           </view>
         </block>
 
-        <!-- ===== 纸张设置 ===== -->
         <block wx:if="{{settingsTab === 'paper'}}">
           <view class="settings-content">
-            <!-- 第一行：纸张模板 + 底色 + 老旧度 + 纹理 -->
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--margin" bindtap="onTogglePaperTemplates">
-                <view class="setting-label">纸张模板</view>
-                <view class="setting-value">
-                  <text class="value-text-mini">{{paperSettings.templateOptions[paperSettings.templateIndex].name}}</text>
-                  <text class="arrow">{{paperSettings.templateExpanded ? '‹' : '›'}}</text>
-                </view>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">底色</view>
-                <picker mode="selector" range="{{paperSettings.colorOptions}}" range-key="name" bindchange="onPaperColorChange" value="{{paperSettings.colorIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.colorOptions[paperSettings.colorIndex].name}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">老旧度</view>
-                <picker mode="selector" range="{{paperSettings.agingOptions}}" bindchange="onPaperAgingChange" value="{{paperSettings.agingIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.agingOptions[paperSettings.agingIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">纹理</view>
-                <picker mode="selector" range="{{paperSettings.textureOptions}}" bindchange="onPaperTextureChange" value="{{paperSettings.textureIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.textureOptions[paperSettings.textureIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
+              <view class="settings-cell settings-cell--margin" bindtap="onTogglePaperTemplates"><view class="setting-label">纸张模板</view><view class="setting-value"><text class="value-text-mini">{{paperSettings.templateOptions[paperSettings.templateIndex].name}}</text><text class="arrow">{{paperSettings.templateExpanded ? '‹' : '›'}}</text></view></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">底色</view><picker mode="selector" range="{{paperSettings.colorOptions}}" range-key="name" bindchange="onPaperColorChange" value="{{paperSettings.colorIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.colorOptions[paperSettings.colorIndex].name}}</text><text class="arrow">›</text></view></picker></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">老旧度</view><picker mode="selector" range="{{paperSettings.agingOptions}}" bindchange="onPaperAgingChange" value="{{paperSettings.agingIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.agingOptions[paperSettings.agingIndex]}}</text><text class="arrow">›</text></view></picker></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">纹理</view><picker mode="selector" range="{{paperSettings.textureOptions}}" bindchange="onPaperTextureChange" value="{{paperSettings.textureIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.textureOptions[paperSettings.textureIndex]}}</text><text class="arrow">›</text></view></picker></view>
             </view>
-            
-            <!-- 模板预览行（点击纸张模板后显示） -->
             <view wx:if="{{paperSettings.templateExpanded}}" style="padding:16rpx 0;background:#FAF7F2;border-top:1rpx solid rgba(158,148,136,0.2);margin-bottom:8rpx;">
-              <scroll-view scroll-x style="width:100%;white-space:nowrap;">
-                <view style="display:inline-flex;padding:0 16rpx;gap:12rpx;">
-                  <view wx:for="{{paperSettings.templateOptions}}" 
-                        wx:key="id" 
-                        style="display:flex;flex-direction:column;align-items:center;width:100rpx;flex-shrink:0;"
-                        bindtap="onPaperTemplateChangeDirect"
-                        data-index="{{index}}">
-                    <view style="width:100rpx;height:120rpx;border-radius:6rpx;border:1rpx solid #DDD;margin-bottom:6rpx;background-color:{{item.paperColor}};position:relative;box-shadow:0 2rpx 6rpx rgba(0,0,0,0.08);">
-                      <text wx:if="{{item.watermarkText}}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24rpx;color:rgba(0,0,0,0.15);">{{item.watermarkText}}</text>
-                    </view>
-                    <text style="font-size:18rpx;color:#6B5B4F;text-align:center;">{{item.name}}</text>
+              <scroll-view scroll-x style="width:100%;white-space:nowrap;"><view style="display:inline-flex;padding:0 16rpx;gap:12rpx;">
+                <view wx:for="{{paperSettings.templateOptions}}" wx:key="id" style="display:flex;flex-direction:column;align-items:center;width:100rpx;flex-shrink:0;" bindtap="onPaperTemplateChangeDirect" data-index="{{index}}">
+                  <view style="width:100rpx;height:120rpx;border-radius:6rpx;border:1rpx solid #DDD;margin-bottom:6rpx;background-color:{{item.paperColor}};position:relative;box-shadow:0 2rpx 6rpx rgba(0,0,0,0.08);">
+                    <text wx:if="{{item.watermarkText}}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24rpx;color:rgba(0,0,0,0.15)">{{item.watermarkText}}</text>
                   </view>
+                  <text style="font-size:18rpx;color:#6B5B4F;text-align:center;">{{item.name}}</text>
                 </view>
-              </scroll-view>
+              </view></scroll-view>
             </view>
-
-            <!-- 第一行：上下边距 + 阴影 + 瑕疵 + 装订 -->
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--margin">
-                <view class="setting-label">上下边距</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.marginMin}}" max="{{uiRanges.marginMax}}" step="{{uiRanges.marginStep}}" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperMarginVerticalChange"/>
-                  <text class="slider-value-mini">{{paperSettings.marginVertical}}</text>
-                </view>
-              </view>
-              <view class="settings-cell settings-cell-switch settings-cell--fourth">
-                <view class="setting-label">阴影</view>
-                <switch checked="{{paperSettings.shadowEnabled}}" bindchange="onPaperShadowToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch settings-cell--fourth">
-                <view class="setting-label">瑕疵</view>
-                <switch checked="{{paperSettings.imperfectionEnabled}}" bindchange="onPaperImperfectionToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell-switch settings-cell--fourth">
-                <view class="setting-label">装订</view>
-                <switch checked="{{paperSettings.stitchEnabled}}" bindchange="onPaperStitchToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
+              <view class="settings-cell settings-cell--margin"><view class="setting-label">上下边距</view><view class="setting-value"><slider class="slider-mini" min="20" max="150" step="5" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onPaperMarginVerticalChange"/><text class="slider-value-mini">{{paperSettings.marginVertical}}</text></view></view>
+              <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">阴影</view><switch checked="{{paperSettings.shadowEnabled}}" bindchange="onPaperShadowToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">瑕疵</view><switch checked="{{paperSettings.imperfectionEnabled}}" bindchange="onPaperImperfectionToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">装订</view><switch checked="{{paperSettings.stitchEnabled}}" bindchange="onPaperStitchToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
-
-            <!-- 第二行：左右边距 + 卷边 + 撕边 + 尺寸 -->
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--margin">
-                <view class="setting-label">左右边距</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.marginMin}}" max="{{uiRanges.marginMax}}" step="{{uiRanges.marginStep}}" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperMarginHorizontalChange"/>
-                  <text class="slider-value-mini">{{paperSettings.marginHorizontal}}</text>
-                </view>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">卷边</view>
-                <picker mode="selector" range="{{paperSettings.curlOptions}}" bindchange="onPaperCurlChange" value="{{paperSettings.curlIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.curlOptions[paperSettings.curlIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">撕边</view>
-                <picker mode="selector" range="{{paperSettings.tearOptions}}" bindchange="onPaperTearChange" value="{{paperSettings.tearIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.tearOptions[paperSettings.tearIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">尺寸</view>
-                <picker mode="selector" range="{{paperSettings.sizeOptions}}" bindchange="onPaperSizeChange" value="{{paperSettings.sizeIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.sizeOptions[paperSettings.sizeIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
+              <view class="settings-cell settings-cell--margin"><view class="setting-label">左右边距</view><view class="setting-value"><slider class="slider-mini" min="20" max="150" step="5" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onPaperMarginHorizontalChange"/><text class="slider-value-mini">{{paperSettings.marginHorizontal}}</text></view></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">卷边</view><picker mode="selector" range="{{paperSettings.curlOptions}}" bindchange="onPaperCurlChange" value="{{paperSettings.curlIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.curlOptions[paperSettings.curlIndex]}}</text><text class="arrow">›</text></view></picker></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">撕边</view><picker mode="selector" range="{{paperSettings.tearOptions}}" bindchange="onPaperTearChange" value="{{paperSettings.tearIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.tearOptions[paperSettings.tearIndex]}}</text><text class="arrow">›</text></view></picker></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">尺寸</view><picker mode="selector" range="{{paperSettings.sizeOptions}}" bindchange="onPaperSizeChange" value="{{paperSettings.sizeIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.sizeOptions[paperSettings.sizeIndex]}}</text><text class="arrow">›</text></view></picker></view>
             </view>
-
-            <!-- 条件设置项 -->
-            <view class="settings-row" wx:if="{{paperSettings.shadowEnabled || paperSettings.imperfectionEnabled || paperSettings.stitchEnabled}}">
-              <view class="settings-cell" wx:if="{{paperSettings.shadowEnabled}}">
-                <view class="setting-label">阴影强度</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="{{uiRanges.shadowMax}}" step="1" value="{{paperSettings.shadowIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperShadowIntensityChange"/>
-                  <text class="slider-value-mini">{{paperSettings.shadowIntensity}}%</text>
-                </view>
-              </view>
-              <view class="settings-cell" wx:if="{{paperSettings.imperfectionEnabled}}">
-                <view class="setting-label">瑕疵类型</view>
-                <picker mode="selector" range="{{paperSettings.imperfectionTypeOptions}}" bindchange="onPaperImperfectionTypeChange" value="{{paperSettings.imperfectionTypeIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.imperfectionTypeOptions[paperSettings.imperfectionTypeIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell" wx:if="{{paperSettings.stitchEnabled}}">
-                <view class="setting-label">痕迹类型</view>
-                <picker mode="selector" range="{{paperSettings.stitchTypeOptions}}" bindchange="onPaperStitchTypeChange" value="{{paperSettings.stitchTypeIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{paperSettings.stitchTypeOptions[paperSettings.stitchTypeIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell" wx:if="{{paperSettings.imperfectionEnabled}}">
-                <view class="setting-label">瑕疵强度</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="{{uiRanges.imperfectionMax}}" step="1" value="{{paperSettings.imperfectionIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onPaperImperfectionIntensityChange"/>
-                  <text class="slider-value-mini">{{paperSettings.imperfectionIntensity}}%</text>
-                </view>
-              </view>
-            </view>
-
           </view>
         </block>
 
-        <!-- ===== 排版设置 ===== -->
         <block wx:if="{{settingsTab === 'layout'}}">
           <view class="settings-content">
-            <!-- 第一行：文字方向、首行缩进、页眉页脚、页码显示 -->
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">文字方向</view>
-                <picker mode="selector" range="{{layoutSettings.directionOptions}}" bindchange="onLayoutDirectionChange" value="{{layoutSettings.directionIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{layoutSettings.directionOptions[layoutSettings.directionIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">首行缩进</view>
-                <picker mode="selector" range="{{layoutSettings.indentOptions}}" bindchange="onLayoutIndentChange" value="{{layoutSettings.indentIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{layoutSettings.indentOptions[layoutSettings.indentIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell settings-cell--fourth settings-cell-switch">
-                <view class="setting-label">页眉页脚</view>
-                <switch checked="{{layoutSettings.headerFooterEnabled}}" bindchange="onLayoutHeaderFooterToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell--fourth settings-cell-switch">
-                <view class="setting-label">页码显示</view>
-                <switch checked="{{layoutSettings.pageNumberEnabled}}" bindchange="onLayoutPageNumberToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">文字方向</view><picker mode="selector" range="{{layoutSettings.directionOptions}}" bindchange="onLayoutDirectionChange" value="{{layoutSettings.directionIndex}}"><view class="setting-value"><text class="value-text-mini">{{layoutSettings.directionOptions[layoutSettings.directionIndex]}}</text><text class="arrow">›</text></view></picker></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">首行缩进</view><picker mode="selector" range="{{layoutSettings.indentOptions}}" bindchange="onLayoutIndentChange" value="{{layoutSettings.indentIndex}}"><view class="setting-value"><text class="value-text-mini">{{layoutSettings.indentOptions[layoutSettings.indentIndex]}}</text><text class="arrow">›</text></view></picker></view>
+              <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">页眉页脚</view><switch checked="{{layoutSettings.headerFooterEnabled}}" bindchange="onLayoutHeaderFooterToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">页码显示</view><switch checked="{{layoutSettings.pageNumberEnabled}}" bindchange="onLayoutPageNumberToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
-
-            <!-- 第二行：行间距、字间距、段落间距、排版松紧 -->
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">行间距</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.lineHeightMin}}" max="{{uiRanges.lineHeightMax}}" step="{{uiRanges.lineHeightStep}}" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutLineHeightChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text>
-                </view>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">字间距</view>
-                <view class="setting-value">
-                  <slider class="slider-mini slider-letter-spacing" min="{{uiRanges.letterSpacingMin}}" max="{{uiRanges.letterSpacingMax}}" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutLetterSpacingChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.letterSpacing}}%</text>
-                </view>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">段落间距</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="{{uiRanges.paragraphSpacingMax}}" step="1" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutParagraphSpacingChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.paragraphSpacing}}</text>
-                </view>
-              </view>
-              <view class="settings-cell settings-cell--fourth">
-                <view class="setting-label">排版松紧</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="{{uiRanges.compactnessMin}}" max="{{uiRanges.compactnessMax}}" step="1" value="{{layoutSettings.compactness}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutCompactnessChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.compactness}}%</text>
-                </view>
-              </view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">行间距</view><view class="setting-value"><slider class="slider-mini" min="120" max="280" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutLineHeightChange"/><text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text></view></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">字间距</view><view class="setting-value"><slider class="slider-mini" min="-5" max="20" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutLetterSpacingChange"/><text class="slider-value-mini">{{layoutSettings.letterSpacing}}%</text></view></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">段落间距</view><view class="setting-value"><slider class="slider-mini" min="0" max="50" step="2" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutParagraphSpacingChange"/><text class="slider-value-mini">{{layoutSettings.paragraphSpacing}}</text></view></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">排版松紧</view><view class="setting-value"><slider class="slider-mini" min="0" max="100" step="5" value="{{layoutSettings.compactness}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutCompactnessChange"/><text class="slider-value-mini">{{layoutSettings.compactness}}%</text></view></view>
             </view>
-
-            <!-- 第三行：开关项 -->
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--fourth settings-cell-switch">
-                <view class="setting-label">字体风化</view>
-                <switch checked="{{layoutSettings.weatheringEnabled}}" bindchange="onLayoutWeatheringToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell--fourth settings-cell-switch">
-                <view class="setting-label">墨色浸染</view>
-                <switch checked="{{layoutSettings.inkSpreadEnabled}}" bindchange="onLayoutInkSpreadToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell--fourth settings-cell-switch">
-                <view class="setting-label">套印错位</view>
-                <switch checked="{{layoutSettings.misregistrationEnabled}}" bindchange="onLayoutMisregistrationToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
-              <view class="settings-cell settings-cell--fourth settings-cell-switch">
-                <view class="setting-label">页面破损</view>
-                <switch checked="{{layoutSettings.damageEnabled}}" bindchange="onLayoutDamageToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/>
-              </view>
+              <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">字体风化</view><switch checked="{{layoutSettings.weatheringEnabled}}" bindchange="onLayoutWeatheringToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">墨色浸染</view><switch checked="{{layoutSettings.inkSpreadEnabled}}" bindchange="onLayoutInkSpreadToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">套印错位</view><switch checked="{{layoutSettings.misregistrationEnabled}}" bindchange="onLayoutMisregistrationToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">页面破损</view><switch checked="{{layoutSettings.damageEnabled}}" bindchange="onLayoutDamageToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
-
-            <!-- 第四行：竖排方向 -->
-            <view class="settings-row" wx:if="{{layoutSettings.directionIndex === 1}}">
-              <view class="settings-cell">
-                <view class="setting-label">竖排方向</view>
-                <radio-group class="vertical-dir-radio-mini" bindchange="onLayoutVerticalDirChange">
-                  <label class="radio-label-mini">
-                    <radio value="rtl" checked="{{layoutSettings.verticalDir === 'rtl'}}" color="#6B5B4F"/>
-                    <text>右</text>
-                  </label>
-                  <label class="radio-label-mini">
-                    <radio value="ltr" checked="{{layoutSettings.verticalDir === 'ltr'}}" color="#6B5B4F"/>
-                    <text>左</text>
-                  </label>
-                </radio-group>
-              </view>
-            </view>
-
-            <!-- 条件设置项 -->
-            <view class="settings-row">
-              <view class="settings-cell" wx:if="{{layoutSettings.weatheringEnabled}}">
-                <view class="setting-label">风化强度</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="{{uiRanges.weatheringMax}}" step="1" value="{{layoutSettings.weatheringIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutWeatheringIntensityChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.weatheringIntensity}}%</text>
-                </view>
-              </view>
-              <view class="settings-cell" wx:if="{{layoutSettings.inkSpreadEnabled}}">
-                <view class="setting-label">浸染强度</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="{{uiRanges.inkSpreadMax}}" step="1" value="{{layoutSettings.inkSpreadIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutInkSpreadIntensityChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.inkSpreadIntensity}}%</text>
-                </view>
-              </view>
-              <view class="settings-cell" wx:if="{{layoutSettings.misregistrationEnabled}}">
-                <view class="setting-label">错位偏移</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="{{uiRanges.misregistrationMax}}" step="{{uiRanges.misregistrationStep}}" value="{{layoutSettings.misregistrationOffset}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutMisregistrationOffsetChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.misregistrationOffset}}px</text>
-                </view>
-              </view>
-              <view class="settings-cell" wx:if="{{layoutSettings.damageEnabled}}">
-                <view class="setting-label">破损类型</view>
-                <picker mode="selector" range="{{layoutSettings.damageTypeOptions}}" bindchange="onLayoutDamageTypeChange" value="{{layoutSettings.damageTypeIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{layoutSettings.damageTypeOptions[layoutSettings.damageTypeIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-            </view>
-
-            <!-- 条件设置项续 -->
-            <view class="settings-row">
-              <view class="settings-cell" wx:if="{{layoutSettings.damageEnabled}}">
-                <view class="setting-label">破损强度</view>
-                <view class="setting-value">
-                  <slider class="slider-mini" min="0" max="{{uiRanges.damageMax}}" step="1" value="{{layoutSettings.damageIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="14" bindchange="onLayoutDamageIntensityChange"/>
-                  <text class="slider-value-mini">{{layoutSettings.damageIntensity}}%</text>
-                </view>
-              </view>
-              <view class="settings-cell" wx:if="{{layoutSettings.pageNumberEnabled}}">
-                <view class="setting-label">页码位置</view>
-                <picker mode="selector" range="{{layoutSettings.pageNumberPositionOptions}}" bindchange="onLayoutPageNumberPositionChange" value="{{layoutSettings.pageNumberPositionIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{layoutSettings.pageNumberPositionOptions[layoutSettings.pageNumberPositionIndex]}}</text>
-                    <text class="arrow">›</text>
-                  </view>
-                </picker>
-              </view>
-              <view class="settings-cell" wx:if="{{layoutSettings.headerFooterEnabled}}">
-                <view class="setting-label">页眉</view>
-                <input class="input-field-mini" type="text" placeholder="页眉" value="{{layoutSettings.headerText}}" bindinput="onLayoutHeaderTextChange"/>
-              </view>
-              <view class="settings-cell" wx:if="{{layoutSettings.headerFooterEnabled}}">
-                <view class="setting-label">页脚</view>
-                <input class="input-field-mini" type="text" placeholder="页脚" value="{{layoutSettings.footerText}}" bindinput="onLayoutFooterTextChange"/>
-              </view>
-            </view>
-
           </view>
         </block>
-
       </view>
-
-      <!-- 底部操作栏 -->
       <view class="sp-footer">
         <view class="sp-footer-btn sp-footer-btn--reset" bindtap="onResetTab">重置</view>
-        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'light-print' ? 'active' : ''}}" bindtap="onApplyLightPrintPreset">清雅轻印</view>
-        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'immersive' ? 'active' : ''}}" bindtap="onApplyImmersivePreset">印刷沉浸</view>
-        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'ancient-bold' ? 'active' : ''}}" bindtap="onApplyAncientBoldPreset">古籍厚墨</view>
-        <view class="sp-footer-btn sp-footer-btn--default {{lastStylePreset === 'modern-minimal' ? 'active' : ''}}" bindtap="onApplyModernMinimalPreset">现代极简</view>
-        <view class="sp-footer-btn sp-footer-btn--default {{!lastStylePreset ? 'active' : ''}}" bindtap="onResetSettings">恢复默认</view>
+        <view class="sp-footer-btn sp-footer-btn--default" bindtap="onResetSettings">恢复默认</view>
         <view class="sp-footer-btn sp-footer-btn--done" bindtap="onCloseSettings">确定</view>
       </view>
     </view>
   </view>
 
-  <!-- 字体选择弹窗 -->
   <view class="font-panel {{fontPanelVisible ? 'font-panel--visible' : ''}}" wx:if="{{fontPanelVisible}}" bindtap="onCloseFontPanelBg">
     <view class="font-panel-content" catchtap="_stopProp">
       <view class="font-panel-header">
         <text class="font-panel-back" bindtap="onCloseFontPanel">‹ 返回</text>
         <text class="font-panel-title">选择字体</text>
-        <text class="font-panel-close" bindtap="onCloseFontPanel">×</text>
+        <text class="font-panel-close" bindtap="onCloseFontPanel">✕</text>
       </view>
-      <view class="font-tip">
-        <text class="font-tip-text">字体下载需消耗流量，建议在Wi-Fi环境下下载</text>
-      </view>
+      <view class="font-tip"><text class="font-tip-text">字体下载需消耗流量，建议在Wi-Fi环境下下载</text></view>
       <scroll-view scroll-y class="font-grid">
         <view class="font-grid-inner">
-          <view
-            wx:for="{{fontList}}"
-            wx:key="index"
-            class="font-grid-item {{activeFontId === item.id ? 'active' : ''}}"
-            bindtap="onSelectFont"
-            data-id="{{item.id}}"
-            data-font="{{item.family}}"
-          >
-            <view class="font-main">
-              <text class="font-name">{{item.name}}</text>
-            </view>
-            <view class="font-meta">
-              <text class="font-size" wx:if="{{item.fileSize}}">{{item.fileSizeLabel}}</text>
-            </view>
-            <view class="font-check" wx:if="{{activeFontId === item.id}}">已选</view>
+          <view wx:for="{{fontList}}" wx:key="index" class="font-grid-item {{activeFontId === item.id ? 'active' : ''}}" bindtap="onSelectFont" data-id="{{item.id}}" data-font="{{item.family}}">
+            <view class="font-main"><text class="font-name">{{item.name}}</text></view>
+            <view class="font-meta"><text class="font-size" wx:if="{{item.fileSize}}">{{item.fileSizeLabel}}</text></view>
+            <view class="font-check" wx:if="{{activeFontId === item.id}}">✓</view>
           </view>
         </view>
       </scroll-view>
     </view>
   </view>
 
-  <!-- 模板选择弹窗 -->
   <view class="template-panel {{templatePanelVisible ? 'template-panel--visible' : ''}}" wx:if="{{templatePanelVisible}}" bindtap="onCloseTemplatesBg">
     <view class="template-panel-content" catchtap="_stopProp">
       <view class="template-panel-header">
         <text class="template-panel-title">选择模板</text>
-        <text class="template-panel-close" bindtap="onCloseTemplates">×</text>
+        <text class="template-panel-close" bindtap="onCloseTemplates">✕</text>
       </view>
       <scroll-view scroll-y class="template-grid">
         <view class="template-grid-inner">
-          <view
-            wx:for="{{templateList}}"
-            wx:key="index"
-            class="template-grid-item {{activeTemplateId === item.id ? 'active' : ''}}"
-            bindtap="onSelectTemplate"
-            data-id="{{item.id}}"
-          >
-            <view class="template-preview" wx:if="{{item.paper && item.paper.backgroundImage}}">
-              <image class="template-preview-img" src="{{item.paper.backgroundImage.fileID}}" mode="aspectFill"></image>
-            </view>
-            <view class="template-info">
-              <text class="template-name">{{item.name}}</text>
-            </view>
-            <view class="template-check" wx:if="{{activeTemplateId === item.id}}">已选</view>
+          <view wx:for="{{templateList}}" wx:key="index" class="template-grid-item {{activeTemplateId === item.id ? 'active' : ''}}" bindtap="onSelectTemplate" data-id="{{item.id}}">
+            <view class="template-preview" wx:if="{{item.paper && item.paper.backgroundImage}}"><image class="template-preview-img" src="{{item.paper.backgroundImage.fileID}}" mode="aspectFill"></image></view>
+            <view class="template-info"><text class="template-name">{{item.name}}</text></view>
+            <view class="template-check" wx:if="{{activeTemplateId === item.id}}">✓</view>
           </view>
         </view>
       </scroll-view>
     </view>
   </view>
 
-  <!-- 保存选项弹窗 -->
   <view class="save-panel {{savePanelVisible ? 'save-panel--visible' : ''}}" wx:if="{{savePanelVisible}}" bindtap="onCloseSavePanelBg">
     <view class="save-panel-content" catchtap="_stopProp">
       <view class="save-panel-header">
         <text class="save-panel-title">保存作品</text>
-        <text class="save-panel-close" bindtap="onCloseSavePanel">×</text>
+        <text class="save-panel-close" bindtap="onCloseSavePanel">✕</text>
       </view>
       <view class="save-options">
-        <view class="save-option" bindtap="onSaveToAlbum">
-          <view class="save-option-icon">保存</view>
-          <text class="save-option-label">保存到相册</text>
-        </view>
-        <view class="save-option" bindtap="onShareToFriends">
-          <view class="save-option-icon">分享</view>
-          <text class="save-option-label">分享给好友</text>
-        </view>
+        <view class="save-option" bindtap="onSaveToAlbum"><text class="save-option-label">保存到相册</text></view>
+        <view class="save-option" bindtap="onShareToFriends"><text class="save-option-label">分享给好友</text></view>
       </view>
     </view>
   </view>

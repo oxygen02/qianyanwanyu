@@ -126,5 +126,10 @@ Page({
       title: `${poem.title} · ${poem.author}`,
       path: `/pages/poem-detail/poem-detail?id=${poem.id}`
     }
+  },
+
+  // 阻止触摸事件冒泡
+  preventTouchMove() {
+    return false
   }
 })

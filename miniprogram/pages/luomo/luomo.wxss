@@ -6,48 +6,43 @@
   background-color: #F5F0E8;
   overflow: hidden;
   position: relative;
-  box-sizing: border-box;
-  touch-action: manipulation;
 }
 
-/* ========== 书页展示区（Canvas 区域）========== */
+/* ========== 书页展示区（Canvas 区域）- 填充剩余高度，纸张效果 ========== */
 .canvas-area {
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8rpx 16rpx;
-  padding-bottom: calc(56rpx + 26vh + 96rpx + env(safe-area-inset-bottom) + 20rpx);
+  padding: 16rpx 20rpx;
   overflow: hidden;
 }
 
 .canvas-wrapper {
   width: 100%;
   height: 100%;
-  max-width: 100%;
-  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  pointer-events: auto;
+  padding: 6rpx;
+  background-color: #E8E2D8;
+  border-radius: 6rpx;
+  box-shadow:
+    inset 0 1rpx 4rpx rgba(255,255,255,0.5),
+    0 2rpx 12rpx rgba(107,91,79,0.15);
 }
 
 .book-canvas {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 4rpx;
+  width: 100%;
+  height: 100%;
+  border-radius: 3rpx;
   background-color: #FAF7F2;
-  transition: transform 0.3s ease, opacity 0.25s ease;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   display: block;
-  flex-shrink: 0;
 }
 
 .book-canvas.zoomed {
@@ -88,7 +83,6 @@
   justify-content: center;
   background-color: rgba(250, 247, 242, 0.7);
   z-index: 20;
-  pointer-events: none;
 }
 
 .loading-dot-wrap { display: flex; gap: 16rpx; }
@@ -119,59 +113,43 @@
 .empty-text { font-size: 36rpx; color: rgba(107,91,79,0.5); letter-spacing: 4rpx; }
 .empty-sub { font-size: 24rpx; color: rgba(158,148,136,0.6); letter-spacing: 2rpx; }
 
-/* ========== 中间工具栏（cover-view，在 Canvas 原生组件之上）========== */
-.middle-toolbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(26vh + 96rpx + env(safe-area-inset-bottom));
-  height: 56rpx;
-  background-color: rgba(250, 247, 242, 0.98);
-  border-top: 1rpx solid rgba(158, 148, 136, 0.2);
-  border-bottom: 1rpx solid rgba(158, 148, 136, 0.15);
+/* ========== 工具栏（嵌入式，位于底部区域顶端）========== */
+.toolbar-embedded {
   display: flex;
   align-items: center;
   justify-content: space-evenly;
-  padding: 0 12rpx;
-  z-index: 100000;
+  height: 56rpx;
+  background-color: rgba(250, 247, 242, 0.98);
+  border-bottom: 1rpx solid rgba(158, 148, 136, 0.15);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
-.toolbar-btn {
+.tb-btn {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  padding: 6rpx 18rpx;
-  border-radius: 10rpx;
-  min-width: 80rpx;
+  padding: 6rpx 24rpx;
   height: 40rpx;
 }
-.toolbar-btn:active { background-color: rgba(158,148,136,0.2); }
 
-.toolbar-btn--active { background-color: rgba(107,91,79,0.1); }
-.toolbar-btn--active .toolbar-btn-label { color: #3D2B1F; font-weight: 600; }
-.toolbar-btn--save:active { background-color: rgba(107,91,79,0.15); }
+.tb-btn--on { background-color: rgba(107, 91, 79, 0.1); border-radius: 10rpx; }
+.tb-btn--save { background-color: rgba(107, 91, 79, 0.06); border-radius: 10rpx; }
+.tb-txt { font-size: 20rpx; color: #6B5B4F; font-weight: 500; }
+.tb-btn--on .tb-txt { color: #3D2B1F; font-weight: 600; }
 
-.toolbar-btn-label { font-size: 20rpx; color: #6B5B4F; font-weight: 500; white-space: nowrap; }
-
-/* ========== 底部区域（输入框 + 设置面板互斥）========== */
-/* 注意：bottom-area 使用 position: fixed 定位在屏幕底部，
-   避免被 Canvas 原生组件覆盖 */
+/* ========== 底部区域（工具栏 + 输入框/设置面板）- 固定高度 ========== */
 .bottom-area {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(96rpx + env(safe-area-inset-bottom));
-  height: 26vh;
-  max-height: 360px;
-  min-height: 180px;
+  height: calc(480rpx + env(safe-area-inset-bottom));
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background-color: #FAF7F2;
-  z-index: 100001;
-  border-top: 1rpx solid rgba(158, 148, 136, 0.2);
+  position: relative;
+  z-index: 100;
   overflow: hidden;
-  touch-action: manipulation;
+  background-color: #FAF7F2;
 }
 
 /* ========== 设置面板（内嵌式，不遮挡 Canvas）========== */
@@ -507,12 +485,6 @@
   border: 1rpx solid rgba(158,148,136,0.15);
 }
 
-.sp-footer-btn--default.active {
-  background-color: #6B5B4F;
-  color: #FAF7F2;
-  border-color: #6B5B4F;
-}
-
 .sp-footer-btn--default:active {
   background-color: rgba(158,148,136,0.25);
 }
@@ -529,15 +501,14 @@
 
 /* ========== 输入区 - 固定在底部，设置面板打开时隐藏 ========== */
 .input-area {
-  flex: 1;
   display: flex;
   flex-direction: column;
   background-color: #FAF7F2;
-  border-top: 1rpx solid rgba(158, 148, 136, 0.2);
-  padding: 10rpx 16rpx 16rpx;
+  border-top: none;
+  padding: 14rpx 20rpx 20rpx;
   overflow: hidden;
-  position: relative;
-  z-index: 10;
+  flex-shrink: 0;
+  transition: height 0.2s ease-out;
 }
 
 .input-area--hidden {
@@ -547,15 +518,16 @@
 .text-input {
   flex: 1;
   width: 100%;
-  min-height: 0;
+  min-height: 120rpx;
   background-color: #FFFFFF;
-  border-radius: 8rpx;
-  padding: 12rpx 16rpx;
-  font-size: 26rpx;
-  line-height: 1.5;
+  border-radius: 10rpx;
+  padding: 16rpx 18rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
   color: #3D2B1F;
   box-sizing: border-box;
-  border: 1rpx solid rgba(158,148,136,0.2);
+  border: 1rpx solid rgba(158,148,136,0.25);
+  transition: height 0.2s ease-out;
 }
 
 .input-placeholder { color: rgba(158,148,136,0.6); font-size: 24rpx; }
@@ -1640,12 +1612,12 @@
 }
 
 .setting-label {
-  font-size: 22rpx;
+  font-size: 18rpx;
   color: #3D2B1F;
   font-weight: 500;
   flex-shrink: 0;
   line-height: 1.4;
-  min-height: 30rpx;
+  height: 26rpx;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -1669,7 +1641,7 @@
 }
 
 .value-text-mini {
-  font-size: 20rpx;
+  font-size: 17rpx;
   color: #6B5B4F;
   flex: 1;
   white-space: nowrap;
@@ -1719,17 +1691,11 @@ picker .setting-value {
   min-height: 32rpx;
 }
 
-/* 字间距滑块：增大可触摸区域 */
-.slider-letter-spacing {
-  min-height: 48rpx;
-  height: 48rpx;
-}
-
 .slider-value-mini {
-  font-size: 20rpx;
+  font-size: 17rpx;
   color: #6B5B4F;
   font-weight: 500;
-  min-width: 60rpx;
+  min-width: 56rpx;
   text-align: right;
   line-height: 1.4;
   padding-left: 8rpx;
@@ -1756,7 +1722,7 @@ picker .setting-value {
   align-items: center;
   flex-shrink: 0;
   gap: 12rpx;
-  font-size: 22rpx;
+  font-size: 18rpx;
   color: #6B5B4F;
   line-height: 1.4;
   padding: 0;
@@ -1831,17 +1797,17 @@ picker .setting-value {
 }
 
 .settings-cell-align .align-option text {
-  font-size: 22rpx;
+  font-size: 18rpx;
   color: #6B5B4F;
 }
 
 .input-field-mini {
   flex: 1;
-  height: 36rpx;
+  height: 32rpx;
   padding: 0 8rpx;
   background-color: rgba(158, 148, 136, 0.1);
   border-radius: 4rpx;
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #3D2B1F;
   min-width: 0;
 }
@@ -1910,7 +1876,7 @@ picker .setting-value {
 }
 
 .arrow {
-  font-size: 32rpx;
+  font-size: 28rpx;
   color: #9E9488;
   line-height: 1.2;
 }

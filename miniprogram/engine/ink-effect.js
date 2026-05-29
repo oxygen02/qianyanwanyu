@@ -293,6 +293,11 @@ function drawInkLine(ctx, text, x, y, charWidth, letterSpacing, inkConfig, fontC
 function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig) {
   if (!glyphs || glyphs.length === 0) return
 
+  // 确保 fontConfig 不为空
+  if (!fontConfig) {
+    fontConfig = { family: 'serif' }
+  }
+
   const inkColor = parseColor(inkConfig.color || '#1A1008')
   const opacity = inkConfig.opacity || 0.88
   const variation = inkConfig.variation || 0.05

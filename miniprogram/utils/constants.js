@@ -46,17 +46,17 @@ const TEMPLATES = {
         darkenEdges: 0.15
       }
     },
-    // 排版
+    // 排版 - 默认参数经真机视觉验证优化
     layout: {
       direction: 'horizontal',  // 横排
-      marginTop: 0,
-      marginBottom: 0,
-      marginLeft: 0,
-      marginRight: 0,
-      fontSize: 40,             // 正文字号（基于750rpx）
-      lineHeight: 0.6,
-      letterSpacing: -0.21,      // em
-      paragraphSpacing: 0.3,    // em，段间额外空白
+      marginTop: 60,            // 天头（上边距）
+      marginBottom: 60,         // 地脚（下边距）
+      marginLeft: 55,           // 订口（左/内边距）
+      marginRight: 55,          // 切口（右/外边距）
+      fontSize: 36,             // 正文字号（适合手机阅读）
+      lineHeight: 1.8,          // 行间距倍率，1.8x字号为舒适阅读范围
+      letterSpacing: 0.02,      // 字间距 em，正值保证汉字正常呼吸感
+      paragraphSpacing: 0.8,    // em，段间额外空白
       indent: 2,                // 首行缩进字符数
       textAlign: 'justify',
       compactness: 32           // 排版松紧度

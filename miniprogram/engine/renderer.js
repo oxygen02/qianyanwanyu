@@ -387,7 +387,8 @@ function _scaleTemplateForDPR(template, dpr) {
   const d = dpr || 2
 
   // 防止重复缩放：如果模板已经被 DPR 缩放过了，直接返回
-  if (t.layout && t.layout._dprScaled) {
+  // 注意：检查原始模板是否有标记，而不是深拷贝后的对象
+  if (template.layout && template.layout._dprScaled) {
     return t
   }
 
@@ -397,7 +398,7 @@ function _scaleTemplateForDPR(template, dpr) {
   if (t.layout) {
     // fontSize 需要乘以 DPR，因为 Canvas 绘制时字体大小是 CSS 像素
     // 但我们的排版计算使用物理像素坐标
-    t.layout.fontSize = (t.layout.fontSize || 32) * d
+    t.layout.fontSize = (t.layout.fontSize || 40) * d
 
     // 边距：统一乘 DPR，确保在物理像素 Canvas 上显示正确大小
     // 模板默认值基于 750rpx 设计稿，用户设置值也是 CSS 像素单位
@@ -411,7 +412,8 @@ function _scaleTemplateForDPR(template, dpr) {
     t.layout.marginLeft = scaleMargin(t.layout.marginLeft)
     t.layout.marginRight = scaleMargin(t.layout.marginRight)
     if (t.layout.columnGap) t.layout.columnGap *= d
-    if (t.layout.letterSpacing != null) t.layout.letterSpacing *= d
+    // 注意：letterSpacing 是 em 单位，不需要乘 DPR
+    // typesetter.js 中会将其乘以 fontSize 转换为 px
 
     // 标记已缩放，防止重复缩放
     t.layout._dprScaled = true

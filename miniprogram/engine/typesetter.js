@@ -232,7 +232,8 @@ function typesetPage(params) {
         const availableWidth = colWidth - indentWidth
 
         if (availableWidth <= fontSize * 0.5) {
-          // 边距过大，容纳不了字
+          // 边距过大，容纳不了字，跳过本段落剩余文字
+          pos = para.length
           break
         }
 

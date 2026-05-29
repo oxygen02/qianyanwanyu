@@ -2,10 +2,10 @@
 // 落墨页 - 主书写页核心逻辑
 
 const { renderPage, estimatePageCount, clearRenderCache } = require('../../engine/renderer')
-const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, saveSettings, hasVisited, markVisited } = require('../../utils/storage')
+const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, hasVisited, markVisited } = require('../../utils/storage')
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
-const { loadFont, getFontStatus, formatFileSize } = require('../../utils/font-loader')
+const { loadFont, getFontStatus, getFallbackFont, formatFileSize } = require('../../utils/font-loader')
 
 // 防抖计时器
 let _draftSaveTimer = null
@@ -24,7 +24,7 @@ const TOOLBAR_DISMISS_DELAY = 4000
 const AUTO_SAVE_INTERVAL = 5000
 
 // 字体预览样本文字
-const FONT_PREVIEW_TEXT = '为文字造一页纸'
+const FONT_PREVIEW_TEXT = '让文字回到纸上'
 
 Page({
   data: {
@@ -61,16 +61,16 @@ Page({
     // 运行时设置覆盖（文字 / 纸张 / 排版）
     settings: {
       // === 字体选择 ===
-      fontId: '思源宋体-Regular',
+      fontId: '上古宋体-Regular',
 
       // === 基础排版 ===
-      fontSize: 32,
+      fontSize: 40,
       fontSizeMode: 'px',
-      fontSizeDisplay: '32px',
+      fontSizeDisplay: '40px',
       lineHeight: null,
-      lineHeightVal: 60,
+      lineHeightVal: 200,
       letterSpacing: null,
-      letterSpacingVal: -21,
+      letterSpacingVal: 5,
       direction: null,
       fontWeight: '400',
       textAlign: 'left',
@@ -92,11 +92,11 @@ Page({
       damageVal: 2,
 
       // === 基础纸张 ===
-      paperBaseColor: '#F5F0E6',
-      marginTopVal: 0,
-      marginBottomVal: 0,
-      marginLeftVal: 0,
-      marginRightVal: 0,
+      paperBaseColor: '#FAF7F2',
+      marginTopVal: 50,
+      marginBottomVal: 50,
+      marginLeftVal: 50,
+      marginRightVal: 50,
 
       // === 质感效果 ===
       aging: null,
@@ -126,7 +126,7 @@ Page({
       // === 排版新增设置 ===
       paragraphSpacing: 15,
       emptyLineHandling: 'preserve',
-      compactness: 32,
+      compactness: 50,
       pageNumberEnabled: false,
       headerFooterEnabled: false,
       headerText: '',
@@ -137,36 +137,19 @@ Page({
       inkSpreadIntensity: 50,
       layoutModeIndex: 0
     },
-    uiRanges: {
-      fontSizeMin: 18, fontSizeMax: 60,
-      inkOpacityMin: 20, inkOpacityMax: 90,
-      textSkewMin: -8, textSkewMax: 8,
-      strokeWidthMin: 0, strokeWidthMax: 3, strokeWidthStep: 0.2,
-      marginMin: 10, marginMax: 120, marginStep: 2,
-      shadowMax: 70,
-      imperfectionMax: 70,
-      lineHeightMin: 120, lineHeightMax: 260, lineHeightStep: 2,
-      letterSpacingMin: -20, letterSpacingMax: 20,
-      paragraphSpacingMax: 60,
-      compactnessMin: 20, compactnessMax: 80,
-      weatheringMax: 70,
-      inkSpreadMax: 70,
-      misregistrationMax: 3, misregistrationStep: 0.2,
-      damageMax: 70
-    },
     // 纸张尺寸列表（用于选择面板）
     paperSizeList: [],
     // Canvas 放大预览状态
     canvasZoomed: false,
-    // Canvas CSS尺寸（用于固定纸张尺寸）
-    canvasCssWidth: 0,
-    canvasCssHeight: 0,
     // 状态栏高度（用于Canvas安全区域留白）
     safeAreaTop: 0,
+    toolbarTop: 0,
 
     // ===== 键盘适配 =====
     // 输入区高度（用于热区避让）
     inputAreaHeight: 210,
+    // 文本输入框实际高度
+    textInputHeight: 180,
     // 键盘是否可见
     keyboardVisible: false,
     // 自动保存指示（用于UI提示）
@@ -175,10 +158,10 @@ Page({
     // ===== 文字设置页面数据 =====
     textSettings: {
       fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
-      fontIndex: 1,
-      fontSize: 40,
+      fontIndex: 0,
+      fontSize: 32,
       fontSizeMode: 'px',
-      fontSizeDisplay: '40px',
+      fontSizeDisplay: '32px',
       weightOptions: ['纤细', '常规', '中等', '加粗'],
       weightIndex: 1,
       inkColorOptions: [
@@ -189,7 +172,7 @@ Page({
         { id: 'fugu', name: '复古浓墨', color: '#2C1810' }
       ],
       inkColorIndex: 0,
-      inkOpacity: 35,
+      inkOpacity: 45,
       textAlign: 'left',
       watermarkEnabled: false,
       watermarkOptions: ['无水印', '浅纹暗水印', '自定义文字水印', '书页暗纹水印'],
@@ -239,8 +222,8 @@ Page({
       textureIndex: 0,
       shadowEnabled: false,
       shadowIntensity: 50,
-      marginVertical: 0,
-      marginHorizontal: 0,
+      marginVertical: 60,
+      marginHorizontal: 60,
       formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
       formIndex: 0,
       foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -266,9 +249,9 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 60,
-      lineHeightDisplay: '0.6倍',
-      letterSpacing: -21,
+      lineHeight: 160,
+      lineHeightDisplay: '1.6倍',
+      letterSpacing: 2,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
       layoutModeOptions: ['默认模式', '诗词模式', '书信模式', '散文模式', '小说模式'],
@@ -283,7 +266,7 @@ Page({
       damageTypeOptions: ['边角残缺', '虫蛀小洞', '书页裂口'],
       damageTypeIndex: 0,
       damageIntensity: 50,
-      paragraphSpacing: 15,
+      paragraphSpacing: 25,
       emptyLineHandling: 'preserve',
       pageNumberEnabled: false,
       pageNumberPositionOptions: ['底部居中'],
@@ -291,7 +274,7 @@ Page({
       headerFooterEnabled: false,
       headerText: '',
       footerText: '',
-      compactness: 32
+      compactness: 50
     }
   },
 
@@ -315,25 +298,28 @@ Page({
   _cursorVisible: false,
 
   onLoad() {
-    // 读取系统信息（状态栏高度用于Canvas安全区域）
     const windowInfo = wx.getWindowInfo()
-    // 获取胶囊按钮位置，计算导航栏总高度
-    let navBarTop = windowInfo.statusBarHeight || 0
-    try {
-      const menuButton = wx.getMenuButtonBoundingClientRect()
-      if (menuButton && menuButton.top > 0) {
-        // 导航栏高度 = 胶囊按钮底部距离 + 间距
-        navBarTop = menuButton.bottom + 8
-      }
-    } catch (e) {
-      console.warn('[luomo] 获取胶囊按钮位置失败，使用状态栏高度')
-      // 兜底：iOS通常44px，Android通常48px
-      navBarTop = (windowInfo.statusBarHeight || 0) + 44
-    }
-    this.setData({ safeAreaTop: navBarTop })
-    console.log('[luomo] 安全区域顶部:', navBarTop, '状态栏:', windowInfo.statusBarHeight)
+    const { windowHeight, windowWidth } = windowInfo
+    const rpxRatio = windowWidth / 750
+    const bottomAreaH = Math.floor(480 * rpxRatio)
+    const toolbarH = Math.floor(56 * rpxRatio)
 
-    // 恢复上次模板选择
+    // 第一阶段：立即设置基础布局参数（< 10ms）
+    this.setData({
+      safeAreaTop: windowInfo.statusBarHeight || 0,
+      toolbarTop: windowHeight - bottomAreaH - toolbarH
+    })
+
+    // 第二阶段：延迟加载数据密集型内容（下一帧执行）
+    setTimeout(() => {
+      this._initPageData()
+    }, 0)
+  },
+
+  /**
+   * 初始化页面数据（分步加载，避免阻塞首屏）
+   */
+  _initPageData() {
     const activeTemplateId = loadActiveTemplate()
 
     // 构建模板列表
@@ -396,7 +382,6 @@ Page({
 
     // 构建设置并同步 textSettings
     const initialSettings = this._buildSettingsFromTemplate(template, currentFontId)
-    const uiRanges = this._getUiRangesByTemplate(activeTemplateId)
     
     this.setData({
       activeTemplateId,
@@ -406,81 +391,53 @@ Page({
       paperSizeList,
       activeFontId: currentFontId,
       activeFontDownloadStatus: currentFontStatus === 'loaded' ? 'loaded' : 'idle',
-      uiRanges,
       watermarkEnabled: userSettings.watermarkEnabled !== false,
-      lastStylePreset: userSettings.lastStylePreset || '',
       settings: initialSettings,
-      // 同步 textSettings
       'textSettings.fontSize': initialSettings.fontSize,
       'textSettings.fontSizeDisplay': initialSettings.fontSizeDisplay,
       'textSettings.inkOpacity': initialSettings.inkOpacityVal,
-      // 同步 paperSettings
       'paperSettings.templateOptions': templateOptions,
       'paperSettings.templateSwiperItems': templateSwiperItems,
-      'paperSettings.currentSwiperIndex': 0,
-      'paperSettings.marginVertical': initialSettings.marginTopVal,
-      'paperSettings.marginHorizontal': initialSettings.marginLeftVal,
-      // 同步 layoutSettings
-      'layoutSettings.lineHeight': initialSettings.lineHeightVal,
-      'layoutSettings.lineHeightDisplay': initialSettings.lineHeightDisplay,
-      'layoutSettings.letterSpacing': initialSettings.letterSpacingVal,
-      'layoutSettings.textAlign': initialSettings.textAlign,
-      'layoutSettings.firstLineIndent': initialSettings.firstLineIndent
-    }, () => {
-      // 自动恢复上次一键风格（静默应用，不弹提示）
-      const preset = userSettings.lastStylePreset
-      if (preset === 'light-print') this.onApplyLightPrintPreset({ silent: true, remember: false })
-      else if (preset === 'immersive') this.onApplyImmersivePreset({ silent: true, remember: false })
-      else if (preset === 'ancient-bold') this.onApplyAncientBoldPreset({ silent: true, remember: false })
-      else if (preset === 'modern-minimal') this.onApplyModernMinimalPreset({ silent: true, remember: false })
+      'paperSettings.currentSwiperIndex': 0
     })
 
-    // 恢复草稿（仅在文字非空时恢复）
+    // 恢复草稿
     const draft = loadDraft()
-    if (draft && draft.text && draft.text.trim()) {
+    if (draft && draft.text) {
       this._pendingText = draft.text
       this.setData({ text: draft.text })
     }
 
-    // 检查是否有从问典页面跳转过来的文字
-    const wendianText = wx.getStorageSync('wendian_pending_text')
-    if (wendianText) {
-      this._pendingText = wendianText
-      this.setData({ text: wendianText })
-      wx.removeStorageSync('wendian_pending_text')
-    }
-
-    // 预加载当前模板字体（提前初始化，避免首次渲染等待）
+    // 第四阶段：异步预加载字体（空闲时加载）
     if (template.font && template.font.family) {
-      loadFont(template.font.family).catch(err => {
-        console.warn('[luomo] 预加载字体失败:', err)
-      })
+      setTimeout(() => {
+        loadFont(template.font.family).then(fontFamily => {
+          if (fontFamily && fontFamily !== getFallbackFont()) {
+            this._loadedFontCache[template.font.family] = fontFamily
+            if (this.data.text) {
+              this._triggerRender()
+            }
+          }
+        }).catch(err => {
+          console.warn('[luomo] 预加载字体失败（使用默认字体）:', err)
+        })
+      }, 200)
     }
 
     // 注册键盘高度变化监听
     this._registerKeyboardListener()
-
     // 启动定时自动保存（每5秒）
     this._startAutoSave()
   },
 
   onReady() {
-    // 等待Canvas节点就绪后初始化
-    this._initCanvas()
-
+    // 优化：立即初始化Canvas，减少延迟
+    setTimeout(() => this._initCanvas(), 50)
   },
 
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 })
-    }
-    if (this.data.text) {
-      if (this._canvasReady) {
-        this._triggerRender()
-      } else {
-        console.warn('[luomo] onShow 但Canvas未就绪，尝试初始化')
-        this._initCanvas()
-      }
     }
   },
 
@@ -496,125 +453,28 @@ Page({
   // ============ Canvas 初始化 ============
 
   _initCanvas() {
-    const winInfo = wx.getWindowInfo()
-    const rawDpr = winInfo.pixelRatio || 2
-    const dpr = Math.min(rawDpr, 2)
-    const screenWidth = winInfo.windowWidth
-    const screenHeight = winInfo.windowHeight
-
-    const sizeIndex = this.data.paperSettings.sizeIndex || 0
-    const sizeOptions = [
-      { width: 720, height: 1080, name: '竖版书页' },
-      { width: 1080, height: 720, name: '横版书页' },
-      { width: 900, height: 900, name: '方形书页' },
-      { width: 750, height: 1334, name: '朋友圈适配' }
-    ]
-    const selectedSize = sizeOptions[sizeIndex] || sizeOptions[0]
-
-    const doInit = (canvas) => {
-      if (!canvas) {
-        console.error('[luomo] Canvas节点为null，延迟重试')
-        setTimeout(() => {
-          this.createSelectorQuery().select('#bookCanvas')
-            .fields({ node: true, size: true })
-            .exec((retryRes) => {
-              if (retryRes && retryRes[0] && retryRes[0].node) {
-                doInit(retryRes[0].node)
-              } else {
-                console.error('[luomo] Canvas重试仍失败')
-              }
-            })
-        }, 300)
-        return
-      }
-
-      // 用容器实际尺寸作为viewport
-      const query = this.createSelectorQuery()
-      query.select('.canvas-area').boundingClientRect().exec((areaRes) => {
-        let containerW = screenWidth
-        let containerH = screenHeight * 0.55
-
-        if (areaRes && areaRes[0] && areaRes[0].width > 10 && areaRes[0].height > 10) {
-          containerW = areaRes[0].width
-          containerH = areaRes[0].height
-        }
-
-        console.log('[luomo] Canvas容器:', containerW, containerH)
-        this._initCanvasWithSize(canvas, dpr, selectedSize, containerW, containerH)
-      })
-    }
-
-    this.createSelectorQuery().select('#bookCanvas')
+    const query = this.createSelectorQuery()
+    query.select('#bookCanvas')
       .fields({ node: true, size: true })
       .exec((res) => {
-        console.log('[luomo] Canvas查询:', res)
-        if (res && res[0] && res[0].node) {
-          doInit(res[0].node)
-        } else {
-          console.error('[luomo] Canvas节点获取失败，延迟重试')
-          setTimeout(() => {
-            this.createSelectorQuery().select('#bookCanvas')
-              .fields({ node: true, size: true })
-              .exec((retryRes) => {
-                if (retryRes && retryRes[0] && retryRes[0].node) {
-                  doInit(retryRes[0].node)
-                } else {
-                  console.error('[luomo] Canvas重试仍失败')
-                }
-              })
-          }, 500)
+        if (!res || !res[0] || !res[0].node) {
+          console.warn('[luomo] Canvas节点未就绪，稍后重试')
+          // 优化：减少重试间隔，加快初始化速度
+          setTimeout(() => this._initCanvas(), 200)
+          return
         }
+        const canvas = res[0].node
+        const dpr = Math.min(wx.getWindowInfo().pixelRatio || 2, 2)
+        const w = Math.floor((res[0].width || 375) * dpr)
+        const h = Math.floor((res[0].height || 500) * dpr)
+        canvas.width = w
+        canvas.height = h
+        this._canvas = canvas
+        this._canvasWidth = w
+        this._canvasHeight = h
+        this._canvasReady = true
+        if (this.data.text) { this._triggerRender() }
       })
-  },
-
-  _initCanvasWithSize(canvas, dpr, selectedSize, containerWidth, containerHeight) {
-    console.log('[luomo] Canvas容器尺寸:', containerWidth, containerHeight)
-    console.log('[luomo] 纸张尺寸:', selectedSize.width, selectedSize.height)
-
-    const safeMargin = 20
-    const safeW = Math.max(10, containerWidth - safeMargin * 2)
-    const safeH = Math.max(10, containerHeight - safeMargin * 2)
-
-    const scaleX = safeW / selectedSize.width
-    const scaleY = safeH / selectedSize.height
-    const scale = Math.min(scaleX, scaleY, 1)
-
-    console.log('[luomo] 缩放比例:', scale)
-
-    const cssWidth = Math.max(1, Math.floor(selectedSize.width * scale))
-    const cssHeight = Math.max(1, Math.floor(selectedSize.height * scale))
-
-    console.log('[luomo] CSS尺寸:', cssWidth, cssHeight)
-
-    const physW = Math.max(1, Math.floor(selectedSize.width * dpr))
-    const physH = Math.max(1, Math.floor(selectedSize.height * dpr))
-
-    console.log('[luomo] 物理像素尺寸:', physW, physH)
-
-    canvas.width = physW
-    canvas.height = physH
-
-    this._canvas = canvas
-    this._canvasWidth = physW
-    this._canvasHeight = physH
-    this._canvasCssWidth = cssWidth
-    this._canvasCssHeight = cssHeight
-    this._canvasScale = scale
-    this._canvasReady = true
-
-    console.log('[luomo] 设置Canvas CSS尺寸:', cssWidth, cssHeight)
-    this.setData({
-      canvasCssWidth: cssWidth,
-      canvasCssHeight: cssHeight
-    }, () => {
-      console.log('[luomo] Canvas CSS尺寸已更新:', this.data.canvasCssWidth, this.data.canvasCssHeight)
-    })
-
-    if (this.data.text) {
-      this._triggerRender()
-    } else {
-      this._startCursorBlink()
-    }
   },
 
   // ============ 文字输入 ============
@@ -637,11 +497,26 @@ Page({
       saveDraft(text)
     }, 800)
 
-    // 防抖渲染（300ms，输入停止后渲染）
+    // 防抖渲染（50ms，快速响应用户输入变化，包括删除操作）
     clearTimeout(_renderDebounceTimer)
     _renderDebounceTimer = setTimeout(() => {
-      this._doRender(text)
-    }, 300)
+      this._triggerRender()
+    }, 50)
+  },
+
+  /**
+   * 输入框获得焦点
+   */
+  onInputFocus() {
+    // 可以在这里添加额外的聚焦逻辑，如滚动到输入框位置等
+    console.log('[luomo] 输入框获得焦点')
+  },
+
+  /**
+   * 输入框失去焦点
+   */
+  onInputBlur() {
+    console.log('[luomo] 输入框失去焦点')
   },
 
   onClearDraft() {
@@ -663,23 +538,13 @@ Page({
   // ============ 渲染触发 ============
 
   _triggerRender() {
-    if (!this.data.text) {
+    if (!this._canvasReady) return
+    const text = this._pendingText || this.data.text
+    if (!text) {
       this._clearCanvas()
       return
     }
-    if (!this._canvasReady) {
-      console.warn('[luomo] Canvas未就绪，延迟渲染')
-      setTimeout(() => {
-        if (this._canvasReady) {
-          this._doRender(this.data.text)
-        } else {
-          console.error('[luomo] Canvas仍未就绪，尝试重新初始化')
-          this._initCanvas()
-        }
-      }, 500)
-      return
-    }
-    this._doRender(this.data.text)
+    this._doRender(text)
   },
 
   async _doRender(text) {
@@ -696,23 +561,12 @@ Page({
         throw new Error('模板配置无效')
       }
 
-      // 加载字体（并把实际生效的 font-family 写回模板，失败时自动回退到系统字体）
       if (template.font && template.font.family) {
-        try {
-          const fontFamily = template.font.family
-          // 系统字体跳过加载，直接使用
-          if (fontFamily === 'HeitiSC' || fontFamily === 'SongtiSC') {
-            // 系统字体直接可用
-          } else if (this._loadedFontCache[fontFamily]) {
-            template.font.family = this._loadedFontCache[fontFamily]
-          } else {
-            const loadedFamily = await loadFont(fontFamily)
-            this._loadedFontCache[fontFamily] = loadedFamily
-            template.font.family = loadedFamily
-          }
-        } catch (fontErr) {
-          console.warn('[luomo] 字体加载失败，使用回退字体:', fontErr.message)
-          template.font.family = 'serif'
+        const fontFamily = template.font.family
+        if (this._loadedFontCache[fontFamily]) {
+          template.font.family = this._loadedFontCache[fontFamily]
+        } else {
+          template.font.family = template.font.fallback || 'serif'
         }
       }
 
@@ -858,7 +712,7 @@ Page({
     const layout = template.layout
     // 注意：_getEffectiveTemplate 返回的 layout 值已经是 CSS 像素
     // fontSize 保持 CSS 像素（Canvas 会自动按 DPR 缩放）
-    const fontSize = layout.fontSize || 32
+    const fontSize = layout.fontSize || 40
     // 边距：如果已经被 _scaleTemplateForDPR 缩放过（在 renderPage 中），
     // 但 _drawCursor 直接读原始 template，所以这里需要乘 DPR
     const marginTop = (layout.marginTop || 60) * dpr
@@ -945,17 +799,6 @@ Page({
 
   // ============ 翻页交互 ============
 
-  /** 阻止 Canvas 区域的触摸滚动事件冒泡（仅水平翻页滑动） */
-  preventCanvasScroll(e) {
-    if (!this._lastTouchMove) {
-      this._lastTouchMove = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-      return
-    }
-    const dx = Math.abs(e.touches[0].clientX - this._lastTouchMove.x)
-    const dy = Math.abs(e.touches[0].clientY - this._lastTouchMove.y)
-    this._lastTouchMove = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-  },
-
   onCanvasTouchStart(e) {
     this._touchStartX = e.touches[0].clientX
     this._touchStartY = e.touches[0].clientY
@@ -985,28 +828,39 @@ Page({
 
   /**
    * 注册键盘高度变化监听
-   * 键盘弹起时：输入区缩小为单行高度，工具栏保持可见
+   * 键盘弹起时：输入框固定在底部，高度自适应可用空间
+   * 键盘收起时：恢复完整输入区
    */
   _registerKeyboardListener() {
     _keyboardChangeCallback = (res) => {
       const keyboardHeight = res.height
-      // 工具栏固定高度 80rpx = 40px
-      const toolbarHeight = 40
-      // 键盘弹出时：输入框单行高度 60rpx + 工具栏 40rpx = 100rpx ≈ 50px
-      const collapsedInputHeight = 50
-      // 正常状态：输入区约 420rpx ≈ 210px
-      const expandedInputHeight = 210
+      const windowInfo = wx.getWindowInfo()
+      const windowHeight = windowInfo.windowHeight
+      // 工具栏固定高度（约56rpx转换为px）
+      const toolbarHeight = Math.floor(56 * (windowInfo.windowWidth / 750))
+      // 输入框工具栏（字数统计、清空按钮）高度约30px
+      const inputToolbarHeight = 30
+      // 底部安全区域
+      const safeAreaBottom = windowInfo.safeArea ? (windowInfo.windowHeight - windowInfo.safeArea.bottom) : 0
 
       if (keyboardHeight > 0) {
-        // 键盘弹出：输入区收缩，只保留单行输入+工具栏
+        // 键盘弹出：计算可用空间 = 屏幕高度 - 键盘高度 - 安全区域 - 工具栏
+        const availableHeight = windowHeight - keyboardHeight - safeAreaBottom - toolbarHeight
+        // 文本输入框高度 = 可用空间 - 输入工具栏高度，最小120px保证可输入
+        const textInputHeight = Math.max(120, availableHeight - inputToolbarHeight)
+        // 总输入区高度 = 工具栏 + 文本输入框 + 输入工具栏 + 安全区
+        const inputAreaHeight = keyboardHeight + toolbarHeight + textInputHeight + inputToolbarHeight
+
         this.setData({
-          inputAreaHeight: keyboardHeight + collapsedInputHeight,
+          inputAreaHeight: inputAreaHeight,
+          textInputHeight: textInputHeight,
           keyboardVisible: true
         })
       } else {
-        // 键盘收起：恢复完整输入区
+        // 键盘收起：恢复正常状态
         this.setData({
-          inputAreaHeight: expandedInputHeight,
+          inputAreaHeight: 210,
+          textInputHeight: 180,
           keyboardVisible: false
         })
       }
@@ -1078,7 +932,6 @@ Page({
       currentPage: 0,
       'paperSettings.templateIndex': templateIndex >= 0 ? templateIndex : 0,
       settings: newSettings,
-      uiRanges: this._getUiRangesByTemplate(id),
       'textSettings.fontSize': newSettings.fontSize,
       'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
       'textSettings.inkOpacity': newSettings.inkOpacityVal
@@ -1108,7 +961,6 @@ Page({
       activeTemplateName: template.name,
       currentPage: 0,
       settings: newSettings,
-      uiRanges: this._getUiRangesByTemplate(newId),
       'textSettings.fontSize': newSettings.fontSize,
       'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
       'textSettings.inkOpacity': newSettings.inkOpacityVal
@@ -1138,7 +990,7 @@ Page({
         this.setData({ settingsTab: tab })
       }
     } else {
-      this._openSettingsPanel(tab)
+      this.setData({ settingsPanelVisible: true, settingsTab: tab })
     }
   },
 
@@ -1275,10 +1127,6 @@ Page({
     this.setData({ fontPanelVisible: false })
   },
 
-  onCloseFontPanelBg() {
-    this.onCloseFontPanel()
-  },
-
   /**
    * 选择字体 - 弹出流量确认，用户同意后才下载
    */
@@ -1368,14 +1216,13 @@ Page({
     if (this.data.settings.fontSizeMode === 'px') {
       display = `${val}px`
     } else {
+      // 简单的号数转换
       const haoMap = { 72: '初号', 56: '小初', 48: '一号', 44: '小一', 36: '二号', 32: '小二', 28: '三号', 24: '小三', 21: '四号', 18: '小四', 16: '五号', 14: '小五', 12: '六号' }
       display = haoMap[val] || `${val}px`
     }
     this.setData({
       'settings.fontSize': val,
-      'settings.fontSizeDisplay': display,
-      'textSettings.fontSize': val,
-      'textSettings.fontSizeDisplay': display
+      'settings.fontSizeDisplay': display
     })
     this._triggerRender()
   },
@@ -1392,9 +1239,7 @@ Page({
     }
     this.setData({
       'settings.fontSizeMode': mode,
-      'settings.fontSizeDisplay': display,
-      'textSettings.fontSizeMode': mode,
-      'textSettings.fontSizeDisplay': display
+      'settings.fontSizeDisplay': display
     })
   },
 
@@ -1455,6 +1300,11 @@ Page({
     this._triggerRender()
   },
 
+  onWatermarkTypeChange(e) {
+    this.setData({ 'settings.watermarkType': e.currentTarget.dataset.type })
+    this._triggerRender()
+  },
+
   onLineHeightChange(e) {
     const val = e.detail.value
     this.setData({
@@ -1484,6 +1334,12 @@ Page({
 
   onFontWeightChange(e) {
     this.setData({ 'settings.fontWeight': e.currentTarget.dataset.w })
+    this._triggerRender()
+
+  },
+
+  onTextAlignChange(e) {
+    this.setData({ 'settings.textAlign': e.currentTarget.dataset.align })
     this._triggerRender()
 
   },
@@ -1555,6 +1411,12 @@ Page({
   },
 
   // --- 基础纸张 ---
+
+  onPaperColorChange(e) {
+    this.setData({ 'settings.paperBaseColor': e.currentTarget.dataset.color })
+    this._triggerRender()
+
+  },
 
   onMarginTopChange(e) {
     this.setData({ 'settings.marginTopVal': e.detail.value })
@@ -1631,10 +1493,7 @@ Page({
   },
 
   onWatermarkPositionChange(e) {
-    this.setData({
-      'settings.watermarkPosition': e.currentTarget.dataset.pos,
-      'settings.watermarkUserSetPosition': true
-    })
+    this.setData({ 'settings.watermarkPosition': e.currentTarget.dataset.pos })
     this._triggerRender()
 
   },
@@ -1656,204 +1515,18 @@ Page({
       settings: newSettings,
       'textSettings.fontSize': newSettings.fontSize,
       'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
-      'textSettings.inkOpacity': newSettings.inkOpacityVal,
-      lastStylePreset: ''
-    })
-    const current = loadSettings()
-    saveSettings({
-      ...current,
-      lastStylePreset: ''
+      'textSettings.inkOpacity': newSettings.inkOpacityVal
     })
     this._triggerRender()
 
   },
 
-  _applyStylePreset(preset, toastTitle, presetKey, opts = {}) {
-    const { silent = false, remember = true } = opts
-    const { uiRanges, settings } = this.data
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
-    const fontSize = clamp(preset.fontSize, uiRanges.fontSizeMin, uiRanges.fontSizeMax)
-    const inkOpacityVal = clamp(preset.inkOpacityVal, uiRanges.inkOpacityMin, uiRanges.inkOpacityMax)
-    const marginVal = clamp(preset.marginVal, uiRanges.marginMin, uiRanges.marginMax)
-    const lineHeightVal = clamp(preset.lineHeightVal, uiRanges.lineHeightMin, uiRanges.lineHeightMax)
-    const letterSpacingVal = clamp(preset.letterSpacingVal, uiRanges.letterSpacingMin, uiRanges.letterSpacingMax)
+  // --- 纸张尺寸 ---
 
-    this.setData({
-      'settings.fontSize': fontSize,
-      'settings.fontSizeDisplay': `${fontSize}px`,
-      'settings.inkOpacity': inkOpacityVal / 100,
-      'settings.inkOpacityVal': inkOpacityVal,
-      'settings.textSkew': preset.textSkew,
-      'settings.strokeEnabled': preset.strokeEnabled,
-      'settings.strokeWidth': preset.strokeWidth,
-      'settings.marginTopVal': marginVal,
-      'settings.marginBottomVal': marginVal,
-      'settings.marginLeftVal': marginVal,
-      'settings.marginRightVal': marginVal,
-      'settings.shadowIntensity': preset.shadowIntensityVal / 100,
-      'settings.shadowIntensityVal': preset.shadowIntensityVal,
-      'settings.aging': preset.agingVal / 100,
-      'settings.agingVal': preset.agingVal,
-      'settings.fiberOpacity': preset.fiberOpacityVal / 100,
-      'settings.fiberOpacityVal': preset.fiberOpacityVal,
-      'settings.lineHeight': lineHeightVal / 100,
-      'settings.lineHeightVal': lineHeightVal,
-      'settings.lineHeightDisplay': (lineHeightVal / 100).toFixed(2),
-      'settings.letterSpacing': letterSpacingVal / 100,
-      'settings.letterSpacingVal': letterSpacingVal,
-      'settings.variation': preset.variationVal / 100,
-      'settings.variationVal': preset.variationVal,
-      'settings.blurRadius': preset.blurRadiusVal / 100,
-      'settings.blurRadiusVal': preset.blurRadiusVal,
-      'settings.misRegistration': preset.misRegistrationVal / 100,
-      'settings.misRegistrationVal': preset.misRegistrationVal,
-      'settings.damage': preset.damageVal / 100,
-      'settings.damageVal': preset.damageVal,
-      'settings.weatheringEnabled': preset.weatheringEnabled,
-      'settings.weatheringIntensity': preset.weatheringIntensity,
-      'settings.inkSpreadEnabled': preset.inkSpreadEnabled,
-      'settings.inkSpreadIntensity': preset.inkSpreadIntensity,
-      'settings.paragraphSpacing': preset.paragraphSpacing,
-      'settings.compactness': preset.compactness,
-      'settings.textAlign': settings.direction === 'vertical' ? 'right' : preset.textAlign,
-      'textSettings.fontSize': fontSize,
-      'textSettings.fontSizeDisplay': `${fontSize}px`,
-      'textSettings.inkOpacity': inkOpacityVal,
-      'textSettings.textSkew': preset.textSkew,
-      'textSettings.textSkewDisplay': `${preset.textSkew}°`,
-      'textSettings.strokeEnabled': preset.strokeEnabled,
-      'textSettings.strokeWidth': preset.strokeWidth,
-      'paperSettings.marginVertical': marginVal,
-      'paperSettings.marginHorizontal': marginVal,
-      'paperSettings.shadowIntensity': preset.shadowIntensityVal,
-      'layoutSettings.lineHeight': lineHeightVal,
-      'layoutSettings.lineHeightDisplay': (lineHeightVal / 100).toFixed(2) + '倍',
-      'layoutSettings.letterSpacing': letterSpacingVal,
-      'layoutSettings.paragraphSpacing': preset.paragraphSpacing,
-      'layoutSettings.compactness': preset.compactness,
-      'layoutSettings.weatheringEnabled': preset.weatheringEnabled,
-      'layoutSettings.weatheringIntensity': preset.weatheringIntensity,
-      'layoutSettings.inkSpreadEnabled': preset.inkSpreadEnabled,
-      'layoutSettings.inkSpreadIntensity': preset.inkSpreadIntensity,
-      lastStylePreset: presetKey || ''
-    })
-    if (remember && presetKey) {
-      const current = loadSettings()
-      saveSettings({
-        ...current,
-        lastStylePreset: presetKey
-      })
-    }
-    if (!silent) wx.showToast({ title: toastTitle, icon: 'none' })
+  onPaperSizeChange(e) {
+    const sizeId = e.currentTarget.dataset.sizeId
+    this.setData({ 'settings.paperSizeId': sizeId })
     this._triggerRender()
-  },
-
-  onApplyLightPrintPreset(opts = {}) {
-    this._applyStylePreset({
-      fontSize: 42,
-      inkOpacityVal: 66,
-      textSkew: 0,
-      strokeEnabled: false,
-      strokeWidth: 0.6,
-      marginVal: 40,
-      shadowIntensityVal: 12,
-      agingVal: 18,
-      fiberOpacityVal: 18,
-      lineHeightVal: 138,
-      letterSpacingVal: -10,
-      variationVal: 8,
-      blurRadiusVal: 6,
-      misRegistrationVal: 4,
-      damageVal: 2,
-      weatheringEnabled: false,
-      weatheringIntensity: 18,
-      inkSpreadEnabled: true,
-      inkSpreadIntensity: 20,
-      paragraphSpacing: 8,
-      compactness: 60,
-      textAlign: 'justify'
-    }, '已启用清雅轻印', 'light-print', opts)
-  },
-
-  onApplyImmersivePreset(opts = {}) {
-    this._applyStylePreset({
-      fontSize: 44,
-      inkOpacityVal: 76,
-      textSkew: 0,
-      strokeEnabled: true,
-      strokeWidth: 0.8,
-      marginVal: 40,
-      shadowIntensityVal: 18,
-      agingVal: 25,
-      fiberOpacityVal: 22,
-      lineHeightVal: 144,
-      letterSpacingVal: -10,
-      variationVal: 10,
-      blurRadiusVal: 8,
-      misRegistrationVal: 6,
-      damageVal: 3,
-      weatheringEnabled: true,
-      weatheringIntensity: 28,
-      inkSpreadEnabled: true,
-      inkSpreadIntensity: 32,
-      paragraphSpacing: 10,
-      compactness: 58,
-      textAlign: 'justify'
-    }, '已启用印刷沉浸模式', 'immersive', opts)
-  },
-
-  onApplyAncientBoldPreset(opts = {}) {
-    this._applyStylePreset({
-      fontSize: 46,
-      inkOpacityVal: 84,
-      textSkew: 0,
-      strokeEnabled: true,
-      strokeWidth: 1.1,
-      marginVal: 44,
-      shadowIntensityVal: 22,
-      agingVal: 34,
-      fiberOpacityVal: 28,
-      lineHeightVal: 156,
-      letterSpacingVal: -6,
-      variationVal: 14,
-      blurRadiusVal: 10,
-      misRegistrationVal: 8,
-      damageVal: 5,
-      weatheringEnabled: true,
-      weatheringIntensity: 42,
-      inkSpreadEnabled: true,
-      inkSpreadIntensity: 46,
-      paragraphSpacing: 12,
-      compactness: 54,
-      textAlign: 'justify'
-    }, '已启用古籍厚墨', 'ancient-bold', opts)
-  },
-
-  onApplyModernMinimalPreset(opts = {}) {
-    this._applyStylePreset({
-      fontSize: 40,
-      inkOpacityVal: 58,
-      textSkew: 0,
-      strokeEnabled: false,
-      strokeWidth: 0.5,
-      marginVal: 34,
-      shadowIntensityVal: 8,
-      agingVal: 8,
-      fiberOpacityVal: 10,
-      lineHeightVal: 132,
-      letterSpacingVal: -12,
-      variationVal: 6,
-      blurRadiusVal: 4,
-      misRegistrationVal: 2,
-      damageVal: 1,
-      weatheringEnabled: false,
-      weatheringIntensity: 10,
-      inkSpreadEnabled: false,
-      inkSpreadIntensity: 12,
-      paragraphSpacing: 6,
-      compactness: 62,
-      textAlign: 'left'
-    }, '已启用现代极简', 'modern-minimal', opts)
   },
 
   // ========== Stepper 处理函数（用于 cover-view 面板）==========
@@ -1862,195 +1535,9 @@ Page({
     return Math.max(min, Math.min(max, val))
   },
 
-  _getUiRangesByTemplate(templateId) {
-    const base = {
-      strokeWidthMin: 0, strokeWidthMax: 3, strokeWidthStep: 0.2,
-      marginStep: 2,
-      shadowMax: 70,
-      imperfectionMax: 70,
-      paragraphSpacingMax: 60,
-      compactnessMin: 20, compactnessMax: 80,
-      weatheringMax: 70,
-      inkSpreadMax: 70,
-      damageMax: 70
-    }
-    const presets = {
-      compactModern: {
-        fontSizeMin: 18, fontSizeMax: 72,
-        inkOpacityMin: 20, inkOpacityMax: 90,
-        textSkewMin: -8, textSkewMax: 8,
-        marginMin: 10, marginMax: 110,
-        lineHeightMin: 112, lineHeightMax: 205, lineHeightStep: 2,
-        letterSpacingMin: -20, letterSpacingMax: 15,
-        misregistrationMax: 2.4, misregistrationStep: 0.2
-      },
-      balanced: {
-        fontSizeMin: 18, fontSizeMax: 76,
-        inkOpacityMin: 20, inkOpacityMax: 90,
-        textSkewMin: -8, textSkewMax: 8,
-        marginMin: 10, marginMax: 120,
-        lineHeightMin: 116, lineHeightMax: 230, lineHeightStep: 2,
-        letterSpacingMin: -18, letterSpacingMax: 20,
-        misregistrationMax: 3, misregistrationStep: 0.2
-      },
-      ancientReadable: {
-        fontSizeMin: 20, fontSizeMax: 74,
-        inkOpacityMin: 25, inkOpacityMax: 88,
-        textSkewMin: -6, textSkewMax: 6,
-        marginMin: 16, marginMax: 130,
-        lineHeightMin: 128, lineHeightMax: 250, lineHeightStep: 2,
-        letterSpacingMin: -15, letterSpacingMax: 25,
-        misregistrationMax: 3, misregistrationStep: 0.2
-      },
-      newsPrint: {
-        fontSizeMin: 18, fontSizeMax: 68,
-        inkOpacityMin: 25, inkOpacityMax: 92,
-        textSkewMin: -4, textSkewMax: 4,
-        marginMin: 10, marginMax: 95,
-        lineHeightMin: 110, lineHeightMax: 176, lineHeightStep: 2,
-        letterSpacingMin: -12, letterSpacingMax: 12,
-        misregistrationMax: 2.2, misregistrationStep: 0.2
-      },
-      playful: {
-        fontSizeMin: 20, fontSizeMax: 72,
-        inkOpacityMin: 20, inkOpacityMax: 85,
-        textSkewMin: -10, textSkewMax: 10,
-        marginMin: 10, marginMax: 125,
-        lineHeightMin: 112, lineHeightMax: 220, lineHeightStep: 2,
-        letterSpacingMin: -15, letterSpacingMax: 20,
-        misregistrationMax: 2.8, misregistrationStep: 0.2
-      }
-    }
-
-    const overrides = {
-      // 高频模板单独精调（优先级最高）
-      'modern-prose': {
-        fontSizeMin: 20, fontSizeMax: 72,
-        inkOpacityMin: 26, inkOpacityMax: 82,
-        textSkewMin: -5, textSkewMax: 5,
-        marginMin: 14, marginMax: 92,
-        lineHeightMin: 112, lineHeightMax: 168, lineHeightStep: 2,
-        letterSpacingMin: -20, letterSpacingMax: 4,
-        misregistrationMax: 1.8, misregistrationStep: 0.2
-      },
-      'vintage-letter': {
-        fontSizeMin: 20, fontSizeMax: 72,
-        inkOpacityMin: 24, inkOpacityMax: 86,
-        textSkewMin: -6, textSkewMax: 6,
-        marginMin: 14, marginMax: 106,
-        lineHeightMin: 118, lineHeightMax: 182, lineHeightStep: 2,
-        letterSpacingMin: -18, letterSpacingMax: 8,
-        misregistrationMax: 2.2, misregistrationStep: 0.2
-      },
-      'ancient-manuscript': {
-        fontSizeMin: 22, fontSizeMax: 74,
-        inkOpacityMin: 28, inkOpacityMax: 88,
-        textSkewMin: -4, textSkewMax: 4,
-        marginMin: 24, marginMax: 132,
-        lineHeightMin: 126, lineHeightMax: 196, lineHeightStep: 2,
-        letterSpacingMin: -14, letterSpacingMax: 12,
-        misregistrationMax: 2.4, misregistrationStep: 0.2
-      },
-      'ancient-xuan': {
-        fontSizeMin: 22, fontSizeMax: 76,
-        inkOpacityMin: 30, inkOpacityMax: 90,
-        textSkewMin: -4, textSkewMax: 4,
-        marginMin: 24, marginMax: 136,
-        lineHeightMin: 128, lineHeightMax: 204, lineHeightStep: 2,
-        letterSpacingMin: -14, letterSpacingMax: 12,
-        misregistrationMax: 2.6, misregistrationStep: 0.2
-      },
-      'republic-paper': {
-        fontSizeMin: 18, fontSizeMax: 68,
-        inkOpacityMin: 30, inkOpacityMax: 90,
-        textSkewMin: -3, textSkewMax: 3,
-        marginMin: 10, marginMax: 84,
-        lineHeightMin: 108, lineHeightMax: 162, lineHeightStep: 2,
-        letterSpacingMin: -14, letterSpacingMax: 6,
-        misregistrationMax: 1.8, misregistrationStep: 0.2
-      },
-      'modern-magazine': presets.compactModern,
-      'modern-minimal': presets.compactModern,
-      'minimal-white': {
-        fontSizeMin: 18, fontSizeMax: 68,
-        inkOpacityMin: 22, inkOpacityMax: 80,
-        textSkewMin: -2, textSkewMax: 2,
-        marginMin: 12, marginMax: 84,
-        lineHeightMin: 108, lineHeightMax: 154, lineHeightStep: 2,
-        letterSpacingMin: -14, letterSpacingMax: 4,
-        misregistrationMax: 1.2, misregistrationStep: 0.2
-      },
-      'typewriter': {
-        fontSizeMin: 18, fontSizeMax: 66,
-        inkOpacityMin: 30, inkOpacityMax: 90,
-        textSkewMin: -3, textSkewMax: 3,
-        marginMin: 12, marginMax: 92,
-        lineHeightMin: 110, lineHeightMax: 164, lineHeightStep: 2,
-        letterSpacingMin: -10, letterSpacingMax: 6,
-        misregistrationMax: 1.6, misregistrationStep: 0.2
-      },
-      'draft-paper': presets.compactModern,
-      'vintage-diary': {
-        fontSizeMin: 20, fontSizeMax: 70,
-        inkOpacityMin: 24, inkOpacityMax: 84,
-        textSkewMin: -5, textSkewMax: 5,
-        marginMin: 14, marginMax: 104,
-        lineHeightMin: 116, lineHeightMax: 176, lineHeightStep: 2,
-        letterSpacingMin: -14, letterSpacingMax: 8,
-        misregistrationMax: 2.0, misregistrationStep: 0.2
-      },
-      'vintage-print': presets.balanced,
-      'japanese-washi': {
-        fontSizeMin: 20, fontSizeMax: 72,
-        inkOpacityMin: 22, inkOpacityMax: 82,
-        textSkewMin: -4, textSkewMax: 4,
-        marginMin: 16, marginMax: 114,
-        lineHeightMin: 118, lineHeightMax: 184, lineHeightStep: 2,
-        letterSpacingMin: -12, letterSpacingMax: 8,
-        misregistrationMax: 2.0, misregistrationStep: 0.2
-      },
-      'kraft-paper': {
-        fontSizeMin: 20, fontSizeMax: 70,
-        inkOpacityMin: 28, inkOpacityMax: 90,
-        textSkewMin: -4, textSkewMax: 4,
-        marginMin: 14, marginMax: 108,
-        lineHeightMin: 114, lineHeightMax: 172, lineHeightStep: 2,
-        letterSpacingMin: -12, letterSpacingMax: 8,
-        misregistrationMax: 2.2, misregistrationStep: 0.2
-      },
-      'retro-diary': presets.balanced,
-      'ancient-block': presets.ancientReadable,
-      'calligraphy-xuan': presets.ancientReadable,
-      'parchment': presets.ancientReadable,
-      'buddhist-scripture': presets.ancientReadable,
-      'buddhist-script': presets.ancientReadable,
-      'republic-newspaper': presets.newsPrint,
-      'magazine': presets.compactModern
-    }
-
-    const mobanPrefixRules = [
-      { prefix: 'moban-bzb-', preset: presets.newsPrint },
-      { prefix: 'moban-gb-', preset: presets.ancientReadable },
-      { prefix: 'moban-xz-', preset: presets.playful },
-      { prefix: 'moban-zz-', preset: presets.balanced }
-    ]
-
-    const direct = overrides[templateId]
-    if (direct) return { ...base, ...direct }
-
-    for (const rule of mobanPrefixRules) {
-      if (templateId.startsWith(rule.prefix)) {
-        return { ...base, ...rule.preset }
-      }
-    }
-
-    return { ...base, ...presets.balanced }
-  },
-
   onFontSizeStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.fontSize + delta, uiRanges.fontSizeMin, uiRanges.fontSizeMax)
+    const newVal = this._clamp(this.data.settings.fontSize + delta, 20, 48)
     const mode = this.data.textSettings.fontSizeMode
     const display = mode === 'px' ? `${newVal}px` : `${newVal}号`
     this.setData({
@@ -2064,8 +1551,7 @@ Page({
 
   onInkOpacityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.inkOpacityVal + delta, uiRanges.inkOpacityMin, uiRanges.inkOpacityMax)
+    const newVal = this._clamp(this.data.settings.inkOpacityVal + delta, 40, 100)
     this.setData({
       'settings.inkOpacity': newVal / 100,
       'settings.inkOpacityVal': newVal,
@@ -2076,39 +1562,35 @@ Page({
 
   onMarginTopStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.marginTopVal + delta, uiRanges.marginMin, uiRanges.marginMax)
+    const newVal = this._clamp(this.data.settings.marginTopVal + delta, 0, 200)
     this.setData({ 'settings.marginTopVal': newVal })
     this._triggerRender()
   },
 
   onMarginBottomStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, uiRanges.marginMin, uiRanges.marginMax)
+    const newVal = this._clamp(this.data.settings.marginBottomVal + delta, 0, 200)
     this.setData({ 'settings.marginBottomVal': newVal })
     this._triggerRender()
   },
 
   onMarginLeftStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, uiRanges.marginMin, uiRanges.marginMax)
+    const newVal = this._clamp(this.data.settings.marginLeftVal + delta, 0, 200)
     this.setData({ 'settings.marginLeftVal': newVal })
     this._triggerRender()
   },
 
   onMarginRightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.marginRightVal + delta, uiRanges.marginMin, uiRanges.marginMax)
+    const newVal = this._clamp(this.data.settings.marginRightVal + delta, 0, 200)
     this.setData({ 'settings.marginRightVal': newVal })
     this._triggerRender()
   },
 
   onAgingStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.agingVal + delta, 0, 80)
+    const newVal = this._clamp(this.data.settings.agingVal + delta, 10, 100)
     this.setData({
       'settings.aging': newVal / 100,
       'settings.agingVal': newVal
@@ -2118,7 +1600,7 @@ Page({
 
   onFiberOpacityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.fiberOpacityVal + delta, 0, 60)
+    const newVal = this._clamp(this.data.settings.fiberOpacityVal + delta, 20, 100)
     this.setData({
       'settings.fiberOpacity': newVal / 100,
       'settings.fiberOpacityVal': newVal
@@ -2128,7 +1610,7 @@ Page({
 
   onShadowIntensityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.shadowIntensityVal + delta, 0, 70)
+    const newVal = this._clamp(this.data.settings.shadowIntensityVal + delta, 0, 100)
     this.setData({
       'settings.shadowIntensity': newVal / 100,
       'settings.shadowIntensityVal': newVal
@@ -2138,7 +1620,7 @@ Page({
 
   onLightIntensityStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.lightIntensityVal + delta, 0, 70)
+    const newVal = this._clamp(this.data.settings.lightIntensityVal + delta, 0, 100)
     this.setData({
       'settings.lightIntensity': newVal / 100,
       'settings.lightIntensityVal': newVal
@@ -2148,8 +1630,7 @@ Page({
 
   onLineHeightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, uiRanges.lineHeightMin, uiRanges.lineHeightMax)
+    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 80, 400)
     this.setData({
       'settings.lineHeight': newVal / 100,
       'settings.lineHeightVal': newVal,
@@ -2160,8 +1641,7 @@ Page({
 
   onLetterSpacingStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const { uiRanges } = this.data
-    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, uiRanges.letterSpacingMin, uiRanges.letterSpacingMax)
+    const newVal = this._clamp(this.data.settings.letterSpacingVal + delta, -10, 40)
     this.setData({
       'settings.letterSpacingVal': newVal,
       'settings.letterSpacing': newVal / 100
@@ -2171,7 +1651,7 @@ Page({
 
   onVariationStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.variationVal + delta, 0, 20)
+    const newVal = this._clamp(this.data.settings.variationVal + delta, 0, 30)
     this.setData({
       'settings.variation': newVal / 100,
       'settings.variationVal': newVal
@@ -2181,7 +1661,7 @@ Page({
 
   onBlurRadiusStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.blurRadiusVal + delta, 0, 12)
+    const newVal = this._clamp(this.data.settings.blurRadiusVal + delta, 0, 20)
     this.setData({
       'settings.blurRadius': newVal / 100,
       'settings.blurRadiusVal': newVal
@@ -2191,7 +1671,7 @@ Page({
 
   onMisRegistrationStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.misRegistrationVal + delta, 0, 20)
+    const newVal = this._clamp(this.data.settings.misRegistrationVal + delta, 0, 30)
     this.setData({
       'settings.misRegistration': newVal / 100,
       'settings.misRegistrationVal': newVal
@@ -2201,7 +1681,7 @@ Page({
 
   onDamageStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.damageVal + delta, 0, 12)
+    const newVal = this._clamp(this.data.settings.damageVal + delta, 0, 20)
     this.setData({
       'settings.damage': newVal / 100,
       'settings.damageVal': newVal
@@ -2216,32 +1696,25 @@ Page({
    */
   _buildSettingsFromTemplate(template, fontId) {
     const t = template || TEMPLATES['modern-prose']
-    // 使用模板默认值，确保与模板设计一致
-    const templateFontSize = t.layout.fontSize || 40
-    const templateLineHeight = t.layout.lineHeight || 1.6
-    const templateLetterSpacing = t.layout.letterSpacing || 0.02
-    const templateMarginTop = t.layout.marginTop || 50
-    const templateMarginBottom = t.layout.marginBottom || 50
-    const templateMarginLeft = t.layout.marginLeft || 50
-    const templateMarginRight = t.layout.marginRight || 50
-    const lineHeightVal = Math.round(templateLineHeight * 100)
+    const lineHeightVal = Math.round(t.layout.lineHeight * 100)
+    const fontSize = t.layout.fontSize
     return {
       // 字体选择
-      fontId: fontId || (t.font && t.font.family) || '思源宋体-Regular',
+      fontId: fontId || (t.font && t.font.family) || '上古宋体-Regular',
 
-      // 基础排版 - 使用模板默认值
-      fontSize: templateFontSize,
+      // 基础排版
+      fontSize: fontSize,
       fontSizeMode: 'px',
-      fontSizeDisplay: `${templateFontSize}px`,
-      lineHeight: templateLineHeight,
+      fontSizeDisplay: `${fontSize}px`,
+      lineHeight: t.layout.lineHeight,
       lineHeightVal: lineHeightVal,
-      lineHeightDisplay: templateLineHeight.toFixed(1),
-      letterSpacing: templateLetterSpacing,
-      letterSpacingVal: Math.round(templateLetterSpacing * 100),
+      lineHeightDisplay: (lineHeightVal / 100).toFixed(1),
+      letterSpacing: t.layout.letterSpacing,
+      letterSpacingVal: Math.round(t.layout.letterSpacing * 100),
       direction: t.layout.direction,
       fontWeight: t.font.weight || '400',
-      textAlign: t.layout.textAlign || 'left',
-      firstLineIndent: t.layout.indent || 2,
+      textAlign: 'left',
+      firstLineIndent: 2,
 
       // 墨色质感
       inkColor: t.ink.color || '#1A1008',
@@ -2270,7 +1743,7 @@ Page({
       watermarkType: 'none', // none, light, custom, page
 
       // 排版设置新增
-      paragraphSpacing: Math.round((t.layout.paragraphSpacing || 0.5) * 50),
+      paragraphSpacing: 25,
       emptyLineHandling: 'preserve',
       compactness: 50,
       pageNumberEnabled: false,
@@ -2283,12 +1756,12 @@ Page({
       inkSpreadIntensity: 50,
       layoutModeIndex: 0,
 
-      // 基础纸张 - 使用模板默认值
-      paperBaseColor: t.paper.baseColor || '#F5F0E6',
-      marginTopVal: templateMarginTop,
-      marginBottomVal: templateMarginBottom,
-      marginLeftVal: templateMarginLeft,
-      marginRightVal: templateMarginRight,
+      // 基础纸张
+      paperBaseColor: t.paper.baseColor || '#FAF7F2',
+      marginTopVal: 50,
+      marginBottomVal: 50,
+      marginLeftVal: 50,
+      marginRightVal: 50,
 
       // 质感效果
       aging: t.paper.ageOpacity || 0,
@@ -2303,7 +1776,6 @@ Page({
       // 装饰元素
       stampEnabled: !!(t.decoration && t.decoration.stamp),
       watermarkPosition: (t.decoration && t.decoration.watermark && t.decoration.watermark.position) || 'bottomRight',
-      watermarkUserSetPosition: !!(t.decoration && t.decoration.watermark && t.decoration.watermark.userSetPosition),
 
       // 纸张尺寸
       paperSizeId: 'a4'
@@ -2346,7 +1818,7 @@ Page({
         break
       default: // 默认模式
         tpl.layout.textAlign = 'left'
-        tpl.layout.lineHeight = 1.4
+        tpl.layout.lineHeight = 1.8
         tpl.layout.paragraphSpacing = toLines(25)
         tpl.layout.indent = indentMap[0]
     }
@@ -2425,7 +1897,7 @@ Page({
     if (s.stampEnabled != null) {
       if (s.stampEnabled) {
         if (!tpl.decoration.stamp) {
-          tpl.decoration.stamp = base.decoration.stamp || { text: '记', color: '#C41E3A', position: 'bottomRight', opacity: 0.7 }
+          tpl.decoration.stamp = base.decoration.stamp || { text: '记', color: '#C41E3A', position: 'bottomLeft', opacity: 0.7 }
         }
       } else {
         tpl.decoration.stamp = null
@@ -2437,7 +1909,6 @@ Page({
       } else {
         tpl.watermark = tpl.watermark || { text: '铅言万语', position: 'bottomRight', opacity: 0.15, fontSize: 20 }
         tpl.watermark.position = s.watermarkPosition
-        tpl.watermark.userSetPosition = !!s.watermarkUserSetPosition
       }
     }
 
@@ -2577,24 +2048,6 @@ Page({
     this.onExport()
   },
 
-  onCloseSavePanelBg() {
-    this.setData({ savePanelVisible: false })
-  },
-
-  onCloseSavePanel() {
-    this.setData({ savePanelVisible: false })
-  },
-
-  onSaveToAlbum() {
-    this.setData({ savePanelVisible: false })
-    this.onExport()
-  },
-
-  onShareToFriends() {
-    this.setData({ savePanelVisible: false })
-    this.onSharePage()
-  },
-
   // ============ 工具方法 ============
 
   _getDateStr() {
@@ -2710,6 +2163,31 @@ Page({
     })
   },
 
+  onFontSizeChange(e) {
+    const val = e.detail.value
+    const mode = this.data.textSettings.fontSizeMode
+    let display = mode === 'px' ? `${val}px` : `${val}号`
+    this.setData({
+      'textSettings.fontSize': val,
+      'textSettings.fontSizeDisplay': display,
+      'settings.fontSize': val
+    }, () => {
+      this._triggerRender()
+    })
+  },
+
+  onFontSizeModeChange(e) {
+    const mode = e.currentTarget.dataset.mode
+    const val = this.data.textSettings.fontSize
+    let display = mode === 'px' ? `${val}px` : `${val}号`
+    this.setData({
+      'textSettings.fontSizeMode': mode,
+      'textSettings.fontSizeDisplay': display,
+      'settings.fontSizeMode': mode,
+      'settings.fontSizeDisplay': display
+    })
+  },
+
   onTextWeightChange(e) {
     const index = e.detail.value
     const weights = ['300', '400', '500', '700']
@@ -2738,6 +2216,16 @@ Page({
       'textSettings.inkOpacity': val,
       'settings.inkOpacity': val / 100,
       'settings.inkOpacityVal': val
+    }, () => {
+      this._triggerRender()
+    })
+  },
+
+  onTextAlignChange(e) {
+    const align = e.detail.value
+    this.setData({
+      'textSettings.textAlign': align,
+      'settings.textAlign': align
     }, () => {
       this._triggerRender()
     })
@@ -2784,14 +2272,56 @@ Page({
     })
   },
 
+  onStrokeToggle(e) {
+    const enabled = e.detail.value
+    this.setData({
+      'textSettings.strokeEnabled': enabled,
+      'settings.strokeEnabled': enabled
+    }, () => {
+      this._triggerRender()
+    })
+  },
+
+  onStrokeWidthChange(e) {
+    const val = e.detail.value
+    this.setData({
+      'textSettings.strokeWidth': val,
+      'settings.strokeWidth': val,
+      'textSettings.strokeDisplay': `${val}px`
+    }, () => {
+      this._triggerRender()
+    })
+  },
+
+  onLineBreakToggle() {
+    const newValue = !this.data.textSettings.preserveLineBreaks
+    this.setData({
+      'textSettings.preserveLineBreaks': newValue,
+      'settings.preserveLineBreaks': newValue
+    }, () => {
+      this._triggerRender()
+    })
+  },
+
+  onTextSkewChange(e) {
+    const val = e.detail.value
+    this.setData({
+      'textSettings.textSkew': val,
+      'settings.textSkew': val,
+      'textSettings.textSkewDisplay': `${val}°`
+    }, () => {
+      this._triggerRender()
+    })
+  },
+
   onTextSettingsReset() {
     this.setData({
       textSettings: {
         fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
-        fontIndex: 1,
-        fontSize: 32,
+        fontIndex: 0,
+        fontSize: 40,
         fontSizeMode: 'px',
-        fontSizeDisplay: '32px',
+        fontSizeDisplay: '40px',
         weightOptions: ['纤细', '常规', '中等', '加粗'],
         weightIndex: 1,
         inkColorOptions: [
@@ -2820,8 +2350,8 @@ Page({
       'settings.inkColor': '#0D0D0D',
       'settings.inkOpacity': 0.35,
       'settings.inkOpacityVal': 35,
-      'settings.fontSize': 32,
-      'settings.fontSizeDisplay': '32px'
+      'settings.fontSize': 40,
+      'settings.fontSizeDisplay': '40px'
     })
     this._triggerRender()
     wx.showToast({ title: '已重置文字设置', icon: 'success' })
@@ -2855,27 +2385,7 @@ Page({
   },
 
   onPaperTemplateChange(e) {
-    const index = Number(e.detail.value)
-    const templateOption = this.data.paperSettings.templateOptions[index]
-    if (!templateOption) return
-    const templateId = templateOption.id
-    const template = TEMPLATES[templateId]
-    if (!template) return
-
-    const newSettings = this._buildSettingsFromTemplate(template, this.data.activeFontId)
-    this.setData({
-      'paperSettings.templateIndex': index,
-      activeTemplateId: templateId,
-      activeTemplateName: template.name,
-      currentPage: 0,
-      settings: newSettings,
-      uiRanges: this._getUiRangesByTemplate(templateId),
-      'textSettings.fontSize': newSettings.fontSize,
-      'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
-      'textSettings.inkOpacity': newSettings.inkOpacityVal
-    })
-    saveActiveTemplate(templateId)
-    clearRenderCache()
+    this.setData({ 'paperSettings.templateIndex': e.detail.value })
     this._triggerRender()
   },
 
@@ -2894,7 +2404,6 @@ Page({
         activeTemplateName: template.name,
         currentPage: 0,
         settings: newSettings,
-        uiRanges: this._getUiRangesByTemplate(templateId),
         'textSettings.fontSize': newSettings.fontSize,
         'textSettings.fontSizeDisplay': newSettings.fontSizeDisplay,
         'textSettings.inkOpacity': newSettings.inkOpacityVal,
@@ -3071,8 +2580,8 @@ Page({
         textureIndex: 0,
         shadowEnabled: false,
         shadowIntensity: 50,
-        marginVertical: 30,
-        marginHorizontal: 20,
+        marginVertical: 50,
+        marginHorizontal: 50,
         formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
         formIndex: 0,
         foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -3098,10 +2607,10 @@ Page({
       'settings.aging': 0.25,
       'settings.shadowIntensityVal': 0,
       'settings.shadowIntensity': 0,
-      'settings.marginTopVal': 30,
-      'settings.marginBottomVal': 30,
-      'settings.marginLeftVal': 20,
-      'settings.marginRightVal': 20
+      'settings.marginTopVal': 50,
+      'settings.marginBottomVal': 50,
+      'settings.marginLeftVal': 50,
+      'settings.marginRightVal': 50
     })
     this._triggerRender()
     wx.showToast({ title: '已重置纸张设置', icon: 'success' })
@@ -3298,8 +2807,8 @@ Page({
       default: // 默认模式
         config = {
           textAlign: 'left',
-          lineHeight: 140,
-          lineHeightDisplay: '1.4倍',
+          lineHeight: 180,
+          lineHeightDisplay: '1.8倍',
           paragraphSpacing: 25,
           indentIndex: 0
         }
@@ -3333,8 +2842,8 @@ Page({
         directionIndex: 0,
         verticalDir: 'rtl',
         textAlign: 'left',
-        lineHeight: 140,
-        lineHeightDisplay: '1.4倍',
+        lineHeight: 180,
+        lineHeightDisplay: '1.8倍',
         letterSpacing: 0,
         indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
         indentIndex: 0,
@@ -3363,9 +2872,9 @@ Page({
     })
     this.setData({
       'settings.textAlign': 'left',
-      'settings.lineHeightVal': 140,
-      'settings.lineHeight': 1.4,
-      'settings.lineHeightDisplay': '1.4',
+      'settings.lineHeightVal': 180,
+      'settings.lineHeight': 1.8,
+      'settings.lineHeightDisplay': '1.8',
       'settings.letterSpacingVal': 0,
       'settings.letterSpacing': 0,
       'settings.firstLineIndent': 0,
