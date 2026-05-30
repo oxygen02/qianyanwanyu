@@ -357,3 +357,5 @@ shell-init: error retrieving current directory: getcwd: cannot access parent dir
 /bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
 shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
 /bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/bash: /Users/ouyangguoqing/Documents/trae_projects/qianyanwanyu/auto_push.sh: Operation not permitted

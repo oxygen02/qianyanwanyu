@@ -10,12 +10,13 @@
         <text class="fs-btn" bindtap="onCopyText" wx:if="{{text.length > 0}}">复制</text>
       </view>
     </view>
-    <textarea class="fullscreen-textarea" model:value="{{text}}" placeholder="在此输入文字..."
-      placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
+    <textarea class="fullscreen-textarea" id="fullscreenTextarea" model:value="{{text}}" placeholder="在此输入文字..."
+      placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{true}}"
       show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
-      bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
+      bindinput="onTextInput" bindfocus="onFullscreenInputFocus" bindblur="onFullscreenInputBlur"
       maxlength="{{-1}}" cursor-spacing="60"
-      cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"/>
+      cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"
+      style="height: {{fullscreenTextareaHeight}}px;"/>
     <view class="fullscreen-footer">
       <text class="fs-char-count">{{text.length}} 字</text>
       <text class="fs-btn fs-btn--clear" bindtap="onClearDraft">清空</text>

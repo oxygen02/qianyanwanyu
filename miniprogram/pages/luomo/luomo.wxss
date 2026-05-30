@@ -614,9 +614,7 @@
 }
 
 .fullscreen-textarea {
-  flex: 1;
   width: 100%;
-  min-height: 0;
   padding: 24rpx 28rpx;
   box-sizing: border-box;
   font-size: 30rpx;

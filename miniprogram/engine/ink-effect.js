@@ -76,6 +76,16 @@ function toArrayBuffer(data) {
   }
 
   if (typeof data === 'object') {
+    const hasBuffer = data.buffer instanceof ArrayBuffer
+    const hasData = data.data != null && data.data !== data
+    const hasLength = typeof data.length === 'number'
+    const hasKeys = Object.keys(data).length > 0
+    const isArray = Array.isArray(data)
+    const hasTypeBuf = data.type === 'Buffer'
+    if (!hasBuffer && !hasData && !hasLength && !hasKeys && !isArray && !hasTypeBuf) {
+      throw new Error(`不支持的字体数据类型: opaque native object (模拟器环境)`)
+    }
+
     if (data.type === 'Buffer' && Array.isArray(data.data)) {
       return new Uint8Array(data.data).buffer
     }

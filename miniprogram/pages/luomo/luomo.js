@@ -42,6 +42,8 @@ Page({
     fontLoadingVisible: false,
     // 全屏编辑模式
     editModeFullscreen: false,
+    // 全屏模式下 textarea 动态高度（px）
+    fullscreenTextareaHeight: 400,
     // 光标位置（用于程序化定位）
     cursorPos: -1,
     // 选区范围
@@ -569,27 +571,64 @@ Page({
 
   // ============ 文本编辑增强功能 ============
 
+  /**
+   * 全屏键盘高度回调（全屏编辑专用）
+   * 核心逻辑：textarea高度 = 屏幕高度 - header - footer - keyboardHeight
+   */
+  _fullscreenKeyboardCallback: null,
+
+  _calcFullscreenTextareaHeight(keyboardHeight) {
+    const winInfo = wx.getWindowInfo()
+    const screenHeight = winInfo.screenHeight || winInfo.windowHeight
+    // header 高度约 56rpx + safe-area-top (约60px)
+    const headerH = 56
+    // footer 高度约 50rpx + safe-area-bottom (约40px)
+    const footerH = 50
+    // 可用高度
+    const available = screenHeight - headerH - footerH - keyboardHeight
+    return Math.max(200, available)
+  },
+
   toggleEditMode() {
     const newMode = !this.data.editModeFullscreen
     if (newMode) {
-      // 进入全屏模式：记录当前光标位置，展开输入框
+      // 进入全屏模式：计算初始高度并注册键盘监听
+      const initHeight = this._calcFullscreenTextareaHeight(0)
       this.setData({
         editModeFullscreen: true,
+        fullscreenTextareaHeight: initHeight,
         cursorPos: -1,
         selectionStart: -1,
         selectionEnd: -1
       })
-      // 延迟聚焦，等待DOM更新
-      setTimeout(() => {
-        const textarea = this.selectComponent ? null : null
-      }, 300)
+      // 注册全屏专用键盘监听
+      if (!this._fullscreenKeyboardCallback) {
+        this._fullscreenKeyboardCallback = (res) => {
+          const h = this._calcFullscreenTextareaHeight(res.height)
+          this.setData({ fullscreenTextareaHeight: h })
+        }
+        wx.onKeyboardHeightChange(this._fullscreenKeyboardCallback)
+      }
     } else {
-      // 退出全屏模式
+      // 退出全屏模式：取消键盘监听并触发渲染
+      if (this._fullscreenKeyboardCallback) {
+        wx.offKeyboardHeightChange(this._fullscreenKeyboardCallback)
+        this._fullscreenKeyboardCallback = null
+      }
       this.setData({
-        editModeFullscreen: false
+        editModeFullscreen: false,
+        fullscreenTextareaHeight: 400
       })
       this._triggerRender()
     }
+  },
+
+  onFullscreenInputFocus() {
+    console.log('[luomo] 全屏输入框获得焦点')
+  },
+
+  onFullscreenInputBlur() {
+    console.log('[luomo] 全屏输入框失去焦点')
   },
 
   onSelectAllText() {
