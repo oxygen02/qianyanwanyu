@@ -52,9 +52,9 @@
     <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}" style="height: {{inputAreaHeight}}px;">
       <textarea class="text-input" model:value="{{text}}" placeholder="在此写下文字..."
         placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
-        show-confirm-bar="{{false}}" adjust-position="{{false}}"
+        show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
         bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
-        maxlength="{{-1}}" cursor-spacing="10" style="height: {{textInputHeight}}px;"/>
+        maxlength="{{-1}}" cursor-spacing="25" style="height: {{textInputHeight}}px;"/>
       <view class="input-toolbar">
         <view class="input-actions-left"><text class="char-count">{{text.length}} 字</text></view>
         <view class="input-actions-right"><text class="action-btn" bindtap="onClearDraft">清空</text></view>

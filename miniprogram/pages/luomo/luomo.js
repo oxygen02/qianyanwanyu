@@ -950,8 +950,8 @@ Page({
 
       if (keyboardHeight > 0) {
         // 键盘弹出时：只调整输入框内部高度，不改变外部布局
-        // 文本输入框高度 = 键盘高度 - 工具栏 - 输入工具栏 - 间距，最小80px
-        const textInputHeight = Math.max(80, keyboardHeight - toolbarHeight - inputToolbarHeight - 20)
+        // 文本输入框高度 = 键盘高度 - 工具栏 - 输入工具栏 - 间距，最小140px（保证多行编辑空间）
+        const textInputHeight = Math.max(140, keyboardHeight - toolbarHeight - inputToolbarHeight - 20)
         // 总输入区高度 = 工具栏 + textInputHeight + 输入工具栏 + 小间距
         const inputAreaHeight = toolbarHeight + textInputHeight + inputToolbarHeight + 10
 

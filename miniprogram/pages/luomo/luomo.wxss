@@ -222,10 +222,12 @@
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 }
 
 .settings-content {
   padding: 8rpx 10rpx;
+  padding-bottom: 20rpx;
 }
 
 /* ===== 设置面板 - 紧凑布局 ===== */
