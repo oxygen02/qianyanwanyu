@@ -290,8 +290,12 @@ function drawInkLine(ctx, text, x, y, charWidth, letterSpacing, inkConfig, fontC
  * @param {object} fontConfig - 字体配置
  * @param {number} fontSize - 字号（物理像素）
  */
-function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig) {
+function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig, simpleMode) {
   if (!glyphs || glyphs.length === 0) return
+
+  // simpleMode: 简洁渲染模式（与 OpenType 路径视觉一致）
+  // 当字体切换导致 OpenType 回退到传统路径时启用，避免多层阴影导致的"彩色"异常
+  simpleMode = !!simpleMode
 
   // 确保 fontConfig 不为空
   if (!fontConfig) {
@@ -320,13 +324,13 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   const weatheringEnabled = inkConfig.weathering || false
   const weatheringIntensity = inkConfig.weatheringIntensity || 0
 
-  // DPR：用于将物理像素转换为 CSS 像素
-  const dpr = (layoutConfig && layoutConfig._dpr) || 2
-
+  // 字体族（清理非法字符）
   const family = sanitizeFontFamily(fontConfig.family)
-  // Canvas 2D 的 ctx.font 使用 CSS 像素，所以将物理像素 fontSize 转换回 CSS 像素
-  const cssFontSize = fontSize / dpr
-  const fontStr = `${fontConfig.weight || '400'} ${cssFontSize}px ${family}`
+  // 统一使用传入的 fontSize，不做 DPR 转换
+  // 原因：renderer.js 的 _scaleTemplateForDPR 已不再对 fontSize 做 DPR 缩放
+  //       typesetter.js 的 sizeScale 已在排版时处理了字号调整
+  //       此处直接使用与 OpenType 路径相同的 fontSize，确保两条路径显示一致
+  const fontStr = `${fontConfig.weight || '400'} ${fontSize}px ${family}`
 
   console.log('[ink-effect] drawInkBlock fontStr:', fontStr, 'glyphs:', glyphs.length,
     'opacity:', opacity.toFixed(2), 'variation:', variation.toFixed(2),
@@ -345,23 +349,26 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
 
   // ===== 第0层：纸张纤维吸附底层（让墨迹"陷入"纸张）=====
   // 模拟墨水被纸张纤维吸收后的底层扩散——比文字略大、极淡、高度羽化
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.25})`
-  ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},0.35)`
-  ctx.shadowBlur = fontSize * 0.50
-  ctx.shadowOffsetX = 0
-  ctx.shadowOffsetY = fontSize * 0.02
-  for (const g of glyphs) {
-    if (!g.text || g.text === ' ') continue
-    ctx.fillText(g.text, g.x, g.y)
+  // simpleMode下跳过此层，保持与OpenType路径一致的视觉效果
+  if (!simpleMode) {
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.25})`
+    ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},0.35)`
+    ctx.shadowBlur = fontSize * 0.50
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = fontSize * 0.02
+    for (const g of glyphs) {
+      if (!g.text || g.text === ' ') continue
+      ctx.fillText(g.text, g.x, g.y)
+    }
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 0
   }
-  ctx.shadowBlur = 0
-  ctx.shadowOffsetX = 0
-  ctx.shadowOffsetY = 0
 
   // ===== 第1层：纤维渗透（墨水沿纸张纤维间隙扩散）=====
   // 超大 shadowBlur 产生明显的边缘羽化，这是"印在纸上"感的关键
-  if (blurRadius > 0.05) {
+  if (!simpleMode && blurRadius > 0.05) {
     ctx.globalCompositeOperation = 'source-over'
     ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.45})`
     ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},0.60)`
@@ -376,7 +383,7 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   }
 
   // ===== 第2层：表层晕染（纸面表层的自然扩散）=====
-  if (blurRadius > 0.1) {
+  if (!simpleMode && blurRadius > 0.1) {
     ctx.globalCompositeOperation = 'source-over'
     ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.60})`
     ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},0.45)`
@@ -883,6 +890,30 @@ function canUseOpenTypeFont(fontId) {
   return !_opentypeDisabledFonts[fontId]
 }
 
+/**
+ * 清除指定字体的OpenType禁用标记
+ * 当字体下载成功后应调用此函数，让该字体可以重新尝试OpenType渲染路径
+ * @param {string} fontId - 字体ID（如 '上古宋体-Regular'）
+ */
+function resetOpenTypeDisabledFont(fontId) {
+  if (fontId && _opentypeDisabledFonts[fontId]) {
+    delete _opentypeDisabledFonts[fontId]
+    console.log('[ink-effect] 已重置字体 OpenType 状态:', fontId)
+  }
+}
+
+/**
+ * 清除所有字体的OpenType禁用标记
+ * 用于全局重置，如用户手动触发刷新等场景
+ */
+function resetAllOpenTypeDisabledFonts() {
+  const count = Object.keys(_opentypeDisabledFonts).length
+  _opentypeDisabledFonts = {}
+  if (count > 0) {
+    console.log('[ink-effect] 已重置所有字体的 OpenType 禁用状态, 共', count, '个')
+  }
+}
+
 module.exports = {
   drawInkChar,
   drawInkLine,
@@ -893,5 +924,7 @@ module.exports = {
   drawWatermarkWithLogo,
   drawPageNumber,
   loadFontFromCache,
-  canUseOpenTypeFont
+  canUseOpenTypeFont,
+  resetOpenTypeDisabledFont,
+  resetAllOpenTypeDisabledFonts
 }

@@ -53,13 +53,13 @@ const TEMPLATES = {
       marginBottom: 60,         // 地脚（下边距）
       marginLeft: 55,           // 订口（左/内边距）
       marginRight: 55,          // 切口（右/外边距）
-      fontSize: 36,             // 正文字号（适合手机阅读）
-      lineHeight: 1.8,          // 行间距倍率，1.8x字号为舒适阅读范围
-      letterSpacing: 0.02,      // 字间距 em，正值保证汉字正常呼吸感
-      paragraphSpacing: 0.8,    // em，段间额外空白
+      fontSize: 24,             // 正文字号（优化后的移动端默认值）
+      lineHeight: 1.6,          // 行间距倍率，1.6x字号更紧凑美观
+      letterSpacing: 0,         // 字间距 em，默认无额外间距由用户自行调节
+      paragraphSpacing: 0.5,    // em，段间额外空白
       indent: 2,                // 首行缩进字符数
       textAlign: 'justify',
-      compactness: 32           // 排版松紧度
+      compactness: 50           // 排版松紧度（默认中间值，不额外缩放）
     },
     // 字体
     font: {
@@ -67,14 +67,14 @@ const TEMPLATES = {
       fallback: 'serif',
       weight: '400'
     },
-    // 油墨
+    // 油墨 - 默认参数经真机视觉验证
     ink: {
       color: '#1A1008',         // 墨色
       opacity: 0.35,            // 墨色浓度默认35%
-      variation: 0.12,          // 笔画粗细变化程度提高
-      blurRadius: 0.5,          // 模糊半径增大
-      misRegistration: 0.15,    // 套印不准程度提高
-      damage: 0.08,             // 破损程度增加
+      variation: 0.12,          // 笔画粗细变化程度
+      blurRadius: 0.5,          // 模糊半径
+      misRegistration: 0.02,    // 套印不准（降低到视觉不可见的程度）
+      damage: 0.08,             // 破损程度
       inkSpread: true,          // 启用墨色浸染
       inkSpreadIntensity: 0.6,  // 浸染强度
       weathering: true,         // 启用字风化

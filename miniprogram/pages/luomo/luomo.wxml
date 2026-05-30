@@ -44,7 +44,7 @@
 
     <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}" style="height: {{inputAreaHeight}}px;">
       <textarea class="text-input" model:value="{{text}}" placeholder="在此写下文字..."
-        placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{true}}"
+        placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
         show-confirm-bar="{{false}}" adjust-position="{{false}}"
         bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
         maxlength="{{-1}}" cursor-spacing="10" style="height: {{textInputHeight}}px;"/>
@@ -92,7 +92,7 @@
               <view class="settings-cell settings-cell-switch"><view class="setting-label">换行</view><switch checked="{{textSettings.preserveLineBreaks}}" bindchange="onLineBreakToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
             <view class="settings-row">
-              <view class="settings-cell"><view class="setting-label">字号</view><view class="setting-value"><slider class="slider-mini" min="20" max="72" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onFontSizeChange"/><text class="slider-value-mini">{{textSettings.fontSize}}px</text></view></view>
+              <view class="settings-cell"><view class="setting-label">字号</view><view class="setting-value"><slider class="slider-mini" min="14" max="48" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onFontSizeChange"/><text class="slider-value-mini">{{textSettings.fontSize}}px</text></view></view>
               <view class="settings-cell"><view class="setting-label">深浅</view><view class="setting-value"><slider class="slider-mini" min="10" max="100" step="5" value="{{textSettings.inkOpacity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onTextInkOpacityChange"/><text class="slider-value-mini">{{textSettings.inkOpacity}}%</text></view></view>
               <view class="settings-cell"><view class="setting-label">倾斜</view><view class="setting-value"><slider class="slider-mini" min="-10" max="10" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onTextSkewChange"/><text class="slider-value-mini">{{textSettings.textSkewDisplay}}</text></view></view>
             </view>
@@ -124,13 +124,13 @@
               </view></scroll-view>
             </view>
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--margin"><view class="setting-label">上下边距</view><view class="setting-value"><slider class="slider-mini" min="30" max="200" step="5" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onPaperMarginVerticalChange"/><text class="slider-value-mini">{{paperSettings.marginVertical}}</text></view></view>
+              <view class="settings-cell settings-cell--margin"><view class="setting-label">上下边距</view><view class="setting-value"><slider class="slider-mini" min="5" max="200" step="5" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onPaperMarginVerticalChange"/><text class="slider-value-mini">{{paperSettings.marginVertical}}</text></view></view>
               <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">阴影</view><switch checked="{{paperSettings.shadowEnabled}}" bindchange="onPaperShadowToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">瑕疵</view><switch checked="{{paperSettings.imperfectionEnabled}}" bindchange="onPaperImperfectionToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">装订</view><switch checked="{{paperSettings.stitchEnabled}}" bindchange="onPaperStitchToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--margin"><view class="setting-label">左右边距</view><view class="setting-value"><slider class="slider-mini" min="30" max="200" step="5" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onPaperMarginHorizontalChange"/><text class="slider-value-mini">{{paperSettings.marginHorizontal}}</text></view></view>
+              <view class="settings-cell settings-cell--margin"><view class="setting-label">左右边距</view><view class="setting-value"><slider class="slider-mini" min="5" max="200" step="5" value="{{paperSettings.marginHorizontal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onPaperMarginHorizontalChange"/><text class="slider-value-mini">{{paperSettings.marginHorizontal}}</text></view></view>
               <view class="settings-cell settings-cell--fourth"><view class="setting-label">卷边</view><picker mode="selector" range="{{paperSettings.curlOptions}}" bindchange="onPaperCurlChange" value="{{paperSettings.curlIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.curlOptions[paperSettings.curlIndex]}}</text><text class="arrow">›</text></view></picker></view>
               <view class="settings-cell settings-cell--fourth"><view class="setting-label">撕边</view><picker mode="selector" range="{{paperSettings.tearOptions}}" bindchange="onPaperTearChange" value="{{paperSettings.tearIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.tearOptions[paperSettings.tearIndex]}}</text><text class="arrow">›</text></view></picker></view>
               <view class="settings-cell settings-cell--fourth"><view class="setting-label">尺寸</view><picker mode="selector" range="{{paperSettings.sizeOptions}}" bindchange="onPaperSizeChange" value="{{paperSettings.sizeIndex}}"><view class="setting-value"><text class="value-text-mini">{{paperSettings.sizeOptions[paperSettings.sizeIndex]}}</text><text class="arrow">›</text></view></picker></view>
@@ -147,7 +147,7 @@
               <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">页码显示</view><switch checked="{{layoutSettings.pageNumberEnabled}}" bindchange="onLayoutPageNumberToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--fourth"><view class="setting-label">行间距</view><view class="setting-value"><slider class="slider-mini" min="140" max="300" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutLineHeightChange"/><text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text></view></view>
+              <view class="settings-cell settings-cell--fourth"><view class="setting-label">行间距</view><view class="setting-value"><slider class="slider-mini" min="100" max="300" step="5" value="{{layoutSettings.lineHeight}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutLineHeightChange"/><text class="slider-value-mini">{{layoutSettings.lineHeightDisplay}}</text></view></view>
               <view class="settings-cell settings-cell--fourth"><view class="setting-label">字间距</view><view class="setting-value"><slider class="slider-mini" min="0" max="30" step="1" value="{{layoutSettings.letterSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutLetterSpacingChange"/><text class="slider-value-mini">{{layoutSettings.letterSpacing}}%</text></view></view>
               <view class="settings-cell settings-cell--fourth"><view class="setting-label">段落间距</view><view class="setting-value"><slider class="slider-mini" min="0" max="80" step="2" value="{{layoutSettings.paragraphSpacing}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutParagraphSpacingChange"/><text class="slider-value-mini">{{layoutSettings.paragraphSpacing}}</text></view></view>
               <view class="settings-cell settings-cell--fourth"><view class="setting-label">排版松紧</view><view class="setting-value"><slider class="slider-mini" min="0" max="100" step="5" value="{{layoutSettings.compactness}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutCompactnessChange"/><text class="slider-value-mini">{{layoutSettings.compactness}}%</text></view></view>
@@ -160,11 +160,6 @@
             </view>
           </view>
         </block>
-      </view>
-      <view class="sp-footer">
-        <view class="sp-footer-btn sp-footer-btn--reset" bindtap="onResetTab">重置</view>
-        <view class="sp-footer-btn sp-footer-btn--default" bindtap="onResetSettings">恢复默认</view>
-        <view class="sp-footer-btn sp-footer-btn--done" bindtap="onCloseSettings">确定</view>
       </view>
     </view>
   </view>

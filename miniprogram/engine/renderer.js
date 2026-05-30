@@ -126,8 +126,10 @@ async function renderPage(params) {
 
   const ctx = canvas.getContext('2d')
 
-  // 清空画布
+  // 清空画布并立即填充纸张底色，避免出现白色/透明方框
   ctx.clearRect(0, 0, width, height)
+  ctx.fillStyle = template.paper && template.paper.baseColor ? template.paper.baseColor : '#FAF7F2'
+  ctx.fillRect(0, 0, width, height)
 
   // ============ 第一层：纸张底色 + 纹理 / 背景图 ============
   let bgReady = false
@@ -215,7 +217,8 @@ async function renderPage(params) {
       try {
         await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, fontId, template.layout.fontSize, template.layout)
       } catch (e) {
-        drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout)
+        // OpenType失败回退：使用简洁模式渲染，避免多层阴影导致的"彩色"异常
+        drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, true)
       }
     } else {
       drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout)
@@ -414,9 +417,13 @@ function _scaleTemplateForDPR(template, dpr) {
   // Canvas 2D 的 backing store 使用物理像素，但 ctx.font 使用 CSS 像素
   // 为了确保排版计算和实际绘制一致，我们将所有空间参数统一为物理像素
   if (t.layout) {
-    // fontSize 需要乘以 DPR，因为 Canvas 绘制时字体大小是 CSS 像素
-    // 但我们的排版计算使用物理像素坐标
-    t.layout.fontSize = (t.layout.fontSize || 40) * d
+    // fontSize: 不在此处缩放！
+    // typesetter.js 中已有 compactness/sizeScale 机制处理字号调整
+    // 如果此处再乘以 fontScale，会导致双重缩放，使实际显示远小于用户设置值
+    // 用户设置的 fontSize 直接传递给 typesetter，由 sizeScale(0.85~1.15) 做唯一缩放
+    if (t.layout.fontSize == null) {
+      t.layout.fontSize = 24
+    }
 
     // 边距：统一乘 DPR，确保在物理像素 Canvas 上显示正确大小
     // 模板默认值基于 750rpx 设计稿，用户设置值也是 CSS 像素单位

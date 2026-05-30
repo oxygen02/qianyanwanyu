@@ -2,6 +2,7 @@
 // 落墨页 - 主书写页核心逻辑
 
 const { renderPage, estimatePageCount, clearRenderCache } = require('../../engine/renderer')
+const { resetOpenTypeDisabledFont } = require('../../engine/ink-effect')
 const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, hasVisited, markVisited } = require('../../utils/storage')
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
@@ -78,8 +79,8 @@ Page({
 
       // === 墨色质感 ===
       inkColor: '#1A1008',
-      inkOpacity: 0.35,
-      inkOpacityVal: 35,
+      inkOpacity: 0.45,
+      inkOpacityVal: 45,
       variation: null,
       variationVal: 12,
       blurRadius: null,
@@ -165,19 +166,19 @@ Page({
     textSettings: {
       fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
       fontIndex: 0,
-      fontSize: 36,
+      fontSize: 24,
       fontSizeMode: 'px',
-      fontSizeDisplay: '36px',
+      fontSizeDisplay: '24px',
       weightOptions: ['纤细', '常规', '中等', '加粗'],
       weightIndex: 1,
       inkColorOptions: [
-        { id: 'black', name: '纯黑', color: '#0D0D0D' },
         { id: 'songyan', name: '松烟墨黑', color: '#1A1008' },
+        { id: 'black', name: '纯黑', color: '#0D0D0D' },
         { id: 'tanhui', name: '炭灰墨', color: '#3D3530' },
         { id: 'qianqing', name: '浅青墨', color: '#2D3A32' },
         { id: 'fugu', name: '复古浓墨', color: '#2C1810' }
       ],
-      inkColorIndex: 0,
+      inkColorIndex: 0,  // 默认松烟墨黑，与模板一致
       inkOpacity: 45,
       textAlign: 'left',
       watermarkEnabled: false,
@@ -255,9 +256,9 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 180,
-      lineHeightDisplay: '1.8倍',
-      letterSpacing: 2,
+      lineHeight: 160,
+      lineHeightDisplay: '1.6倍',
+      letterSpacing: 0,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
       layoutModeOptions: ['默认模式', '诗词模式', '书信模式', '散文模式', '小说模式'],
@@ -272,7 +273,7 @@ Page({
       damageTypeOptions: ['边角残缺', '虫蛀小洞', '书页裂口'],
       damageTypeIndex: 0,
       damageIntensity: 50,
-      paragraphSpacing: 25,
+      paragraphSpacing: 15,
       emptyLineHandling: 'preserve',
       pageNumberEnabled: false,
       pageNumberPositionOptions: ['底部居中'],
@@ -305,6 +306,7 @@ Page({
   // 渲染防重入：防止多个渲染请求同时执行
   _rendering: false,
   _needsRerender: false,
+  _renderRetryCount: 0,  // 防止无限重渲染导致闪退
   // 设置变更防抖定时器
   _settingsDebounceTimer: null,
 
@@ -407,6 +409,8 @@ Page({
           loadFont(template.font.family).then(fontFamily => {
             if (fontFamily && fontFamily !== getFallbackFont()) {
               this._loadedFontCache[template.font.family] = fontFamily
+              // 预加载成功后重置OpenType状态，确保使用高质量渲染路径
+              resetOpenTypeDisabledFont(template.font.family)
               if (this.data.text) {
                 this._triggerRender()
               }
@@ -425,6 +429,10 @@ Page({
   },
 
   onReady() {
+    // 初始化字体切换追踪
+    this._lastFontId = null
+    this._loadedFontCache = {}
+
     // 性能优化：使用 wx.nextTick 替代 setTimeout，在下一帧立即初始化 Canvas
     if (typeof wx.nextTick === 'function') {
       wx.nextTick(() => this._initCanvas())
@@ -482,28 +490,29 @@ Page({
   // ============ 文字输入 ============
 
   onTextInput(e) {
-    const text = e.detail.value
-    this._pendingText = text
-    this.setData({ text })
+    try {
+      const text = e.detail.value
+      this._pendingText = text
+      this.setData({ text })
 
-    // 有文字时停止光标闪烁，无文字时启动
-    if (text && text.length > 0) {
-      this._stopCursorBlink()
-    } else {
-      this._startCursorBlink()
+      if (text && text.length > 0) {
+        this._stopCursorBlink()
+      } else {
+        this._startCursorBlink()
+      }
+
+      clearTimeout(_draftSaveTimer)
+      _draftSaveTimer = setTimeout(() => {
+        saveDraft(text)
+      }, 800)
+
+      clearTimeout(_renderDebounceTimer)
+      _renderDebounceTimer = setTimeout(() => {
+        this._triggerRender()
+      }, 200)
+    } catch (err) {
+      console.error('[luomo] onTextInput 异常:', err)
     }
-
-    // 防抖保存草稿（800ms）
-    clearTimeout(_draftSaveTimer)
-    _draftSaveTimer = setTimeout(() => {
-      saveDraft(text)
-    }, 800)
-
-    // 防抖渲染（200ms，避免连续输入时频繁触发昂贵的Canvas渲染）
-    clearTimeout(_renderDebounceTimer)
-    _renderDebounceTimer = setTimeout(() => {
-      this._triggerRender()
-    }, 200)
   },
 
   /**
@@ -540,19 +549,40 @@ Page({
   // ============ 渲染触发 ============
 
   _triggerRender() {
-    if (!this._canvasReady) return
-    const text = this._pendingText || this.data.text
-    if (!text) {
-      this._clearCanvas()
-      return
+    try {
+      if (!this._canvasReady) return
+      const text = this._pendingText || this.data.text
+      if (!text) {
+        this._clearCanvas()
+        return
+      }
+      clearTimeout(this._settingsDebounceTimer)
+      this._settingsDebounceTimer = setTimeout(() => {
+        this._doRender(text)
+        this._settingsDebounceTimer = null
+      }, 100)
+    } catch (e) {
+      console.error('[luomo] _triggerRender 异常:', e)
     }
-    // 防抖：100ms 内的连续 _triggerRender 调用合并为一次渲染
-    // 解决滑块拖动时每秒数十次渲染请求导致的主线程过载
-    clearTimeout(this._settingsDebounceTimer)
-    this._settingsDebounceTimer = setTimeout(() => {
-      this._doRender(text)
+  },
+
+  /**
+   * 立即渲染（跳过防抖，用于字体切换、模板切换等期待即时反馈的操作）
+   */
+  _renderNow() {
+    try {
+      if (!this._canvasReady) return
+      const text = this._pendingText || this.data.text
+      if (!text) {
+        this._clearCanvas()
+        return
+      }
+      clearTimeout(this._settingsDebounceTimer)
       this._settingsDebounceTimer = null
-    }, 100)
+      this._doRender(text)
+    } catch (e) {
+      console.error('[luomo] _renderNow 异常:', e)
+    }
   },
 
   async _doRender(text) {
@@ -582,8 +612,17 @@ Page({
         if (this._loadedFontCache[fontFamily]) {
           template.font.family = this._loadedFontCache[fontFamily]
         } else {
-          template.font.family = template.font.fallback || 'serif'
+          // 字体未缓存时，直接使用fontId作为family名
+          // loadFont()成功后返回的就是fontId，wx.loadFontFace已注册该名称
+          // 如果加载失败，会在后续渲染中由引擎回退到系统默认字体
+          template.font.family = fontFamily
         }
+      }
+
+      // 字体切换时清除排版缓存，避免新旧字体混用导致显示异常
+      if (this._lastFontId !== template.font.family) {
+        clearRenderCache()
+        this._lastFontId = template.font.family
       }
 
       // 估算总页数
@@ -627,13 +666,16 @@ Page({
     } finally {
       this.setData({ isRendering: false })
       this._rendering = false
-      // 如果渲染期间有新的渲染请求，立即触发重渲染
-      if (this._needsRerender && this._canvasReady) {
+      // 如果渲染期间有新的渲染请求且未超过重试上限，立即触发重渲染
+      if (this._needsRerender && this._canvasReady && this._renderRetryCount < 3) {
         const currentText = this._pendingText || this.data.text
         if (currentText) {
           this._needsRerender = false
+          this._renderRetryCount++
           this._doRender(currentText)
         }
+      } else {
+        this._renderRetryCount = 0
       }
     }
   },
@@ -884,51 +926,30 @@ Page({
     _keyboardChangeCallback = (res) => {
       const keyboardHeight = res.height
       const windowInfo = wx.getWindowInfo()
-      const windowHeight = windowInfo.windowHeight
       const screenWidth = windowInfo.windowWidth
       const rpxRatio = screenWidth / 750
 
+      // 输入框工具栏（字数统计+清空按钮行）高度约36px
+      const inputToolbarHeight = 36
       // 工具栏高度（rpx转px）
       const toolbarHeight = Math.floor(56 * rpxRatio)
-      // 输入框工具栏（字数统计+清空按钮行）高度
-      const inputToolbarHeight = 36
-      // 底部安全区域高度
-      const safeAreaBottom = windowInfo.safeArea 
-        ? Math.max(0, windowInfo.screenHeight - windowInfo.safeArea.bottom) 
-        : 0
 
       if (keyboardHeight > 0) {
-        // 键盘弹出：canvas-area 高度 = 全屏高度 - 键盘高度 - 工具栏 - 安全区
-        // 注意：不能用 windowHeight（键盘弹出后 windowHeight 会缩小），必须用 screenHeight
-        const screenHeight = windowInfo.screenHeight
-        const statusBarHeight = windowInfo.statusBarHeight || 0
-
-        // canvas-area 获得键盘之上的所有剩余空间
-        const canvasAreaHeight = screenHeight - keyboardHeight - toolbarHeight - statusBarHeight
-
-        // 确保 canvas-area 至少有 100px 的最小显示高度
-        const minCanvasHeight = Math.max(100, canvasAreaHeight)
-
-        // bottom-area 紧贴键盘上方
-        const bottomAreaHeight = keyboardHeight + toolbarHeight + (34 * rpxRatio)
-
-        // 文本输入框：填入输入区的剩余空间
-        const textInputHeight = Math.max(60, keyboardHeight - inputToolbarHeight - (44 * rpxRatio))
-        const inputAreaHeight = keyboardHeight + inputToolbarHeight + (24 * rpxRatio)
+        // 键盘弹出时：只调整输入框内部高度，不改变外部布局
+        // 文本输入框高度 = 键盘高度 - 工具栏 - 输入工具栏 - 间距，最小80px
+        const textInputHeight = Math.max(80, keyboardHeight - toolbarHeight - inputToolbarHeight - 20)
+        // 总输入区高度 = 工具栏 + textInputHeight + 输入工具栏 + 小间距
+        const inputAreaHeight = toolbarHeight + textInputHeight + inputToolbarHeight + 10
 
         this.setData({
-          canvasAreaStyle: `height: ${minCanvasHeight}px; flex: none;`,
-          bottomAreaStyle: `height: ${bottomAreaHeight}px; flex-shrink: 0;`,
           inputAreaHeight: inputAreaHeight,
           textInputHeight: textInputHeight,
           keyboardVisible: true,
           keyboardHeight: keyboardHeight
         })
       } else {
-        // 键盘收起：恢复默认布局
+        // 键盘收起：恢复默认状态
         this.setData({
-          canvasAreaStyle: '',
-          bottomAreaStyle: '',
           inputAreaHeight: 210,
           textInputHeight: 180,
           keyboardVisible: false,
@@ -1009,7 +1030,7 @@ Page({
     })
     saveActiveTemplate(id)
     clearRenderCache()
-    this._triggerRender()
+    this._renderNow()
   },
 
   onSwitchTemplate(e) {
@@ -1037,9 +1058,8 @@ Page({
       'textSettings.inkOpacity': newSettings.inkOpacityVal
     })
     saveActiveTemplate(newId)
-    // 模板变化时清理缓存
     clearRenderCache()
-    this._triggerRender()
+    this._renderNow()
   },
 
   // ============ 设置面板 ============
@@ -1264,9 +1284,13 @@ Page({
       'settings.fontId': fontId
     })
 
-    if (downloadStatus === 'loaded') {
-      this._triggerRender()
-    }
+    // 字体切换时清除缓存，确保使用新的字体参数重新排版
+    clearRenderCache()
+    this._lastFontId = fontId
+
+    // 无论字体是否加载完成，都立即重新渲染
+    // 如果字体未加载完成，会先使用系统默认字体显示，加载完成后自动刷新
+    this._renderNow()
   },
 
   /**
@@ -1277,7 +1301,13 @@ Page({
 
     loadFont(fontId)
       .then(family => {
-        // 下载成功：更新下载状态 + 标记该字体为已加载
+        // 下载成功：缓存字体名 + 重置OpenType状态 + 清除旧缓存
+        this._loadedFontCache[fontId] = family
+        // 关键：重置该字体的OpenType禁用标记，允许重新尝试高质量渲染路径
+        resetOpenTypeDisabledFont(fontId)
+        // 清除旧的排版缓存，避免新旧字体参数混用导致显示异常
+        clearRenderCache()
+
         const fontList = this.data.fontList.map(f => {
           if (f.id === fontId) {
             return { ...f, isLoaded: true }
@@ -1288,10 +1318,14 @@ Page({
           activeFontDownloadStatus: 'loaded',
           fontList
         })
-        this._triggerRender()
+        // 字体加载完成后立即用新字体重新渲染（使用OpenType高质量路径）
+        this._renderNow()
       })
       .catch(() => {
         this.setData({ activeFontDownloadStatus: 'failed' })
+        // 加载失败也要清除缓存并重新渲染，使用系统默认字体
+        clearRenderCache()
+        this._renderNow()
       })
   },
 
@@ -1626,7 +1660,7 @@ Page({
 
   onFontSizeStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.fontSize + delta, 20, 72)
+    const newVal = this._clamp(this.data.settings.fontSize + delta, 14, 72)
     const mode = this.data.textSettings.fontSizeMode
     const display = mode === 'px' ? `${newVal}px` : `${newVal}号`
     this.setData({
