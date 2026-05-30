@@ -3,6 +3,7 @@
 // 优先使用本地缓存，避免重复下载
 
 const { BUILT_IN_FONTS } = require('./constants')
+const { loadFontFromCache, markOpenTypeIncompatible } = require('../engine/ink-effect')
 
 // 已加载字体缓存：{ fontId: 'loaded'|'loading'|'failed' }
 const _loadedFonts = {}
@@ -339,6 +340,12 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
           await ensureCanvasFontReady(fontConfig.family)
           _loadedFonts[fontConfig.id] = 'loaded'
           console.log('[font-loader] 字体完全就绪:', fontConfig.name)
+          loadFontFromCache(fontConfig.id).then(() => {
+            console.log('[font-loader] OpenType字体预热完成:', fontConfig.name)
+          }).catch((err) => {
+            console.warn('[font-loader] OpenType字体预热失败（将使用传统渲染）:', fontConfig.name, err.message || err)
+            markOpenTypeIncompatible(fontConfig.id)
+          })
           safeResolve(fontConfig.family)
         },
         fail: (err) => {

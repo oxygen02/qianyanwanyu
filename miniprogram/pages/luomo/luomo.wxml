@@ -18,7 +18,14 @@
       </view>
     </view>
 
-    <view class="empty-hint" wx:if="{{!text && !isRendering}}">
+    <view class="font-loading-mask" wx:if="{{fontLoadingVisible && !isRendering}}">
+      <view class="font-loading-content">
+        <view class="font-loading-spinner"></view>
+        <text class="font-loading-text">正在加载字体，请稍候...</text>
+      </view>
+    </view>
+
+    <view class="empty-hint" wx:if="{{!text && !isRendering && !fontLoadingVisible}}">
       <text class="empty-text">在此写下文字</text>
       <text class="empty-sub">点击下方工具栏进行文字与纸张设置</text>
     </view>
@@ -62,7 +69,12 @@
               <view class="settings-cell">
                 <view class="setting-label">字体</view>
                 <picker mode="selector" range="{{textSettings.fontOptions}}" range-key="name" bindchange="onTextFontChange" value="{{textSettings.fontIndex}}">
-                  <view class="setting-value"><text class="value-text-mini">{{textSettings.fontOptions[textSettings.fontIndex].name}}</text><text class="arrow">›</text></view>
+                  <view class="setting-value">
+                    <text class="value-text-mini">{{textSettings.fontOptions[textSettings.fontIndex].name}}</text>
+                    <text class="font-size-hint" wx:if="{{textSettings.fontOptions[textSettings.fontIndex].fileSizeLabel}}">{{textSettings.fontOptions[textSettings.fontIndex].fileSizeLabel}}</text>
+                    <text class="font-status-badge {{textSettings.fontOptions[textSettings.fontIndex].isLoaded ? 'loaded' : ''}}" wx:if="{{textSettings.fontOptions[textSettings.fontIndex].isLoaded !== undefined}}">{{textSettings.fontOptions[textSettings.fontIndex].isLoaded ? '已下载' : '未下载'}}</text>
+                    <text class="arrow">›</text>
+                  </view>
                 </picker>
               </view>
               <view class="settings-cell">
@@ -92,7 +104,7 @@
               <view class="settings-cell settings-cell-switch"><view class="setting-label">换行</view><switch checked="{{textSettings.preserveLineBreaks}}" bindchange="onLineBreakToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
             <view class="settings-row">
-              <view class="settings-cell"><view class="setting-label">字号</view><view class="setting-value"><slider class="slider-mini" min="14" max="48" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onFontSizeChange"/><text class="slider-value-mini">{{textSettings.fontSize}}px</text></view></view>
+              <view class="settings-cell"><view class="setting-label">字号</view><view class="setting-value"><slider class="slider-mini" min="20" max="60" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onFontSizeChange"/><text class="slider-value-mini">{{textSettings.fontSize}}px</text></view></view>
               <view class="settings-cell"><view class="setting-label">深浅</view><view class="setting-value"><slider class="slider-mini" min="10" max="100" step="5" value="{{textSettings.inkOpacity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onTextInkOpacityChange"/><text class="slider-value-mini">{{textSettings.inkOpacity}}%</text></view></view>
               <view class="settings-cell"><view class="setting-label">倾斜</view><view class="setting-value"><slider class="slider-mini" min="-10" max="10" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onTextSkewChange"/><text class="slider-value-mini">{{textSettings.textSkewDisplay}}</text></view></view>
             </view>
@@ -176,7 +188,10 @@
         <view class="font-grid-inner">
           <view wx:for="{{fontList}}" wx:key="index" class="font-grid-item {{activeFontId === item.id ? 'active' : ''}}" bindtap="onSelectFont" data-id="{{item.id}}" data-font="{{item.family}}">
             <view class="font-main"><text class="font-name">{{item.name}}</text></view>
-            <view class="font-meta"><text class="font-size" wx:if="{{item.fileSize}}">{{item.fileSizeLabel}}</text></view>
+            <view class="font-meta">
+              <text class="font-size" wx:if="{{item.fileSizeLabel}}">{{item.fileSizeLabel}}</text>
+              <text class="font-status-tag {{item.isLoaded ? 'loaded' : ''}}" wx:if="{{item.isLoaded !== undefined}}">{{item.isLoaded ? '✓ 已缓存' : '待下载'}}</text>
+            </view>
             <view class="font-check" wx:if="{{activeFontId === item.id}}">✓</view>
           </view>
         </view>

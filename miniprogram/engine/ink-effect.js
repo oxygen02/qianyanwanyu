@@ -102,9 +102,12 @@ async function loadFontFromCache(fontId) {
       const cacheInfo = wx.getStorageSync(FONT_CACHE_INFO_KEY) || {}
       if (cacheInfo[fontId] && cacheInfo[fontId].path) {
         filePath = cacheInfo[fontId].path
+        console.log('[ink-effect] 从storage找到字体路径:', fontId, '→', filePath)
+      } else {
+        console.log('[ink-effect] storage中未找到字体记录:', fontId, '，已记录的字体:', Object.keys(cacheInfo).join(','))
       }
     } catch (e) {
-      // 忽略 storage 异常，继续回退到猜测路径
+      console.warn('[ink-effect] 读取font cache storage异常:', e)
     }
     if (!filePath) {
       const candidates = [
@@ -116,6 +119,7 @@ async function loadFontFromCache(fontId) {
         try {
           fs.accessSync(p)
           filePath = p
+          console.log('[ink-effect] 通过路径猜测找到字体:', p)
           break
         } catch (e) {}
       }
@@ -130,14 +134,17 @@ async function loadFontFromCache(fontId) {
       success: (res) => {
         try {
           const fontBuffer = toArrayBuffer(res.data)
+          console.log('[ink-effect] 字体文件读取成功:', fontId, '大小:', fontBuffer.byteLength, 'bytes')
           const font = opentype.parse(fontBuffer)
           _cachedFonts[fontId] = font
           resolve(font)
         } catch (err) {
+          console.error('[ink-effect] opentype.parse解析失败:', fontId, err)
           reject(err)
         }
       },
       fail: (err) => {
+        console.error('[ink-effect] 读取字体文件失败:', filePath, err)
         reject(err)
       }
     })
@@ -398,48 +405,54 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   // ===== 第3层：主体实墨层（核心——必须够深够实）=====
   // 使用 source-over 确保在浅色纸张上墨迹清晰可见
   ctx.globalCompositeOperation = 'source-over'
-  for (let i = 0; i < glyphs.length; i++) {
-    const g = glyphs[i]
-    if (!g.text || g.text === ' ') continue
+  if (simpleMode) {
+    // simpleMode: 纯色实心填充，与 OpenType 路径的视觉效果完全一致
+    // 不做 variation 随机变化，不做 stroke 描边，不做任何 shadow
+    ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity})`
+    for (const g of glyphs) {
+      if (!g.text || g.text === ' ') continue
+      ctx.fillText(g.text, g.x, g.y)
+    }
+  } else {
+    // 完整模式：带 variation 活字印刷效果 + stroke 描边
+    for (let i = 0; i < glyphs.length; i++) {
+      const g = glyphs[i]
+      if (!g.text || g.text === ' ') continue
 
-    // 确定性哈希（避免重绘闪烁）
-    const hash1 = ((i * 37 + (g.text.charCodeAt(0) || 0)) % 1000) / 1000
-    const hash2 = (((hash1 * 7919) % 1000) / 1000)
-    const hash3 = (((hash1 * 104729) % 1000) / 1000)
+      const hash1 = ((i * 37 + (g.text.charCodeAt(0) || 0)) % 1000) / 1000
+      const hash2 = (((hash1 * 7919) % 1000) / 1000)
+      const hash3 = (((hash1 * 104729) % 1000) / 1000)
 
-    const rnd = hash1 * 2 - 1  // -1 ~ 1
+      const rnd = hash1 * 2 - 1
+      const vr = rnd * variation * 220
+      const vg = (hash2 * 2 - 1) * variation * 150
+      const vb = (hash3 * 2 - 1) * variation * 100
 
-    // 墨色随机变化（variation 控制幅度，越大越像活字印刷）
-    const vr = rnd * variation * 220
-    const vg = (hash2 * 2 - 1) * variation * 150
-    const vb = (hash3 * 2 - 1) * variation * 100
+      const r = Math.max(0, Math.min(255, inkColor.r + vr))
+      const gVal = Math.max(0, Math.min(255, inkColor.g + vg))
+      const bVal = Math.max(0, Math.min(255, inkColor.b + vb))
 
-    const r = Math.max(0, Math.min(255, inkColor.r + vr))
-    const gVal = Math.max(0, Math.min(255, inkColor.g + vg))
-    const bVal = Math.max(0, Math.min(255, inkColor.b + vb))
+      const minOp = opacity * 0.90
+      const maxOp = Math.min(0.995, opacity * 1.05)
+      const charOpacity = minOp + (maxOp - minOp) * hash2
 
-    // 不透明度范围：opacity * 0.90 到 min(0.995, opacity * 1.05)
-    const minOp = opacity * 0.90
-    const maxOp = Math.min(0.995, opacity * 1.05)
-    const charOpacity = minOp + (maxOp - minOp) * hash2
+      ctx.fillStyle = `rgba(${r},${gVal},${bVal},${charOpacity})`
+      ctx.fillText(g.text, g.x, g.y)
 
-    ctx.fillStyle = `rgba(${r},${gVal},${bVal},${charOpacity})`
-    ctx.fillText(g.text, g.x, g.y)
-
-    // 文字描边效果（模拟老式印刷字迹的墨边）
-    if (strokeEnabled && strokeWidth > 0) {
-      const strokeColor = inkConfig.strokeColor || inkConfig.color || '#1A1008'
-      const sc = parseColor(strokeColor)
-      const strokeOpacity = charOpacity * 0.6
-      ctx.strokeStyle = `rgba(${sc.r},${sc.g},${sc.b},${strokeOpacity})`
-      ctx.lineWidth = strokeWidth
-      ctx.strokeText(g.text, g.x, g.y)
+      if (strokeEnabled && strokeWidth > 0) {
+        const strokeColor = inkConfig.strokeColor || inkConfig.color || '#1A1008'
+        const sc = parseColor(strokeColor)
+        const strokeOpacity = charOpacity * 0.6
+        ctx.strokeStyle = `rgba(${sc.r},${sc.g},${sc.b},${strokeOpacity})`
+        ctx.lineWidth = strokeWidth
+        ctx.strokeText(g.text, g.x, g.y)
+      }
     }
   }
 
   // ===== 第3.5层：边缘微浸润（让字迹边缘与纸张自然过渡）=====
   // 叠加一个极微模糊的副本，模拟墨水沿纸张纤维的细微扩散
-  if (blurRadius > 0.05) {
+  if (!simpleMode && blurRadius > 0.05) {
     ctx.globalCompositeOperation = 'source-over'
     ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.22})`
     ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},0.30)`
@@ -454,7 +467,7 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   // ===== 第4层：颜色渗色（chromatic bleed / 印刷套色偏差）=====
   // 模拟传统印刷中不同颜色通道的微小偏移，产生边缘彩色光晕
   const bleedLevel = Math.min(1, Math.max(0, misReg))
-  if (bleedLevel > 0.05) {
+  if (!simpleMode && bleedLevel > 0.05) {
     const bleedOffset = fontSize * 0.06 * bleedLevel
     const bleedAlpha = opacity * 0.25 * bleedLevel
 
@@ -902,6 +915,16 @@ function resetOpenTypeDisabledFont(fontId) {
   }
 }
 
+function markOpenTypeIncompatible(fontId) {
+  if (fontId) {
+    _opentypeDisabledFonts[fontId] = true
+    if (_cachedFonts[fontId]) {
+      delete _cachedFonts[fontId]
+    }
+    console.log('[ink-effect] 已标记字体为 OpenType 不兼容（使用传统渲染）:', fontId)
+  }
+}
+
 /**
  * 清除所有字体的OpenType禁用标记
  * 用于全局重置，如用户手动触发刷新等场景
@@ -926,5 +949,6 @@ module.exports = {
   loadFontFromCache,
   canUseOpenTypeFont,
   resetOpenTypeDisabledFont,
+  markOpenTypeIncompatible,
   resetAllOpenTypeDisabledFonts
 }

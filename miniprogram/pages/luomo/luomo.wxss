@@ -102,6 +102,49 @@
   40% { transform: scale(1); opacity: 1; }
 }
 
+/* 字体加载中提示 */
+.font-loading-mask {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(250, 247, 242, 0.85);
+  z-index: 25;
+}
+
+.font-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+  padding: 40rpx 48rpx;
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 20rpx rgba(107, 91, 79, 0.12);
+}
+
+.font-loading-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 4rpx solid rgba(158, 148, 136, 0.2);
+  border-top-color: #6B5B4F;
+  border-radius: 50%;
+  animation: fontSpin 0.8s linear infinite;
+}
+
+@keyframes fontSpin {
+  to { transform: rotate(360deg); }
+}
+
+.font-loading-text {
+  font-size: 26rpx;
+  color: #6B5B4F;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+  white-space: nowrap;
+}
+
 /* 空状态提示 */
 .empty-hint {
   position: absolute;
@@ -641,6 +684,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.font-status-tag {
+  font-size: 16rpx;
+  color: rgba(200, 80, 60, 0.75);
+  margin-left: 6rpx;
+  padding: 1rpx 6rpx;
+  border-radius: 4rpx;
+  background-color: rgba(200, 80, 60, 0.06);
+}
+
+.font-status-tag.loaded {
+  color: rgba(80, 140, 100, 0.85);
+  background-color: rgba(80, 140, 100, 0.08);
 }
 .font-check { 
   position: absolute;
@@ -1487,14 +1544,13 @@
   display: flex;
   flex-direction: column;
   gap: 6rpx;
-  padding: 10rpx 12rpx;
+  padding: 12rpx 14rpx;
   background: rgba(255, 255, 255, 0.65);
   border-radius: 6rpx;
   border: 1rpx solid rgba(158, 148, 136, 0.1);
   min-width: 0;
   overflow: visible;
-  min-height: 86rpx;
-  max-height: 86rpx;
+  min-height: 96rpx;
   justify-content: center;
   box-sizing: border-box;
 }
@@ -1508,17 +1564,15 @@
 .settings-cell--wide {
   flex: 2.2;
   min-width: 200rpx;
-  min-height: 78rpx;
-  max-height: 78rpx;
-  padding: 10rpx 12rpx;
+  min-height: 96rpx;
+  padding: 12rpx 14rpx;
   box-sizing: border-box;
 }
 
 .settings-cell--narrow {
   flex: 0.7;
-  min-height: 78rpx;
-  max-height: 78rpx;
-  padding: 10rpx 12rpx;
+  min-height: 96rpx;
+  padding: 12rpx 14rpx;
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.65);
   border-radius: 6rpx;
@@ -1650,6 +1704,33 @@
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
+}
+
+.font-size-hint {
+  font-size: 14rpx;
+  color: rgba(158, 148, 136, 0.7);
+  flex-shrink: 0;
+  margin-left: 6rpx;
+  padding: 2rpx 8rpx;
+  background-color: rgba(158, 148, 136, 0.08);
+  border-radius: 4rpx;
+  line-height: 1.4;
+}
+
+.font-status-badge {
+  font-size: 12rpx;
+  flex-shrink: 0;
+  margin-left: 6rpx;
+  padding: 2rpx 8rpx;
+  border-radius: 4rpx;
+  line-height: 1.4;
+  color: rgba(200, 80, 60, 0.85);
+  background-color: rgba(200, 80, 60, 0.08);
+}
+
+.font-status-badge.loaded {
+  color: rgba(80, 150, 100, 0.9);
+  background-color: rgba(80, 150, 100, 0.1);
 }
 
 /* Picker 选择器 */

@@ -2,7 +2,6 @@
 // 落墨页 - 主书写页核心逻辑
 
 const { renderPage, estimatePageCount, clearRenderCache } = require('../../engine/renderer')
-const { resetOpenTypeDisabledFont } = require('../../engine/ink-effect')
 const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, hasVisited, markVisited } = require('../../utils/storage')
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
@@ -39,6 +38,8 @@ Page({
     pageDots: [0],
     // 正在渲染中
     isRendering: false,
+    // 字体加载中提示（首次载入时显示）
+    fontLoadingVisible: false,
     // 模板面板
     templatePanelVisible: false,
     // 字体选择面板
@@ -164,7 +165,19 @@ Page({
 
     // ===== 文字设置页面数据 =====
     textSettings: {
-      fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
+      fontOptions: BUILT_IN_FONTS.map(font => {
+        const loaded = getFontStatus(font.id) === 'loaded'
+        const sizeLabel = formatFileSize(font.fileSize)
+        const statusText = loaded ? '✓' : '↓'
+        return {
+          id: font.id,
+          name: font.name,
+          pickerLabel: `${font.name}  ${sizeLabel} ${statusText}`,
+          fileSize: font.fileSize,
+          fileSizeLabel: sizeLabel,
+          isLoaded: loaded
+        }
+      }),
       fontIndex: 0,
       fontSize: 24,
       fontSizeMode: 'px',
@@ -403,20 +416,21 @@ Page({
         })
       }
 
-      // 异步预加载字体
+      // 异步预加载字体（显示加载提示）
       if (template.font && template.font.family) {
+        this.setData({ fontLoadingVisible: true })
         setTimeout(() => {
           loadFont(template.font.family).then(fontFamily => {
             if (fontFamily && fontFamily !== getFallbackFont()) {
               this._loadedFontCache[template.font.family] = fontFamily
-              // 预加载成功后重置OpenType状态，确保使用高质量渲染路径
-              resetOpenTypeDisabledFont(template.font.family)
               if (this.data.text) {
                 this._triggerRender()
               }
             }
           }).catch(err => {
             console.warn('[luomo] 预加载字体失败（使用默认字体）:', err)
+          }).finally(() => {
+            this.setData({ fontLoadingVisible: false })
           })
         }, 100)
       }
@@ -1150,6 +1164,19 @@ Page({
         fileSizeLabel: formatFileSize(f.fileSize),
         isLoaded: getFontStatus(f.id) === 'loaded'
       }))
+      const refreshedFontOptions = BUILT_IN_FONTS.map(font => {
+        const loaded = getFontStatus(font.id) === 'loaded'
+        const sizeLabel = formatFileSize(font.fileSize)
+        return {
+          id: font.id,
+          name: font.name,
+          pickerLabel: `${font.name}  ${sizeLabel} ${loaded ? '✓' : '↓'}`,
+          fileSize: font.fileSize,
+          fileSizeLabel: sizeLabel,
+          isLoaded: loaded
+        }
+      })
+      this.setData({ 'textSettings.fontOptions': refreshedFontOptions })
     }
 
     // 只更新面板显示状态，不重新构建完整settings（避免闪烁）
@@ -1301,11 +1328,7 @@ Page({
 
     loadFont(fontId)
       .then(family => {
-        // 下载成功：缓存字体名 + 重置OpenType状态 + 清除旧缓存
         this._loadedFontCache[fontId] = family
-        // 关键：重置该字体的OpenType禁用标记，允许重新尝试高质量渲染路径
-        resetOpenTypeDisabledFont(fontId)
-        // 清除旧的排版缓存，避免新旧字体参数混用导致显示异常
         clearRenderCache()
 
         const fontList = this.data.fontList.map(f => {
@@ -1314,9 +1337,13 @@ Page({
           }
           return f
         })
+        const updatedFontOptions = this.data.textSettings.fontOptions.map(f =>
+          f.id === fontId ? { ...f, isLoaded: true } : f
+        )
         this.setData({
           activeFontDownloadStatus: 'loaded',
-          fontList
+          fontList,
+          textSettings: { ...this.data.textSettings, fontOptions: updatedFontOptions }
         })
         // 字体加载完成后立即用新字体重新渲染（使用OpenType高质量路径）
         this._renderNow()
@@ -1660,7 +1687,7 @@ Page({
 
   onFontSizeStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.fontSize + delta, 14, 72)
+    const newVal = this._clamp(this.data.settings.fontSize + delta, 20, 60)
     const mode = this.data.textSettings.fontSizeMode
     const display = mode === 'px' ? `${newVal}px` : `${newVal}号`
     this.setData({
@@ -2264,46 +2291,68 @@ Page({
     const fontOptions = this.data.textSettings.fontOptions
     const fontId = fontOptions[index].id
     const fontConfig = require('../../utils/constants').BUILT_IN_FONTS.find(f => f.id === fontId)
-    const fileSizeMB = fontConfig ? (fontConfig.fileSize / 1024 / 1024).toFixed(1) : '20'
-    
-    wx.getNetworkType({
-      success: (res) => {
-        const networkType = res.networkType
-        if (networkType !== 'wifi') {
-          wx.showModal({
-            title: '温馨提示',
-            content: `当前为${networkType.toUpperCase()}网络\n该字体大小约${fileSizeMB}MB，首次加载后将自动缓存到本地，后续使用无需重新下载。\n建议在Wi-Fi环境下首次加载以节省流量。\n\n是否继续加载？`,
-            confirmText: '继续加载',
-            cancelText: '取消',
-            success: (modalRes) => {
-              if (modalRes.confirm) {
-                this._setFontAndRender(fontId, index)
-              }
-            }
-          })
-        } else {
-          wx.showToast({
-            title: `正在加载字体（${fileSizeMB}MB）`,
-            icon: 'loading',
-            duration: 1000
-          })
-          setTimeout(() => {
-            this._setFontAndRender(fontId, index)
-          }, 500)
+    if (!fontConfig) return
+
+    const fileSizeMB = (fontConfig.fileSize / 1024 / 1024).toFixed(1)
+    const isLoaded = getFontStatus(fontId) === 'loaded'
+
+    if (isLoaded) {
+      this._applyFontDirectly(fontId, index)
+      return
+    }
+
+    wx.showModal({
+      title: '下载字体',
+      content: `「${fontConfig.name}」\n文件大小：${fileSizeMB}MB\n\n首次下载后自动缓存到本地，后续使用无需重新下载。`,
+      confirmText: '下载',
+      cancelText: '取消',
+      success: (modalRes) => {
+        if (modalRes.confirm) {
+          this._downloadAndApplyFont(fontId, index, fontConfig.name)
         }
-      },
-      fail: () => {
-        this._setFontAndRender(fontId, index)
       }
     })
   },
-  
-  _setFontAndRender(fontId, index) {
+
+  _applyFontDirectly(fontId, index) {
     this.setData({
       'textSettings.fontIndex': index,
       'settings.fontId': fontId
-    }, () => {
-      this._triggerRender()
+    })
+    clearRenderCache()
+    this._lastFontId = fontId
+    this._renderNow()
+  },
+
+  _downloadAndApplyFont(fontId, index, fontName) {
+    this.setData({
+      'textSettings.fontIndex': index,
+      'settings.fontId': fontId
+    })
+    this.setData({ fontLoadingVisible: true })
+
+    loadFont(fontId).then((fontFamily) => {
+      this._loadedFontCache[fontId] = fontFamily
+      clearRenderCache()
+      this._lastFontId = fontId
+
+      const updatedOptions = this.data.textSettings.fontOptions.map((f) => {
+        if (f.id === fontId) {
+          return { ...f, isLoaded: true, pickerLabel: `${f.name}  ${f.fileSizeLabel} ✓` }
+        }
+        return f
+      })
+      this.setData({
+        textSettings: { ...this.data.textSettings, fontOptions: updatedOptions },
+        fontLoadingVisible: false
+      })
+      wx.showToast({ title: `${fontName} 已就绪`, icon: 'success', duration: 1500 })
+      this._renderNow()
+    }).catch(() => {
+      this.setData({ fontLoadingVisible: false })
+      clearRenderCache()
+      this._renderNow()
+      wx.showToast({ title: '字体加载失败', icon: 'none', duration: 2000 })
     })
   },
 
@@ -2461,7 +2510,18 @@ Page({
   onTextSettingsReset() {
     this.setData({
       textSettings: {
-        fontOptions: BUILT_IN_FONTS.map(font => ({ id: font.id, name: font.name })),
+        fontOptions: BUILT_IN_FONTS.map(font => {
+          const loaded = getFontStatus(font.id) === 'loaded'
+          const sizeLabel = formatFileSize(font.fileSize)
+          return {
+            id: font.id,
+            name: font.name,
+            pickerLabel: `${font.name}  ${sizeLabel} ${loaded ? '✓' : '↓'}`,
+            fileSize: font.fileSize,
+            fileSizeLabel: sizeLabel,
+            isLoaded: loaded
+          }
+        }),
         fontIndex: 0,
         fontSize: 40,
         fontSizeMode: 'px',

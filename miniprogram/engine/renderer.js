@@ -217,11 +217,13 @@ async function renderPage(params) {
       try {
         await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, fontId, template.layout.fontSize, template.layout)
       } catch (e) {
-        // OpenType失败回退：使用简洁模式渲染，避免多层阴影导致的"彩色"异常
+        // OpenType失败回退：使用简洁模式渲染
         drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, true)
       }
     } else {
-      drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout)
+      // 非OpenType路径：自定义字体（已禁用或超字数）也用简洁模式，避免彩色异常
+      const useSimpleMode = !isSystemFont
+      drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, useSimpleMode)
     }
   }
 
