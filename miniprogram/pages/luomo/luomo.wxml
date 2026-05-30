@@ -50,17 +50,13 @@
     </view>
 
     <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}} {{editModeFullscreen ? 'input-area--fullscreen' : ''}}" style="height: {{editModeFullscreen ? '100%' : inputAreaHeight + 'px'}};">
-      <view wx:if="{{editModeFullscreen}}" class="edit-mode-header">
-        <text class="edit-mode-title">编辑文字</text>
-        <text class="edit-mode-close" bindtap="toggleEditMode">完成</text>
-      </view>
       <textarea class="text-input {{editModeFullscreen ? 'text-input--fullscreen' : ''}}" model:value="{{text}}" placeholder="在此写下文字..."
         placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
         show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
         bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
         maxlength="{{-1}}" cursor-spacing="{{editModeFullscreen ? 50 : 25}}"
         cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"
-        style="height: {{editModeFullscreen ? 'calc(100% - 80rpx)' : textInputHeight + 'px'}};"/>
+        style="height: {{editModeFullscreen ? 'calc(100% - 160rpx)' : textInputHeight + 'px'}};"/>
       <view class="input-toolbar">
         <view class="input-actions-left">
           <text class="char-count">{{text.length}} 字</text>
@@ -71,6 +67,10 @@
         <view class="input-actions-right">
           <text class="action-btn" bindtap="onClearDraft">清空</text>
         </view>
+      </view>
+      <view wx:if="{{editModeFullscreen}}" class="edit-mode-footer">
+        <text class="edit-mode-title">编辑文字</text>
+        <text class="edit-mode-close" bindtap="toggleEditMode">完成</text>
       </view>
     </view>
 
