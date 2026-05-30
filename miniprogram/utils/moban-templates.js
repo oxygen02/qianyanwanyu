@@ -43,9 +43,10 @@ function makeImageTemplate(params) {
     category: direction,
     paper: {
       baseColor: '#FAF7F2',
-      fiberOpacity: 0.02,
-      ageOpacity: 0.02,
-      grain: 'none',
+      fiberOpacity: 0.035,
+      ageOpacity: 0.025,
+      grain: 'fine',
+      light: { enabled: false },
       shadow: true,
       border: null,
       backgroundImage: {

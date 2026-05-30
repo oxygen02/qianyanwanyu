@@ -77,13 +77,13 @@ Page({
       fontId: '上古宋体-Regular',
 
       // === 基础排版 ===
-      fontSize: 36,
+      fontSize: 27,
       fontSizeMode: 'px',
-      fontSizeDisplay: '36px',
+      fontSizeDisplay: '27px',
       lineHeight: null,
-      lineHeightVal: 180,
+      lineHeightVal: 100,
       letterSpacing: null,
-      letterSpacingVal: 2,
+      letterSpacingVal: 0,
       direction: null,
       fontWeight: '400',
       textAlign: 'left',
@@ -91,8 +91,8 @@ Page({
 
       // === 墨色质感 ===
       inkColor: '#1A1008',
-      inkOpacity: 0.45,
-      inkOpacityVal: 45,
+      inkOpacity: 0.65,
+      inkOpacityVal: 65,
       variation: null,
       variationVal: 12,
       blurRadius: null,
@@ -190,9 +190,9 @@ Page({
         }
       }),
       fontIndex: 0,
-      fontSize: 24,
+      fontSize: 27,
       fontSizeMode: 'px',
-      fontSizeDisplay: '24px',
+      fontSizeDisplay: '27px',
       weightOptions: ['纤细', '常规', '中等', '加粗'],
       weightIndex: 1,
       inkColorOptions: [
@@ -203,7 +203,7 @@ Page({
         { id: 'fugu', name: '复古浓墨', color: '#2C1810' }
       ],
       inkColorIndex: 0,  // 默认松烟墨黑，与模板一致
-      inkOpacity: 45,
+      inkOpacity: 65,
       textAlign: 'left',
       watermarkEnabled: false,
       watermarkOptions: ['无水印', '浅纹暗水印', '自定义文字水印', '书页暗纹水印'],
@@ -253,8 +253,8 @@ Page({
       textureIndex: 0,
       shadowEnabled: false,
       shadowIntensity: 50,
-      marginVertical: 60,
-      marginHorizontal: 55,
+      marginVertical: 20,
+      marginHorizontal: 10,
       formOptions: ['薄纸质感', '厚卡纸质感', '绵软宣纸质感'],
       formIndex: 0,
       foldOptions: ['无折痕', '居中竖折痕', '侧边翻阅折痕'],
@@ -280,8 +280,8 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 160,
-      lineHeightDisplay: '1.6倍',
+      lineHeight: 100,
+      lineHeightDisplay: '1.0倍',
       letterSpacing: 0,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
@@ -1228,7 +1228,8 @@ Page({
     const template = TEMPLATES[id]
     // 同步 paperSettings.templateIndex
     const templateIndex = this.data.paperSettings.templateOptions.findIndex(t => t.id === id)
-    const newSettings = this._buildSettingsFromTemplate(template, this.data.activeFontId)
+    // 使用合并方法：保留用户已调整的参数，只更新模板视觉属性
+    const newSettings = this._mergeTemplateSettings(this.data.settings, template, this.data.activeFontId)
     this.setData({
       activeTemplateId: id,
       activeTemplateName: template.name,
@@ -1259,7 +1260,8 @@ Page({
 
     const newId = order[nextIdx]
     const template = TEMPLATES[newId]
-    const newSettings = this._buildSettingsFromTemplate(template, this.data.activeFontId)
+    // 使用合并方法：保留用户已调整的参数，只更新模板视觉属性
+    const newSettings = this._mergeTemplateSettings(this.data.settings, template, this.data.activeFontId)
     this.setData({
       activeTemplateId: newId,
       activeTemplateName: template.name,
@@ -2091,7 +2093,7 @@ Page({
       watermarkType: 'none', // none, light, custom, page
 
       // 排版设置新增
-      paragraphSpacing: 25,
+      paragraphSpacing: 15,
       emptyLineHandling: 'preserve',
       compactness: 50,
       pageNumberEnabled: false,
@@ -2106,10 +2108,10 @@ Page({
 
       // 基础纸张
       paperBaseColor: t.paper.baseColor || '#FAF7F2',
-      marginTopVal: t.layout.marginTop || 60,
-      marginBottomVal: t.layout.marginBottom || 60,
-      marginLeftVal: t.layout.marginLeft || 55,
-      marginRightVal: t.layout.marginRight || 55,
+      marginTopVal: t.layout.marginTop || 20,
+      marginBottomVal: t.layout.marginBottom || 20,
+      marginLeftVal: t.layout.marginLeft || 10,
+      marginRightVal: t.layout.marginRight || 10,
 
       // 质感效果
       aging: t.paper.ageOpacity || 0,
@@ -2127,6 +2129,104 @@ Page({
 
       // 纸张尺寸
       paperSizeId: 'a4'
+    }
+  },
+
+  /**
+   * 切换模板时合并设置：保留用户已调整的参数，只更新模板视觉属性
+   * @param {object} currentSettings - 当前用户设置
+   * @param {object} template - 新选择的模板
+   * @param {string} fontId - 当前字体ID
+   * @returns {object} 合并后的设置
+   */
+  _mergeTemplateSettings(currentSettings, template, fontId) {
+    const t = template || TEMPLATES['modern-prose']
+    const s = currentSettings || {}
+
+    return {
+      // === 保留用户调整的值 ===
+
+      // 字号（用户可能已调）
+      fontSize: s.fontSize || t.layout.fontSize,
+      fontSizeMode: s.fontSizeMode || 'px',
+      fontSizeDisplay: s.fontSizeDisplay || `${(s.fontSize || t.layout.fontSize)}px`,
+
+      // 行间距/字间距/段落间距（用户可能已调）
+      lineHeight: s.lineHeight != null ? s.lineHeight : t.layout.lineHeight,
+      lineHeightVal: s.lineHeightVal != null ? s.lineHeightVal : Math.round(t.layout.lineHeight * 100),
+      lineHeightDisplay: s.lineHeightDisplay || ((s.lineHeightVal || Math.round(t.layout.lineHeight * 100)) / 100).toFixed(1),
+      letterSpacing: s.letterSpacing != null ? s.letterSpacing : t.layout.letterSpacing,
+      letterSpacingVal: s.letterSpacingVal != null ? s.letterSpacingVal : Math.round((t.layout.letterSpacing || 0) * 100),
+      paragraphSpacing: s.paragraphSpacing != null ? s.paragraphSpacing : (t.layout.paragraphSpacing || 15),
+
+      // 墨色深浅（用户可能已调）- 保留用户的深浅，只取墨色
+      inkColor: t.ink.color || s.inkColor || '#1A1008',
+      inkOpacity: s.inkOpacity != null ? s.inkOpacity : (t.ink.opacity || 0.65),
+      inkOpacityVal: s.inkOpacityVal != null ? s.inkOpacityVal : Math.round((t.ink.opacity || 0.65) * 100),
+
+      // 墨质细节（保留用户调整）
+      variation: s.variation != null ? s.variation : (t.ink.variation || 0.05),
+      variationVal: s.variationVal != null ? s.variationVal : Math.round((t.ink.variation || 0.05) * 100),
+      blurRadius: s.blurRadius != null ? s.blurRadius : (t.ink.blurRadius || 0.3),
+      blurRadiusVal: s.blurRadiusVal != null ? s.blurRadiusVal : Math.round((t.ink.blurRadius || 0.3) * 10),
+      misRegistration: s.misRegistration != null ? s.misRegistration : (t.ink.misRegistration || 0.02),
+      misRegistrationVal: s.misRegistrationVal != null ? s.misRegistrationVal : Math.round((t.ink.misRegistration || 0.02) * 100),
+      damage: s.damage != null ? s.damage : (t.ink.damage || 0.08),
+      damageVal: s.damageVal != null ? s.damageVal : Math.round((t.ink.damage || 0.08) * 100),
+
+      // 边距（用户可能已调）
+      marginTopVal: s.marginTopVal != null ? s.marginTopVal : (t.layout.marginTop || 20),
+      marginBottomVal: s.marginBottomVal != null ? s.marginBottomVal : (t.layout.marginBottom || 20),
+      marginLeftVal: s.marginLeftVal != null ? s.marginLeftVal : (t.layout.marginLeft || 10),
+      marginRightVal: s.marginRightVal != null ? s.marginRightVal : (t.layout.marginRight || 10),
+
+      // 文字设置（保留用户调整）
+      strokeEnabled: s.strokeEnabled != null ? s.strokeEnabled : false,
+      strokeWidth: s.strokeWidth || 1,
+      strokeDisplay: s.strokeDisplay || '1px',
+      textSkew: s.textSkew || 0,
+      textSkewDisplay: s.textSkewDisplay || '0°',
+      textAlign: s.textAlign || 'left',
+      fontWeight: s.fontWeight || (t.font.weight || '400'),
+      direction: s.direction || t.layout.direction,
+
+      // 排版模式等（保留）
+      compactness: s.compactness != null ? s.compactness : 50,
+      layoutModeIndex: s.layoutModeIndex || 0,
+      firstLineIndent: s.firstLineIndent != null ? s.firstLineIndent : 2,
+      textScript: s.textScript || 'sc',
+      preserveLineBreaks: s.preserveLineBreaks != null ? s.preserveLineBreaks : true,
+      autoFilter: s.autoFilter || false,
+      watermarkType: s.watermarkType || 'none',
+
+      // 装饰元素（保留）
+      pageNumberEnabled: s.pageNumberEnabled || false,
+      headerFooterEnabled: s.headerFooterEnabled || false,
+      weatheringEnabled: s.weatheringEnabled || false,
+      inkSpreadEnabled: s.inkSpreadEnabled || false,
+
+      // 字体ID（保留当前字体，不随模板切换）
+      fontId: fontId || s.fontId || (t.font && t.font.family) || '上古宋体-Regular',
+
+      // === 从新模板更新的属性 ===
+
+      // 纸张视觉属性（跟随模板变化）
+      paperBaseColor: t.paper.baseColor || '#FAF7F2',
+      aging: t.paper.ageOpacity || 0,
+      agingVal: Math.round((t.paper.ageOpacity || 0) * 100),
+      fiberOpacity: t.paper.fiberOpacity || 0,
+      fiberOpacityVal: Math.round((t.paper.fiberOpacity || 0) * 100),
+      shadowIntensity: t.paper.shadow ? 0.5 : 0,
+      shadowIntensityVal: t.paper.shadow ? 50 : 0,
+      lightIntensity: (t.paper.light && t.paper.light.enabled) ? (t.paper.light.opacity || 0) : 0,
+      lightIntensityVal: (t.paper.light && t.paper.light.enabled) ? Math.round((t.paper.light.opacity || 0) * 100) : 0,
+
+      // 装饰元素（跟随模板变化）
+      stampEnabled: !!(t.decoration && t.decoration.stamp),
+      watermarkPosition: (t.decoration && t.decoration.watermark && t.decoration.watermark.position) || 'bottomRight',
+
+      // 纸张尺寸
+      paperSizeId: s.paperSizeId || 'a4'
     }
   },
 
@@ -2798,7 +2898,8 @@ Page({
     const template = TEMPLATES[templateId]
     
     if (template) {
-      const newSettings = this._buildSettingsFromTemplate(template, this.data.activeFontId)
+      // 使用合并方法：保留用户已调整的参数，只更新模板视觉属性
+      const newSettings = this._mergeTemplateSettings(this.data.settings, template, this.data.activeFontId)
       this.setData({
         'paperSettings.templateIndex': index,
         'paperSettings.templateExpanded': false,
@@ -3209,9 +3310,9 @@ Page({
       default: // 默认模式
         config = {
           textAlign: 'left',
-          lineHeight: 180,
-          lineHeightDisplay: '1.8倍',
-          paragraphSpacing: 25,
+          lineHeight: 100,
+          lineHeightDisplay: '1.0倍',
+          paragraphSpacing: 15,
           indentIndex: 0
         }
     }
@@ -3244,8 +3345,8 @@ Page({
         directionIndex: 0,
         verticalDir: 'rtl',
         textAlign: 'left',
-        lineHeight: 180,
-        lineHeightDisplay: '1.8倍',
+        lineHeight: 100,
+        lineHeightDisplay: '1.0倍',
         letterSpacing: 0,
         indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
         indentIndex: 0,
@@ -3274,9 +3375,9 @@ Page({
     })
     this.setData({
       'settings.textAlign': 'left',
-      'settings.lineHeightVal': 180,
-      'settings.lineHeight': 1.8,
-      'settings.lineHeightDisplay': '1.8',
+      'settings.lineHeightVal': 100,
+      'settings.lineHeight': 1.0,
+      'settings.lineHeightDisplay': '1.0',
       'settings.letterSpacingVal': 0,
       'settings.letterSpacing': 0,
       'settings.firstLineIndent': 0,

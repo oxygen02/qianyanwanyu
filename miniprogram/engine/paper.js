@@ -135,11 +135,11 @@ function generatePaperTexture(params) {
       const n3 = noise.noise2D(x * freq * 8, y * freq * 8) * 0.25 // 微纹理
       const n = (n1 + n2 + n3) / 1.75
 
-      // 映射到纸色范围
-      const brightness = n * 55
+      // 映射到纸色范围（降低亮度变化幅度，更自然的哑光质感）
+      const brightness = n * 35
       const r = Math.max(0, Math.min(255, baseColor.r + brightness))
-      const g = Math.max(0, Math.min(255, baseColor.g + brightness * 0.95))
-      const b = Math.max(0, Math.min(255, baseColor.b + brightness * 0.9))
+      const g = Math.max(0, Math.min(255, baseColor.g + brightness * 0.97))
+      const b = Math.max(0, Math.min(255, baseColor.b + brightness * 0.94))
       const a = Math.floor(fiberOpacity * 255)
 
       // 填充整个 stride 块为同一颜色
@@ -182,6 +182,7 @@ function generatePaperTexture(params) {
   }
 
   // 第四层：光照渐变（若模板有light配置）
+  // 使用 soft-light 替代 screen，避免人造高光反光感
   if (paperConfig.light && paperConfig.light.enabled) {
     const light = paperConfig.light
     const lg = ctx.createRadialGradient(
@@ -189,9 +190,10 @@ function generatePaperTexture(params) {
       width * light.centerX, height * light.centerY, Math.max(width, height) * light.radius
     )
     const lightColor = parseColor(light.color)
-    lg.addColorStop(0, `rgba(${lightColor.r},${lightColor.g},${lightColor.b},${light.opacity})`)
+    const lightOp = Math.min(light.opacity || 0.08, 0.06)
+    lg.addColorStop(0, `rgba(${lightColor.r},${lightColor.g},${lightColor.b},${lightOp})`)
     lg.addColorStop(1, 'rgba(255,255,255,0)')
-    ctx.globalCompositeOperation = 'screen'
+    ctx.globalCompositeOperation = 'soft-light'
     ctx.fillStyle = lg
     ctx.fillRect(0, 0, width, height)
     ctx.globalCompositeOperation = 'source-over'
@@ -403,7 +405,7 @@ function drawLineGuide(ctx, width, height, lineGuideConfig, layoutConfig) {
  */
 function _drawGrooves(ctx, width, height, paperConfig) {
   const noise = new SimplexNoise(0.73)
-  const grooveOpacity = (paperConfig.fiberOpacity || 0.06) * 0.4
+  const grooveOpacity = (paperConfig.fiberOpacity || 0.06) * 0.25
   const baseColor = parseColor(paperConfig.baseColor)
 
   // 创建解理纹理层
@@ -434,7 +436,7 @@ function _drawGrooves(ctx, width, height, paperConfig) {
 
   // 用 multiply 叠加
   ctx.globalCompositeOperation = 'multiply'
-  ctx.globalAlpha = 0.6
+  ctx.globalAlpha = 0.35
   ctx.drawImage(grooveCanvas, 0, 0)
   ctx.globalAlpha = 1.0
   ctx.globalCompositeOperation = 'source-over'
@@ -445,7 +447,7 @@ function _drawGrooves(ctx, width, height, paperConfig) {
  * 模拟纸张表面的微小颗粒质感
  */
 function _drawMicroGrain(ctx, width, height, paperConfig) {
-  const grainIntensity = (paperConfig.fiberOpacity || 0.06) * 0.5
+  const grainIntensity = (paperConfig.fiberOpacity || 0.06) * 0.6
   const baseColor = parseColor(paperConfig.baseColor)
 
   // 创建颗粒纹理
@@ -456,18 +458,19 @@ function _drawMicroGrain(ctx, width, height, paperConfig) {
   const data = imageData.data
 
   for (let i = 0; i < data.length; i += 4) {
-    const grain = (Math.random() - 0.5) * 30 * grainIntensity
+    // 更细腻的随机变化，模拟纸张表面微小凹凸
+    const grain = (Math.random() - 0.5) * 22 * grainIntensity
     data[i] = Math.max(0, Math.min(255, baseColor.r + grain))
-    data[i + 1] = Math.max(0, Math.min(255, baseColor.g + grain * 0.95))
-    data[i + 2] = Math.max(0, Math.min(255, baseColor.b + grain * 0.9))
-    data[i + 3] = Math.floor(grainIntensity * 255 * 0.3)
+    data[i + 1] = Math.max(0, Math.min(255, baseColor.g + grain * 0.98))
+    data[i + 2] = Math.max(0, Math.min(255, baseColor.b + grain * 0.96))
+    data[i + 3] = Math.floor(grainIntensity * 255 * 0.25)
   }
 
   grainCtx.putImageData(imageData, 0, 0)
 
-  // 用 overlay 叠加
-  ctx.globalCompositeOperation = 'overlay'
-  ctx.globalAlpha = 0.4
+  // 用 soft-light 叠代 overlay，更自然的纸张质感融合
+  ctx.globalCompositeOperation = 'soft-light'
+  ctx.globalAlpha = 0.3
   ctx.drawImage(grainCanvas, 0, 0)
   ctx.globalAlpha = 1.0
   ctx.globalCompositeOperation = 'source-over'

@@ -18,6 +18,7 @@ function getFS() {
 
 let _cachedFonts = {}
 const _opentypeDisabledFonts = {}
+let _isSimulatorEnvironment = null
 
 function getPixelRatio() {
   try {
@@ -50,6 +51,7 @@ function toArrayBuffer(data) {
     const hasTypeBuf = data.type === 'Buffer'
 
     if (!hasBuffer && !hasData && !hasLength && !hasKeys && !isArray && !hasTypeBuf) {
+      _isSimulatorEnvironment = true
       throw new Error(`不支持的字体数据类型: opaque native object (模拟器环境)`)
     }
   }
@@ -151,6 +153,9 @@ function toArrayBuffer(data) {
 async function loadFontFromCache(fontId) {
   if (_cachedFonts[fontId]) {
     return _cachedFonts[fontId]
+  }
+  if (_isSimulatorEnvironment === true) {
+    throw new Error('opentype_disabled: simulator_environment')
   }
   
   return new Promise((resolve, reject) => {
@@ -315,6 +320,104 @@ function drawInkChar(ctx, char, x, y, inkConfig, fontConfig, fontSize) {
   ctx.font = fontStr
   ctx.fillStyle = `rgba(255,255,255,0.05)`
   ctx.fillText(char, x, y)
+
+  ctx.restore()
+}
+
+/**
+ * 绘制品牌印章（铅言万语）
+ * 可选配置项：默认开启，右下角显示
+ * 包含红色方印图标 + "铅言万语"文字（字体跟随用户选择，24rpx固定大小）
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} width - Canvas宽度
+ * @param {number} height - Canvas高度
+ * @param {string} fontFamily - 用户选择的字体
+ * @param {object} config - 配置选项 { enabled: true, position: 'bottomRight' }
+ */
+function drawBrandStamp(ctx, width, height, fontFamily, config) {
+  if (!config || !config.enabled) return
+
+  const dpr = getPixelRatio()
+  const margin = 16 * dpr
+  const sealSize = 28 * dpr
+  const textFontSize = 12 * dpr
+  const text = '铅言万语'
+  const sealColor = '#C41E3A'
+  const textColor = '#8B4513'
+  const textOpacity = 0.55
+
+  ctx.save()
+
+  const textWidth = (text.length * textFontSize * 0.65)
+  const totalWidth = sealSize + 6 * dpr + textWidth
+
+  let startX, startY
+  const position = config.position || 'bottomRight'
+
+  if (position === 'bottomRight') {
+    startX = width - margin - totalWidth
+    startY = height - margin - Math.max(sealSize, textFontSize) / 2
+  } else if (position === 'bottomLeft') {
+    startX = margin
+    startY = height - margin - Math.max(sealSize, textFontSize) / 2
+  } else if (position === 'topRight') {
+    startX = width - margin - totalWidth
+    startY = margin + Math.max(sealSize, textFontSize) / 2
+  } else {
+    startX = margin
+    startY = margin + Math.max(sealSize, textFontSize) / 2
+  }
+
+  ctx.globalCompositeOperation = 'source-over'
+
+  ctx.save()
+  ctx.translate(startX + sealSize / 2, startY)
+  ctx.fillStyle = sealColor
+  ctx.globalAlpha = 0.75
+
+  const half = sealSize / 2
+  const r = 1.5 * dpr
+  ctx.beginPath()
+  ctx.moveTo(-half + r, -half)
+  ctx.lineTo(half - r * 1.3, -half + r * 0.5)
+  ctx.lineTo(half, -half + r * 1.8)
+  ctx.lineTo(half - r * 0.3, half - r * 1.2)
+  ctx.lineTo(half - r * 1.5, half)
+  ctx.lineTo(-half + r * 0.8, half - r * 0.4)
+  ctx.lineTo(-half, half - r * 1.6)
+  ctx.lineTo(-half + r * 1.2, -half + r)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.fillStyle = 'rgba(255,250,240,0.9)'
+  ctx.font = `bold ${sealSize * 0.42}px ${fontFamily || 'serif'}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('铅', 0, -sealSize * 0.15)
+  ctx.fillText('言', 0, sealSize * 0.18)
+
+  ctx.strokeStyle = 'rgba(180,30,50,0.6)'
+  ctx.lineWidth = 1.2 * dpr
+  ctx.beginPath()
+  ctx.moveTo(-half + r, -half)
+  ctx.lineTo(half - r * 1.3, -half + r * 0.5)
+  ctx.lineTo(half, -half + r * 1.8)
+  ctx.lineTo(half - r * 0.3, half - r * 1.2)
+  ctx.lineTo(half - r * 1.5, half)
+  ctx.lineTo(-half + r * 0.8, half - r * 0.4)
+  ctx.lineTo(-half, half - r * 1.6)
+  ctx.lineTo(-half + r * 1.2, -half + r)
+  ctx.closePath()
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.globalAlpha = textOpacity
+  ctx.fillStyle = textColor
+  ctx.font = `${textFontSize}px ${fontFamily || 'serif'}`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, startX + sealSize + 6 * dpr, startY)
 
   ctx.restore()
 }
@@ -630,246 +733,6 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
 }
 
 /**
- * 绘制印章
- * 固定印章大小为36rpx，默认位置在右下角
- */
-function drawStamp(ctx, width, height, stampConfig) {
-  if (!stampConfig) return
-
-  const text = stampConfig.text || '记'
-  const color = stampConfig.color || '#C41E3A'
-  const opacity = stampConfig.opacity || 0.7
-  
-  const dpr = getPixelRatio()
-  const size = 36 / 2 * dpr
-
-  let sx, sy
-  const margin = 28
-
-  switch (stampConfig.position) {
-    case 'topRight':
-      sx = width - margin - size / 2
-      sy = margin + size / 2
-      break
-    case 'topLeft':
-      sx = margin + size / 2
-      sy = margin + size / 2
-      break
-    case 'bottomLeft':
-      sx = margin + size / 2
-      sy = height - margin - size / 2
-      break
-    default:
-      sx = width - margin - size / 2
-      sy = height - margin - size / 2
-  }
-
-  ctx.save()
-  ctx.globalAlpha = opacity
-  ctx.globalCompositeOperation = 'source-over'
-
-  ctx.strokeStyle = color
-  ctx.lineWidth = 2.5
-  ctx.beginPath()
-  ctx.rect(sx - size / 2, sy - size / 2, size, size)
-  ctx.stroke()
-
-  ctx.fillStyle = color
-  ctx.font = `bold ${size * 0.6}px serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(text, sx, sy)
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'alphabetic'
-
-  ctx.restore()
-}
-
-/**
- * 绘制水印
- * 2025-05-18 修复：从硬编码 28px 改为基于版心下边距（marginBottom）定位
- * 固定水印文字大小为36rpx，默认位置在右下角
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} width
- * @param {number} height
- * @param {object} watermarkConfig
- * @param {string} dateStr
- * @param {object} layoutConfig - 排版配置，用于计算水印在页脚区域的位置
- */
-function drawWatermark(ctx, width, height, watermarkConfig, dateStr, layoutConfig) {
-  if (!watermarkConfig) return
-
-  const text = watermarkConfig.text || '铅言万语'
-  const opacity = watermarkConfig.opacity || 0.15
-  
-  const dpr = getPixelRatio()
-  const defaultFontSize = 36 / 2 * dpr
-  const fontSize = watermarkConfig.userSetFontSize ? ((watermarkConfig.fontSize || 36) / 2 * dpr) : defaultFontSize
-  const position = watermarkConfig.userSetPosition ? (watermarkConfig.position || 'bottomRight') : 'bottomRight'
-
-  const fixedRight = 36
-  const fixedLeft = 36
-  const fixedBottomCenter = 46
-
-  ctx.save()
-  ctx.globalAlpha = opacity
-  ctx.font = `${fontSize}px serif`
-  ctx.fillStyle = '#3D2B1F'
-  ctx.textBaseline = 'middle'
-
-  const displayText = dateStr ? `${text}  ${dateStr}` : text
-
-  switch (position) {
-    case 'bottomCenter':
-      ctx.textAlign = 'center'
-      ctx.fillText(displayText, width / 2, height - fixedBottomCenter)
-      break
-    case 'bottomLeft':
-      ctx.textAlign = 'left'
-      ctx.fillText(displayText, fixedLeft, height - fixedBottomCenter)
-      break
-    default:
-      ctx.textAlign = 'right'
-      ctx.fillText(displayText, width - fixedRight, height - fixedBottomCenter)
-  }
-
-  ctx.restore()
-}
-
-/**
- * 绘制水印 + Logo（并列显示在页面底部）
- * 固定水印文字大小为36rpx，默认位置在右下角
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} width
- * @param {number} height
- * @param {object} watermarkConfig
- * @param {string} dateStr
- * @param {object} layoutConfig
- */
-async function drawWatermarkWithLogo(ctx, width, height, watermarkConfig, dateStr, layoutConfig) {
-  if (!watermarkConfig) return
-
-  const text = watermarkConfig.text || '铅言万语'
-  const opacity = Math.min((watermarkConfig.opacity || 0.15) * 2, 0.4)
-  
-  const dpr = getPixelRatio()
-  const defaultFontSize = 36 / 2 * dpr
-  const fontSize = watermarkConfig.userSetFontSize ? ((watermarkConfig.fontSize || 36) / 2 * dpr) : defaultFontSize
-  const position = watermarkConfig.userSetPosition ? (watermarkConfig.position || 'bottomRight') : 'bottomRight'
-
-  const fixedRight = 36
-  const fixedLeft = 36
-  const footerCenterY = height - 46
-
-  const logoSize = 36 / 2 * dpr
-  const logoGap = 8
-
-  ctx.save()
-  ctx.globalAlpha = opacity
-  ctx.textBaseline = 'middle'
-
-  let logoDrawn = false
-  try {
-    const logoImg = await _loadLogoImage()
-    if (logoImg) {
-      const logoY = footerCenterY - logoSize / 2
-
-      if (position === 'bottomLeft') {
-        ctx.drawImage(logoImg, width - fixedRight - logoSize, logoY, logoSize, logoSize)
-        ctx.font = `${fontSize}px serif`
-        ctx.fillStyle = '#3D2B1F'
-        ctx.textAlign = 'left'
-        const displayText = dateStr ? `${text}  ${dateStr}` : text
-        ctx.fillText(displayText, fixedLeft, footerCenterY)
-      } else if (position === 'bottomCenter') {
-        const displayText = dateStr ? `${text}  ${dateStr}` : text
-        ctx.font = `${fontSize}px serif`
-        ctx.fillStyle = '#3D2B1F'
-        ctx.textAlign = 'left'
-        const textWidth = ctx.measureText(displayText).width
-        const totalWidth = logoSize + 12 + textWidth
-        const startX = (width - totalWidth) / 2
-        ctx.drawImage(logoImg, startX, logoY, logoSize, logoSize)
-        ctx.fillText(displayText, startX + logoSize + 12, footerCenterY)
-      } else {
-        ctx.font = `${fontSize}px serif`
-        ctx.fillStyle = '#3D2B1F'
-        ctx.textAlign = 'right'
-        const displayText = dateStr ? `${text}  ${dateStr}` : text
-        const textWidth = ctx.measureText(displayText).width
-        const logoX = width - fixedRight - textWidth - logoGap - logoSize
-        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
-        ctx.fillText(displayText, width - fixedRight, footerCenterY)
-      }
-      logoDrawn = true
-    }
-  } catch (e) {
-    console.warn('[ink-effect] Logo 加载失败:', e)
-  }
-
-  if (!logoDrawn) {
-    ctx.font = `${fontSize}px serif`
-    ctx.fillStyle = '#3D2B1F'
-    const displayText = dateStr ? `${text}  ${dateStr}` : text
-    switch (position) {
-      case 'bottomCenter':
-        ctx.textAlign = 'center'
-        ctx.fillText(displayText, width / 2, footerCenterY)
-        break
-      case 'bottomLeft':
-        ctx.textAlign = 'left'
-        ctx.fillText(displayText, fixedLeft, footerCenterY)
-        break
-      default:
-        ctx.textAlign = 'right'
-        ctx.fillText(displayText, width - fixedRight, footerCenterY)
-    }
-  }
-
-  ctx.restore()
-}
-
-/**
- * 加载 Logo 图片（缓存）
- * 注：images/logo.png 为可选资源，不存在时静默跳过，不阻塞渲染
- */
-let _logoImageCache = null
-let _logoImageLoading = false
-function _loadLogoImage() {
-  return new Promise((resolve) => {
-    if (_logoImageCache) {
-      resolve(_logoImageCache)
-      return
-    }
-    // 如果正在加载中，快速返回 null 避免阻塞渲染
-    if (_logoImageLoading) {
-      resolve(null)
-      return
-    }
-    _logoImageLoading = true
-    try {
-      const canvas = wx.createOffscreenCanvas({ type: '2d', width: 1, height: 1 })
-      const img = canvas.createImage()
-      img.onload = () => {
-        _logoImageCache = img
-        _logoImageLoading = false
-        resolve(img)
-      }
-      img.onerror = () => {
-        // Logo 图片不存在，静默处理（不等待超时）
-        _logoImageLoading = false
-        resolve(null)
-      }
-      img.src = '/images/logo.png'
-    } catch (e) {
-      _logoImageLoading = false
-      resolve(null)
-    }
-  })
-}
-
-/**
  * 绘制页码
  */
 function drawPageNumber(ctx, width, height, pageNum, totalPages, decorationConfig) {
@@ -1000,13 +863,12 @@ module.exports = {
   drawInkLine,
   drawInkBlock,
   drawInkBlockWithOpenType,
-  drawStamp,
-  drawWatermark,
-  drawWatermarkWithLogo,
+  drawBrandStamp,
   drawPageNumber,
   loadFontFromCache,
   canUseOpenTypeFont,
   resetOpenTypeDisabledFont,
   markOpenTypeIncompatible,
-  resetAllOpenTypeDisabledFonts
+  resetAllOpenTypeDisabledFonts,
+  isSimulatorDetected: () => _isSimulatorEnvironment === true
 }

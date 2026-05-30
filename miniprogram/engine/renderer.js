@@ -2,7 +2,7 @@
 // 主渲染器 - 协调 paper.js + ink-effect.js + typesetter.js
 
 const { generatePaperTexture, drawBorder, drawGrid, drawLineGuide } = require('./paper')
-const { drawInkBlock, drawInkBlockWithOpenType, drawStamp, drawWatermarkWithLogo, drawPageNumber, canUseOpenTypeFont } = require('./ink-effect')
+const { drawInkBlock, drawInkBlockWithOpenType, drawStamp, drawBrandStamp, drawWatermarkWithLogo, drawPageNumber, canUseOpenTypeFont } = require('./ink-effect')
 const { typesetAllPages } = require('./typesetter')
 const { TEMPLATES } = require('../utils/constants')
 const { loadImageFromFileID } = require('../utils/image-loader')
@@ -273,6 +273,10 @@ async function renderPage(params) {
     const intensity = (template.paper.shadowIntensity != null) ? template.paper.shadowIntensity : 0.5
     _drawPageShadow(ctx, width, height, intensity)
   }
+
+  // ============ 品牌印章（右下角固定显示）============
+  const brandFont = template.font && template.font.family ? template.font.family : 'serif'
+  drawBrandStamp(ctx, width, height, brandFont)
 
   return { currentPage, template }
 }

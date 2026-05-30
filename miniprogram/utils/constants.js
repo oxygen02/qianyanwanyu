@@ -49,12 +49,12 @@ const TEMPLATES = {
     // 排版 - 默认参数经真机视觉验证优化
     layout: {
       direction: 'horizontal',  // 横排
-      marginTop: 60,            // 天头（上边距）
-      marginBottom: 60,         // 地脚（下边距）
-      marginLeft: 55,           // 订口（左/内边距）
-      marginRight: 55,          // 切口（右/外边距）
-      fontSize: 24,             // 正文字号（优化后的移动端默认值）
-      lineHeight: 1.6,          // 行间距倍率，1.6x字号更紧凑美观
+      marginTop: 20,            // 天头（上边距）
+      marginBottom: 20,         // 地脚（下边距）
+      marginLeft: 10,           // 订口（左/内边距）
+      marginRight: 10,          // 切口（右/外边距）
+      fontSize: 27,             // 正文字号（优化后的移动端默认值）
+      lineHeight: 1.0,          // 行间距倍率，1.0x字号
       letterSpacing: 0,         // 字间距 em，默认无额外间距由用户自行调节
       paragraphSpacing: 0.5,    // em，段间额外空白
       indent: 2,                // 首行缩进字符数
@@ -70,7 +70,7 @@ const TEMPLATES = {
     // 油墨 - 默认参数经真机视觉验证
     ink: {
       color: '#1A1008',         // 墨色
-      opacity: 0.35,            // 墨色浓度默认35%
+      opacity: 0.65,            // 墨色浓度默认65%
       variation: 0.12,          // 笔画粗细变化程度
       blurRadius: 0.5,          // 模糊半径
       misRegistration: 0.02,    // 套印不准（降低到视觉不可见的程度）
@@ -86,7 +86,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '铅言万语',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.15,
         position: 'bottom-right'
       },
@@ -110,12 +110,12 @@ const TEMPLATES = {
     },
     layout: {
       direction: 'vertical',
-      marginTop: 60,
-      marginBottom: 60,
-      marginLeft: 55,
-      marginRight: 55,
-      fontSize: 40,
-      lineHeight: 1.8,
+      marginTop: 20,
+      marginBottom: 20,
+      marginLeft: 10,
+      marginRight: 10,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.03,
       paragraphSpacing: 0.8,
       indent: 0,
@@ -128,7 +128,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#2D1F14',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.12,
       blurRadius: 0.5,
       misRegistration: 0.05,
@@ -144,7 +144,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '墨宝',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.12,
         position: 'bottom-center'
       },
@@ -179,8 +179,8 @@ const TEMPLATES = {
       marginBottom: 70,
       marginLeft: 60,
       marginRight: 60,
-      fontSize: 40,
-      lineHeight: 1.8,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.04,
       paragraphSpacing: 0.6,
       indent: 2,
@@ -193,7 +193,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#1A1008',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.08,
       blurRadius: 0.6,
       misRegistration: 0.12,
@@ -209,7 +209,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '善本',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.10,
         position: 'top-center'
       },
@@ -239,8 +239,8 @@ const TEMPLATES = {
       marginBottom: 40,
       marginLeft: 45,
       marginRight: 45,
-      fontSize: 40,
-      lineHeight: 1.5,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.02,
       paragraphSpacing: 0.4,
       indent: 0,
@@ -253,7 +253,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#1A1008',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.03,
       blurRadius: 0.2,
       misRegistration: 0.03,
@@ -264,7 +264,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '民国十年',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.08,
         position: 'bottom-right'
       },
@@ -292,8 +292,8 @@ const TEMPLATES = {
       marginBottom: 55,
       marginLeft: 50,
       marginRight: 50,
-      fontSize: 40,
-      lineHeight: 1.7,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.01,
       paragraphSpacing: 0.6,
       indent: 0,
@@ -306,7 +306,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#2D2D2D',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.02,
       blurRadius: 0.1,
       misRegistration: 0.01,
@@ -346,10 +346,10 @@ const TEMPLATES = {
       direction: 'horizontal',
       marginTop: 65,
       marginBottom: 65,
-      marginLeft: 55,
-      marginRight: 55,
-      fontSize: 40,
-      lineHeight: 1.9,
+      marginLeft: 10,
+      marginRight: 10,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.02,
       paragraphSpacing: 0.8,
       indent: 2,
@@ -362,7 +362,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#3D2914',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.15,
       blurRadius: 0.4,
       misRegistration: 0.04,
@@ -378,7 +378,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '手札',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.08,
         position: 'bottom-center'
       },
@@ -413,7 +413,7 @@ const TEMPLATES = {
       marginBottom: 70,
       marginLeft: 60,
       marginRight: 60,
-      fontSize: 40,
+      fontSize: 27,
       lineHeight: 2.0,
       letterSpacing: 0.05,
       paragraphSpacing: 1.0,
@@ -427,7 +427,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#1A1008',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.06,
       blurRadius: 0.5,
       misRegistration: 0.06,
@@ -443,7 +443,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '般若波罗蜜',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.06,
         position: 'center'
       },
@@ -471,8 +471,8 @@ const TEMPLATES = {
       marginBottom: 45,
       marginLeft: 50,
       marginRight: 50,
-      fontSize: 40,
-      lineHeight: 1.6,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.03,
       paragraphSpacing: 0.5,
       indent: 0,
@@ -485,7 +485,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#1A1008',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.02,
       blurRadius: 0.1,
       misRegistration: 0.02,
@@ -496,7 +496,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: 'TYPEWRITER',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.05,
         position: 'bottom-right'
       },
@@ -524,8 +524,8 @@ const TEMPLATES = {
       marginBottom: 55,
       marginLeft: 50,
       marginRight: 50,
-      fontSize: 40,
-      lineHeight: 1.8,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.04,
       paragraphSpacing: 0.7,
       indent: 0,
@@ -538,7 +538,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#2D1F14',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.08,
       blurRadius: 0.3,
       misRegistration: 0.04,
@@ -554,7 +554,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '和',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.08,
         position: 'top-right'
       },
@@ -582,8 +582,8 @@ const TEMPLATES = {
       marginBottom: 40,
       marginLeft: 45,
       marginRight: 45,
-      fontSize: 40,
-      lineHeight: 1.6,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.01,
       paragraphSpacing: 0.5,
       indent: 2,
@@ -634,12 +634,12 @@ const TEMPLATES = {
     },
     layout: {
       direction: 'horizontal',
-      marginTop: 60,
-      marginBottom: 60,
-      marginLeft: 55,
-      marginRight: 55,
-      fontSize: 40,
-      lineHeight: 1.8,
+      marginTop: 20,
+      marginBottom: 20,
+      marginLeft: 10,
+      marginRight: 10,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.03,
       paragraphSpacing: 0.6,
       indent: 2,
@@ -652,7 +652,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#2D1F14',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.10,
       blurRadius: 0.45,
       misRegistration: 0.06,
@@ -668,7 +668,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '宣纸',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.08,
         position: 'bottom-center'
       },
@@ -696,8 +696,8 @@ const TEMPLATES = {
       marginBottom: 70,
       marginLeft: 60,
       marginRight: 60,
-      fontSize: 40,
-      lineHeight: 1.75,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.04,
       paragraphSpacing: 0.7,
       indent: 2,
@@ -710,7 +710,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#1A0A00',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.08,
       blurRadius: 0.5,
       misRegistration: 0.08,
@@ -726,7 +726,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: 'KRAFT',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.06,
         position: 'bottom-right'
       },
@@ -760,8 +760,8 @@ const TEMPLATES = {
       marginBottom: 45,
       marginLeft: 50,
       marginRight: 50,
-      fontSize: 40,
-      lineHeight: 1.65,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.02,
       paragraphSpacing: 0.5,
       indent: 0,
@@ -774,7 +774,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#2D2D2D',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.03,
       blurRadius: 0.15,
       misRegistration: 0.02,
@@ -816,8 +816,8 @@ const TEMPLATES = {
       marginBottom: 75,
       marginLeft: 65,
       marginRight: 65,
-      fontSize: 40,
-      lineHeight: 1.9,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.05,
       paragraphSpacing: 0.8,
       indent: 2,
@@ -830,7 +830,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#150A00',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.07,
       blurRadius: 0.55,
       misRegistration: 0.10,
@@ -846,7 +846,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: 'Imperial',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.06,
         position: 'top-center'
       },
@@ -881,8 +881,8 @@ const TEMPLATES = {
       marginBottom: 80,
       marginLeft: 50,
       marginRight: 50,
-      fontSize: 40,
-      lineHeight: 1.85,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.02,
       paragraphSpacing: 0.7,
       indent: 2,
@@ -895,7 +895,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#3D2914',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.12,
       blurRadius: 0.35,
       misRegistration: 0.04,
@@ -911,7 +911,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: 'Diary',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.05,
         position: 'bottom-right'
       },
@@ -937,10 +937,10 @@ const TEMPLATES = {
       direction: 'horizontal',
       marginTop: 50,
       marginBottom: 50,
-      marginLeft: 55,
-      marginRight: 55,
-      fontSize: 40,
-      lineHeight: 1.7,
+      marginLeft: 10,
+      marginRight: 10,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.01,
       paragraphSpacing: 0.6,
       indent: 0,
@@ -953,7 +953,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#2D2D2D',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.02,
       blurRadius: 0.1,
       misRegistration: 0.01,
@@ -988,8 +988,8 @@ const TEMPLATES = {
       marginBottom: 55,
       marginLeft: 50,
       marginRight: 50,
-      fontSize: 40,
-      lineHeight: 1.9,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.04,
       paragraphSpacing: 0.8,
       indent: 0,
@@ -1002,7 +1002,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#1A1008',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.15,
       blurRadius: 0.6,
       misRegistration: 0.05,
@@ -1018,7 +1018,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: '墨香',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.10,
         position: 'center'
       },
@@ -1046,8 +1046,8 @@ const TEMPLATES = {
       marginBottom: 55,
       marginLeft: 50,
       marginRight: 50,
-      fontSize: 40,
-      lineHeight: 1.75,
+      fontSize: 27,
+      lineHeight: 1.0,
       letterSpacing: 0.03,
       paragraphSpacing: 0.5,
       indent: 2,
@@ -1060,7 +1060,7 @@ const TEMPLATES = {
     },
     ink: {
       color: '#1A1008',
-      opacity: 0.35,
+      opacity: 0.65,
       variation: 0.10,
       blurRadius: 0.4,
       misRegistration: 0.12,
@@ -1071,7 +1071,7 @@ const TEMPLATES = {
       watermark: {
         enabled: true,
         text: 'VINTAGE',
-        fontSize: 40,
+        fontSize: 27,
         opacity: 0.06,
         position: 'bottom-left'
       },
