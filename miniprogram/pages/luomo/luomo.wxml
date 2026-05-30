@@ -1,9 +1,31 @@
 <!-- pages/luomo/luomo.wxml -->
 <view class="page-root">
 
+  <!-- 全屏编辑遮罩（独立于页面布局） -->
+  <view class="fullscreen-edit-overlay" wx:if="{{editModeFullscreen}}">
+    <view class="fullscreen-header">
+      <text class="fs-title">编辑文字</text>
+      <view class="fs-actions">
+        <text class="fs-btn" bindtap="onSelectAllText" wx:if="{{text.length > 0}}">全选</text>
+        <text class="fs-btn" bindtap="onCopyText" wx:if="{{text.length > 0}}">复制</text>
+      </view>
+    </view>
+    <textarea class="fullscreen-textarea" model:value="{{text}}" placeholder="在此输入文字..."
+      placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
+      show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
+      bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
+      maxlength="{{-1}}" cursor-spacing="60"
+      cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"/>
+    <view class="fullscreen-footer">
+      <text class="fs-char-count">{{text.length}} 字</text>
+      <text class="fs-btn fs-btn--clear" bindtap="onClearDraft">清空</text>
+      <text class="fs-btn fs-btn--done" bindtap="toggleEditMode">完成编辑</text>
+    </view>
+  </view>
+
   <!-- 书页展示区 -->
-  <view class="canvas-area {{settingsPanelVisible ? 'canvas-area--collapsed' : ''}}" style="padding-top: calc(6rpx + {{safeAreaTop}}px); {{canvasAreaStyle}}">
-    <view class="page-dots" wx:if="{{totalPages > 1 && !settingsPanelVisible}}">
+  <view class="canvas-area {{settingsPanelVisible || editModeFullscreen ? 'canvas-area--collapsed' : ''}}" style="padding-top: calc(6rpx + {{safeAreaTop}}px); {{canvasAreaStyle}}">
+    <view class="page-dots" wx:if="{{totalPages > 1 && !settingsPanelVisible && !editModeFullscreen}}">
       <view wx:for="{{pageDots}}" wx:key="index" class="page-dot {{currentPage === index ? 'active' : ''}}"/>
     </view>
 
@@ -33,7 +55,7 @@
   </view>
 
   <!-- 底部区域 -->
-  <view class="bottom-area" style="{{bottomAreaStyle}}">
+  <view class="bottom-area" style="{{bottomAreaStyle}}" wx:if="{{!editModeFullscreen}}">
     <!-- 工具栏 - 嵌入底部区域顶端 -->
     <view class="toolbar-embedded">
       <view class="tb-btn {{settingsTab === 'text' && settingsPanelVisible ? 'tb-btn--on' : ''}}" bindtap="onToggleSettings" data-tab="text">
@@ -50,28 +72,17 @@
       </view>
     </view>
 
-    <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}} {{editModeFullscreen ? 'input-area--fullscreen' : ''}}" style="height: {{editModeFullscreen ? '100%' : inputAreaHeight + 'px'}};">
-      <textarea class="text-input {{editModeFullscreen ? 'text-input--fullscreen' : ''}}" model:value="{{text}}" placeholder="在此写下文字..."
+    <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}" style="height: {{inputAreaHeight}}px;">
+      <textarea class="text-input" model:value="{{text}}" placeholder="在此写下文字..."
         placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
         show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
         bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
-        maxlength="{{-1}}" cursor-spacing="{{editModeFullscreen ? 50 : 25}}"
+        maxlength="{{-1}}" cursor-spacing="25"
         cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"
-        style="height: {{editModeFullscreen ? 'calc(100% - 160rpx)' : textInputHeight + 'px'}};"/>
+        style="height: {{textInputHeight}}px;"/>
       <view class="input-toolbar">
-        <view class="input-actions-left">
-          <text class="char-count">{{text.length}} 字</text>
-          <text class="action-btn action-btn--small" bindtap="toggleEditMode" wx:if="{{!editModeFullscreen}}">全屏</text>
-          <text class="action-btn action-btn--small" bindtap="onSelectAllText" wx:if="{{editModeFullscreen && text.length > 0}}">全选</text>
-          <text class="action-btn action-btn--small" bindtap="onCopyText" wx:if="{{editModeFullscreen && text.length > 0}}">复制</text>
-        </view>
-        <view class="input-actions-right">
-          <text class="action-btn" bindtap="onClearDraft">清空</text>
-        </view>
-      </view>
-      <view wx:if="{{editModeFullscreen}}" class="edit-mode-footer">
-        <text class="edit-mode-title">编辑文字</text>
-        <text class="edit-mode-close" bindtap="toggleEditMode">完成</text>
+        <view class="input-actions-left"><text class="char-count">{{text.length}} 字</text><text class="action-btn action-btn--small" bindtap="toggleEditMode">全屏</text></view>
+        <view class="input-actions-right"><text class="action-btn" bindtap="onClearDraft">清空</text></view>
       </view>
     </view>
 
