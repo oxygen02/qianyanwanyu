@@ -1338,7 +1338,7 @@ Page({
           return f
         })
         const updatedFontOptions = this.data.textSettings.fontOptions.map(f =>
-          f.id === fontId ? { ...f, isLoaded: true } : f
+          f.id === fontId ? { ...f, isLoaded: true, pickerLabel: `${f.name}  ${f.fileSizeLabel} ✓` } : f
         )
         this.setData({
           activeFontDownloadStatus: 'loaded',

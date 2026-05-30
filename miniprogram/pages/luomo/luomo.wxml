@@ -68,13 +68,8 @@
             <view class="settings-row">
               <view class="settings-cell">
                 <view class="setting-label">字体</view>
-                <picker mode="selector" range="{{textSettings.fontOptions}}" range-key="name" bindchange="onTextFontChange" value="{{textSettings.fontIndex}}">
-                  <view class="setting-value">
-                    <text class="value-text-mini">{{textSettings.fontOptions[textSettings.fontIndex].name}}</text>
-                    <text class="font-size-hint" wx:if="{{textSettings.fontOptions[textSettings.fontIndex].fileSizeLabel}}">{{textSettings.fontOptions[textSettings.fontIndex].fileSizeLabel}}</text>
-                    <text class="font-status-badge {{textSettings.fontOptions[textSettings.fontIndex].isLoaded ? 'loaded' : ''}}" wx:if="{{textSettings.fontOptions[textSettings.fontIndex].isLoaded !== undefined}}">{{textSettings.fontOptions[textSettings.fontIndex].isLoaded ? '已下载' : '未下载'}}</text>
-                    <text class="arrow">›</text>
-                  </view>
+                <picker mode="selector" range="{{textSettings.fontOptions}}" range-key="pickerLabel" bindchange="onTextFontChange" value="{{textSettings.fontIndex}}">
+                  <view class="setting-value"><text class="value-text-mini">{{textSettings.fontOptions[textSettings.fontIndex].name}}</text><text class="arrow">›</text></view>
                 </picker>
               </view>
               <view class="settings-cell">
