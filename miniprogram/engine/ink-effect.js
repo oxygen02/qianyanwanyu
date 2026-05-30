@@ -39,6 +39,21 @@ function toArrayBuffer(data) {
     throw new Error('字体数据为空')
   }
 
+  // 快速可用性检测：如果是 opaque 原生对象（模拟器特有），提前拒绝
+  const type = typeof data
+  if (type === 'object' && data !== null) {
+    const hasBuffer = data.buffer instanceof ArrayBuffer
+    const hasData = data.data != null && data.data !== data
+    const hasLength = typeof data.length === 'number'
+    const hasKeys = Object.keys(data).length > 0
+    const isArray = Array.isArray(data)
+    const hasTypeBuf = data.type === 'Buffer'
+
+    if (!hasBuffer && !hasData && !hasLength && !hasKeys && !isArray && !hasTypeBuf) {
+      throw new Error(`不支持的字体数据类型: opaque native object (模拟器环境)`)
+    }
+  }
+
   if (data instanceof ArrayBuffer) {
     return data
   }
@@ -61,31 +76,26 @@ function toArrayBuffer(data) {
   }
 
   if (typeof data === 'object') {
-    // 兼容 Node 风格 Buffer 序列化对象：{ type: 'Buffer', data: [...] }
     if (data.type === 'Buffer' && Array.isArray(data.data)) {
       return new Uint8Array(data.data).buffer
     }
 
-    // 兼容嵌套 data 字段（部分运行时返回 { data: ... }）
     if (data.data != null && data.data !== data) {
       try {
         return toArrayBuffer(data.data)
       } catch (e) {}
     }
 
-    // 兼容 buffer 属性（部分运行时返回带 buffer 属性的包装对象）
     if (data.buffer instanceof ArrayBuffer) {
       return data.buffer
     }
 
-    // 兼容 array-like 对象（有 length 属性）
     if (typeof data.length === 'number' && data.length >= 0 && data.length < 100000000) {
       try {
         return new Uint8Array(data).buffer
       } catch (e) {}
     }
 
-    // 兼容纯数字 key 对象（旧版微信返回格式）
     const numericKeys = Object.keys(data).filter((k) => /^\d+$/.test(k))
     if (numericKeys.length > 0) {
       const maxIdx = Math.max(...numericKeys.map((k) => Number(k)))
@@ -98,7 +108,6 @@ function toArrayBuffer(data) {
       }
     }
 
-    // 兼容 for...in 可枚举但 Object.keys 为空的特殊情况（Proxy/模拟器）
     const forInKeys = []
     for (const key in data) {
       forInKeys.push(key)
@@ -117,7 +126,6 @@ function toArrayBuffer(data) {
       }
     }
 
-    // 最后尝试：通过 JSON 序列化再解析（处理无法直接遍历的对象）
     try {
       const jsonStr = JSON.stringify(data)
       if (jsonStr && jsonStr.startsWith('[') && jsonStr.length > 100) {
@@ -127,7 +135,7 @@ function toArrayBuffer(data) {
     } catch (e) {}
   }
 
-  throw new Error(`不支持的字体数据类型: ${typeof data}, keys: ${typeof data === 'object' ? Object.keys(data).slice(0,5).join(',') : 'N/A'}, hasLength: ${typeof data === 'object' ? !!data.length : 'N/A'}`)
+  throw new Error(`不支持的字体数据类型: ${type}, keys: ${type === 'object' ? Object.keys(data).slice(0,5).join(',') : 'N/A'}, hasLength: ${type === 'object' ? !!data.length : 'N/A'}`)
 }
 
 async function loadFontFromCache(fontId) {
