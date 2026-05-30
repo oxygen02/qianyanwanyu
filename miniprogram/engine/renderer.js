@@ -2,7 +2,7 @@
 // 主渲染器 - 协调 paper.js + ink-effect.js + typesetter.js
 
 const { generatePaperTexture, drawBorder, drawGrid, drawLineGuide } = require('./paper')
-const { drawInkBlock, drawInkBlockWithOpenType, drawStamp, drawBrandStamp, drawWatermarkWithLogo, drawPageNumber, canUseOpenTypeFont } = require('./ink-effect')
+const { drawInkBlock, drawInkBlockWithOpenType, drawBrandStamp, drawPageNumber, canUseOpenTypeFont } = require('./ink-effect')
 const { typesetAllPages } = require('./typesetter')
 const { TEMPLATES } = require('../utils/constants')
 const { loadImageFromFileID } = require('../utils/image-loader')
@@ -229,16 +229,14 @@ async function renderPage(params) {
     }
   }
 
-  // ============ 第四层：表面装饰（文字之上）============
-  // 印章
-  if (template.decoration && template.decoration.stamp) {
-    drawStamp(ctx, width, height, template.decoration.stamp)
+  // ============ 第四层：品牌印章（可选配置项）============
+  // 品牌印章：默认开启，右下角显示（可通过设置关闭或调整位置）
+  const brandFont = template.font && template.font.family ? template.font.family : 'serif'
+  const brandStampConfig = {
+    enabled: template.brandStamp !== false,
+    position: (template.brandStamp && template.brandStamp.position) || 'bottomRight'
   }
-
-  // 水印和Logo（传入 layout 确保位于页脚区域，不贴边）
-  await drawWatermarkWithLogo(ctx, width, height, template.watermark, dateStr, template.layout)
-
-  // 页码
+  drawBrandStamp(ctx, width, height, brandFont, brandStampConfig)
   if (template.layout.pageNumberEnabled && totalPages > 1) {
     drawPageNumber(ctx, width, height, pageIndex + 1, totalPages, template.decoration)
   }
@@ -273,10 +271,6 @@ async function renderPage(params) {
     const intensity = (template.paper.shadowIntensity != null) ? template.paper.shadowIntensity : 0.5
     _drawPageShadow(ctx, width, height, intensity)
   }
-
-  // ============ 品牌印章（右下角固定显示）============
-  const brandFont = template.font && template.font.family ? template.font.family : 'serif'
-  drawBrandStamp(ctx, width, height, brandFont)
 
   return { currentPage, template }
 }
