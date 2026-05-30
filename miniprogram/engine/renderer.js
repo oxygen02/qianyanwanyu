@@ -128,6 +128,11 @@ async function renderPage(params) {
 
   ctx.clearRect(0, 0, width, height)
 
+  // 安全底色：确保画布始终有可见背景，避免透明空白
+  const safeBgColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
+  ctx.fillStyle = safeBgColor
+  ctx.fillRect(0, 0, width, height)
+
   // ============ 第一层：纸张底色 + 纹理 / 背景图 ============
   let bgReady = false
   if (template.paper && template.paper.backgroundImage && template.paper.backgroundImage.fileID) {

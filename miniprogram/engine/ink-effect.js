@@ -68,10 +68,17 @@ function toArrayBuffer(data) {
 
     // 兼容嵌套 data 字段（部分运行时返回 { data: ... }）
     if (data.data != null && data.data !== data) {
-      return toArrayBuffer(data.data)
+      try {
+        return toArrayBuffer(data.data)
+      } catch (e) {}
     }
 
-    // 兼容 array-like 对象
+    // 兼容 buffer 属性（部分运行时返回带 buffer 属性的包装对象）
+    if (data.buffer instanceof ArrayBuffer) {
+      return data.buffer
+    }
+
+    // 兼容 array-like 对象（有 length 属性）
     if (typeof data.length === 'number' && data.length >= 0 && data.length < 100000000) {
       try {
         return new Uint8Array(data).buffer
@@ -90,9 +97,37 @@ function toArrayBuffer(data) {
         return bytes.buffer
       }
     }
+
+    // 兼容 for...in 可枚举但 Object.keys 为空的特殊情况（Proxy/模拟器）
+    const forInKeys = []
+    for (const key in data) {
+      forInKeys.push(key)
+    }
+    if (forInKeys.length > 0) {
+      const numericForIn = forInKeys.filter((k) => /^\d+$/.test(k))
+      if (numericForIn.length > 10) {
+        const maxIdx = Math.max(...numericForIn.map((k) => Number(k)))
+        if (maxIdx > 100 && maxIdx < 100000000) {
+          const bytes = new Uint8Array(maxIdx + 1)
+          for (const k of numericForIn) {
+            bytes[Number(k)] = Number(data[k]) & 0xff
+          }
+          return bytes.buffer
+        }
+      }
+    }
+
+    // 最后尝试：通过 JSON 序列化再解析（处理无法直接遍历的对象）
+    try {
+      const jsonStr = JSON.stringify(data)
+      if (jsonStr && jsonStr.startsWith('[') && jsonStr.length > 100) {
+        const arr = JSON.parse(jsonStr)
+        return new Uint8Array(arr).buffer
+      }
+    } catch (e) {}
   }
 
-  throw new Error(`不支持的字体数据类型: ${typeof data}, keys: ${typeof data === 'object' ? Object.keys(data).slice(0,5).join(',') : 'N/A'}`)
+  throw new Error(`不支持的字体数据类型: ${typeof data}, keys: ${typeof data === 'object' ? Object.keys(data).slice(0,5).join(',') : 'N/A'}, hasLength: ${typeof data === 'object' ? !!data.length : 'N/A'}`)
 }
 
 async function loadFontFromCache(fontId) {
