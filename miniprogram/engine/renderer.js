@@ -126,10 +126,7 @@ async function renderPage(params) {
 
   const ctx = canvas.getContext('2d')
 
-  // 清空画布并立即填充纸张底色，避免出现白色/透明方框
   ctx.clearRect(0, 0, width, height)
-  ctx.fillStyle = template.paper && template.paper.baseColor ? template.paper.baseColor : '#FAF7F2'
-  ctx.fillRect(0, 0, width, height)
 
   // ============ 第一层：纸张底色 + 纹理 / 背景图 ============
   let bgReady = false

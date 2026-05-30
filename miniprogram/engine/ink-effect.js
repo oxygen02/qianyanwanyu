@@ -35,18 +35,23 @@ function getPixelRatio() {
 }
 
 function toArrayBuffer(data) {
-  if (!data) throw new Error('字体数据为空')
+  if (!data) {
+    throw new Error('字体数据为空')
+  }
 
-  if (data instanceof ArrayBuffer) return data
+  if (data instanceof ArrayBuffer) {
+    return data
+  }
 
   if (ArrayBuffer.isView(data)) {
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
   }
 
   if (typeof data === 'string') {
-    const bytes = new Uint8Array(data.length)
-    for (let i = 0; i < data.length; i++) {
-      bytes[i] = data.charCodeAt(i) & 0xff
+    const str = unescape(encodeURIComponent(data))
+    const bytes = new Uint8Array(str.length)
+    for (let i = 0; i < str.length; i++) {
+      bytes[i] = str.charCodeAt(i) & 0xff
     }
     return bytes.buffer
   }
@@ -67,27 +72,27 @@ function toArrayBuffer(data) {
     }
 
     // 兼容 array-like 对象
-    if (typeof data.length === 'number' && data.length >= 0) {
-      const bytes = new Uint8Array(data.length)
-      for (let i = 0; i < data.length; i++) {
-        bytes[i] = Number(data[i]) & 0xff
-      }
-      return bytes.buffer
+    if (typeof data.length === 'number' && data.length >= 0 && data.length < 100000000) {
+      try {
+        return new Uint8Array(data).buffer
+      } catch (e) {}
     }
 
-    // 兼容纯数字 key 对象
+    // 兼容纯数字 key 对象（旧版微信返回格式）
     const numericKeys = Object.keys(data).filter((k) => /^\d+$/.test(k))
     if (numericKeys.length > 0) {
       const maxIdx = Math.max(...numericKeys.map((k) => Number(k)))
-      const bytes = new Uint8Array(maxIdx + 1)
-      for (const k of numericKeys) {
-        bytes[Number(k)] = Number(data[k]) & 0xff
+      if (maxIdx > 100 && maxIdx < 100000000) {
+        const bytes = new Uint8Array(maxIdx + 1)
+        for (const k of numericKeys) {
+          bytes[Number(k)] = Number(data[k]) & 0xff
+        }
+        return bytes.buffer
       }
-      return bytes.buffer
     }
   }
 
-  throw new Error(`不支持的字体数据类型: ${typeof data}`)
+  throw new Error(`不支持的字体数据类型: ${typeof data}, keys: ${typeof data === 'object' ? Object.keys(data).slice(0,5).join(',') : 'N/A'}`)
 }
 
 async function loadFontFromCache(fontId) {
