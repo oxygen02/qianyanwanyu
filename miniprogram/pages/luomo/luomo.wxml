@@ -7,7 +7,7 @@
       <view wx:for="{{pageDots}}" wx:key="index" class="page-dot {{currentPage === index ? 'active' : ''}}"/>
     </view>
 
-    <view class="canvas-wrapper">
+    <view class="canvas-wrapper" bindtap="onCanvasTapForEdit">
       <canvas id="bookCanvas" type="2d" class="book-canvas {{canvasZoomed ? 'zoomed' : ''}}"
         bindtouchstart="onCanvasTouchStart" bindtouchend="onCanvasTouchEnd"/>
     </view>
@@ -26,7 +26,7 @@
     </view>
 
     <view class="empty-hint" wx:if="{{!text && !isRendering && !fontLoadingVisible}}">
-      <text class="empty-text">在此写下文字</text>
+      <text class="empty-text">输入文字后在此预览 · 点击文字可定位光标</text>
       <text class="empty-sub">点击下方工具栏进行文字与纸张设置</text>
     </view>
   </view>
@@ -49,15 +49,28 @@
       </view>
     </view>
 
-    <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}" style="height: {{inputAreaHeight}}px;">
-      <textarea class="text-input" model:value="{{text}}" placeholder="在此写下文字..."
+    <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}} {{editModeFullscreen ? 'input-area--fullscreen' : ''}}" style="height: {{editModeFullscreen ? '100%' : inputAreaHeight + 'px'}};">
+      <view wx:if="{{editModeFullscreen}}" class="edit-mode-header">
+        <text class="edit-mode-title">编辑文字</text>
+        <text class="edit-mode-close" bindtap="toggleEditMode">完成</text>
+      </view>
+      <textarea class="text-input {{editModeFullscreen ? 'text-input--fullscreen' : ''}}" model:value="{{text}}" placeholder="在此写下文字..."
         placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
         show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
         bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
-        maxlength="{{-1}}" cursor-spacing="25" style="height: {{textInputHeight}}px;"/>
+        maxlength="{{-1}}" cursor-spacing="{{editModeFullscreen ? 50 : 25}}"
+        cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"
+        style="height: {{editModeFullscreen ? 'calc(100% - 80rpx)' : textInputHeight + 'px'}};"/>
       <view class="input-toolbar">
-        <view class="input-actions-left"><text class="char-count">{{text.length}} 字</text></view>
-        <view class="input-actions-right"><text class="action-btn" bindtap="onClearDraft">清空</text></view>
+        <view class="input-actions-left">
+          <text class="char-count">{{text.length}} 字</text>
+          <text class="action-btn action-btn--small" bindtap="toggleEditMode" wx:if="{{!editModeFullscreen}}">全屏</text>
+          <text class="action-btn action-btn--small" bindtap="onSelectAllText" wx:if="{{editModeFullscreen && text.length > 0}}">全选</text>
+          <text class="action-btn action-btn--small" bindtap="onCopyText" wx:if="{{editModeFullscreen && text.length > 0}}">复制</text>
+        </view>
+        <view class="input-actions-right">
+          <text class="action-btn" bindtap="onClearDraft">清空</text>
+        </view>
       </view>
     </view>
 

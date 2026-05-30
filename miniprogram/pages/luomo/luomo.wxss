@@ -560,6 +560,47 @@
   display: none;
 }
 
+/* 全屏编辑模式 */
+.input-area--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  background-color: #FAF7F2;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+}
+
+.edit-mode-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid rgba(158, 148, 136, 0.15);
+}
+
+.edit-mode-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #3D2B1F;
+}
+
+.edit-mode-close {
+  font-size: 28rpx;
+  color: #6B5B4F;
+  padding: 8rpx 24rpx;
+  background-color: #E8E0D6;
+  border-radius: 8rpx;
+}
+
+.text-input--fullscreen {
+  min-height: 400rpx !important;
+  font-size: 30rpx !important;
+  line-height: 1.8 !important;
+}
+
 .text-input {
   flex: 1;
   width: 100%;
@@ -589,6 +630,16 @@
 .input-actions-right { display: flex; align-items: center; gap: 12rpx; }
 .action-btn { font-size: 22rpx; color: #6B5B4F; padding: 6rpx 10rpx; }
 .action-btn:active { color: #3D2B1F; }
+.action-btn--small {
+  font-size: 20rpx;
+  color: #8B7E72;
+  padding: 4rpx 12rpx;
+  background-color: rgba(158, 148, 136, 0.1);
+  border-radius: 6rpx;
+}
+.action-btn--small:active {
+  background-color: rgba(158, 148, 136, 0.2);
+}
 
 /* ========== 字体选择弹窗（fixed）========== */
 .font-panel {

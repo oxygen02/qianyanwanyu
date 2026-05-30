@@ -40,6 +40,13 @@ Page({
     isRendering: false,
     // 字体加载中提示（首次载入时显示）
     fontLoadingVisible: false,
+    // 全屏编辑模式
+    editModeFullscreen: false,
+    // 光标位置（用于程序化定位）
+    cursorPos: -1,
+    // 选区范围
+    selectionStart: -1,
+    selectionEnd: -1,
     // 模板面板
     templatePanelVisible: false,
     // 字体选择面板
@@ -560,6 +567,134 @@ Page({
     })
   },
 
+  // ============ 文本编辑增强功能 ============
+
+  toggleEditMode() {
+    const newMode = !this.data.editModeFullscreen
+    if (newMode) {
+      // 进入全屏模式：记录当前光标位置，展开输入框
+      this.setData({
+        editModeFullscreen: true,
+        cursorPos: -1,
+        selectionStart: -1,
+        selectionEnd: -1
+      })
+      // 延迟聚焦，等待DOM更新
+      setTimeout(() => {
+        const textarea = this.selectComponent ? null : null
+      }, 300)
+    } else {
+      // 退出全屏模式
+      this.setData({
+        editModeFullscreen: false
+      })
+      this._triggerRender()
+    }
+  },
+
+  onSelectAllText() {
+    const text = this.data.text || ''
+    if (!text.length) return
+    this.setData({
+      selectionStart: 0,
+      selectionEnd: text.length,
+      cursorPos: text.length
+    })
+  },
+
+  onCopyText() {
+    const text = this.data.text || ''
+    if (!text.length) return
+    wx.setClipboardData({
+      data: text,
+      success: () => {
+        wx.showToast({ title: '已复制', icon: 'success', duration: 1000 })
+      }
+    })
+  },
+
+  onCanvasTapForEdit(e) {
+    if (this.data.settingsPanelVisible || !this.data.text || this.data.editModeFullscreen) return
+
+    const touch = e.detail && e.detail.x !== undefined ? e.detail : e
+    const tapX = touch.x || (touch.detail && touch.detail.x)
+    const tapY = touch.y || (touch.detail && touch.detail.y)
+
+    if (tapX === undefined || tapY === undefined) return
+
+    // 获取Canvas的实际尺寸和缩放信息
+    const query = wx.createSelectorQuery().in(this)
+    query.select('.canvas-wrapper').boundingClientRect()
+    query.exec((res) => {
+      if (!res || !res[0]) return
+      const wrapperRect = res[0]
+      const relX = tapX - wrapperRect.left
+      const relY = tapY - wrapperRect.top
+
+      // 使用上次渲染的glyph数据做命中测试
+      const charIndex = this._findCharIndexAtPosition(relX, relY, wrapperRect.width, wrapperRect.height)
+
+      if (charIndex >= 0) {
+        console.log('[luomo] Canvas点击定位到字符索引:', charIndex)
+        this.setData({
+          cursorPos: charIndex,
+          selectionStart: -1,
+          selectionEnd: -1
+        })
+
+        // 延迟聚焦输入框并定位光标
+        setTimeout(() => {
+          this.setData({ cursorPos: charIndex })
+        }, 200)
+
+        wx.showToast({ title: '已定位', icon: 'none', duration: 800 })
+      }
+    })
+  },
+
+  _findCharIndexAtPosition(tapX, tapY, canvasW, canvasH) {
+    try {
+      const lastRenderInfo = this._lastRenderInfo
+      if (!lastRenderInfo || !lastRenderInfo.glyphs || lastRenderInfo.glyphs.length === 0) return -1
+
+      const glyphs = lastRenderInfo.glyphs
+      const templateW = lastRenderInfo.templateWidth || canvasW
+      const templateH = lastRenderInfo.templateHeight || canvasH
+      const margin = lastRenderInfo.margin || 60
+      const scaleX = templateW / canvasW
+      const scaleY = templateH / canvasH
+
+      let closestIdx = -1
+      let closestDist = Infinity
+
+      for (let i = 0; i < glyphs.length; i++) {
+        const g = glyphs[i]
+        if (!g.text || g.text === ' ') continue
+        const gx = (g.x + margin) / scaleX
+        const gy = g.y / scaleY
+        const dist = Math.sqrt((tapX - gx) ** 2 + (tapY - gy) ** 2)
+        if (dist < closestDist && dist < Math.min(canvasW * 0.08, 40)) {
+          closestDist = dist
+          closestIdx = i
+        }
+      }
+
+      if (closestIdx >= 0) {
+        // 将glyph索引转换为文本字符索引
+        let textIdx = 0
+        for (let i = 0; i < closestIdx; i++) {
+          if (glyphs[i].text) textIdx += glyphs[i].text.length
+        }
+        return textIdx
+      }
+
+      return -1
+    } catch (e) {
+      console.warn('[luomo] 字符定位失败:', e.message)
+      return -1
+    }
+  },
+
   // ============ 渲染触发 ============
 
   _triggerRender() {
@@ -664,10 +799,20 @@ Page({
       })
 
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('渲染超时')), 60000)  // 延长到60秒
+        setTimeout(() => reject(new Error('渲染超时')), 60000)
       })
 
-      await Promise.race([renderPromise, timeoutPromise])
+      const result = await Promise.race([renderPromise, timeoutPromise])
+
+      // 保存glyph数据供Canvas点击定位使用
+      if (result && result.currentPage) {
+        this._lastRenderInfo = {
+          glyphs: result.currentPage.glyphs || [],
+          templateWidth: template.layout.width || this._canvasWidth,
+          templateHeight: template.layout.height || this._canvasHeight,
+          margin: template.layout.marginTop || template.layout.margin || 60
+        }
+      }
 
     } catch (err) {
       console.error('[luomo] 渲染失败', err)

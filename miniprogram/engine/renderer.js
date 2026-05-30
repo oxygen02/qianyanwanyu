@@ -268,6 +268,8 @@ async function renderPage(params) {
     const intensity = (template.paper.shadowIntensity != null) ? template.paper.shadowIntensity : 0.5
     _drawPageShadow(ctx, width, height, intensity)
   }
+
+  return { currentPage, template }
 }
 
 /**
