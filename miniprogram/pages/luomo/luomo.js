@@ -44,6 +44,8 @@ Page({
     editModeFullscreen: false,
     // 全屏模式下 textarea 动态高度（px）
     fullscreenTextareaHeight: 400,
+    // 全屏 textarea 聚焦控制
+    fullscreenFocused: false,
     // 光标位置（用于程序化定位）
     cursorPos: -1,
     // 选区范围
@@ -580,10 +582,10 @@ Page({
   _calcFullscreenTextareaHeight(keyboardHeight) {
     const winInfo = wx.getWindowInfo()
     const screenHeight = winInfo.screenHeight || winInfo.windowHeight
-    // header 高度约 56rpx + safe-area-top (约60px)
-    const headerH = 56
-    // footer 高度约 50rpx + safe-area-bottom (约40px)
-    const footerH = 50
+    // header 高度（含 safe-area-top）
+    const headerH = 70
+    // footer 高度（含 tabbar 避让 + safe-area-bottom，约 110rpx + 34px ≈ 90px）
+    const footerH = 90
     // 可用高度
     const available = screenHeight - headerH - footerH - keyboardHeight
     return Math.max(200, available)
@@ -592,11 +594,12 @@ Page({
   toggleEditMode() {
     const newMode = !this.data.editModeFullscreen
     if (newMode) {
-      // 进入全屏模式：计算初始高度并注册键盘监听
+      // 进入全屏模式：计算初始高度、注册键盘监听、触发聚焦
       const initHeight = this._calcFullscreenTextareaHeight(0)
       this.setData({
         editModeFullscreen: true,
         fullscreenTextareaHeight: initHeight,
+        fullscreenFocused: true,
         cursorPos: -1,
         selectionStart: -1,
         selectionEnd: -1
@@ -610,21 +613,32 @@ Page({
         wx.onKeyboardHeightChange(this._fullscreenKeyboardCallback)
       }
     } else {
-      // 退出全屏模式：取消键盘监听并触发渲染
+      // 退出全屏模式：取消键盘监听、重置 Canvas 状态并重新初始化
       if (this._fullscreenKeyboardCallback) {
         wx.offKeyboardHeightChange(this._fullscreenKeyboardCallback)
         this._fullscreenKeyboardCallback = null
       }
       this.setData({
         editModeFullscreen: false,
+        fullscreenFocused: false,
         fullscreenTextareaHeight: 400
       })
-      this._triggerRender()
+      // Canvas 被 wx:if 重建后需要重新获取上下文
+      this._canvasReady = false
+      this._canvas = null
+      // 等 DOM 更新完成后重新初始化 Canvas 并触发渲染
+      wx.nextTick(() => {
+        setTimeout(() => { this._initCanvas() }, 50)
+      })
     }
   },
 
   onFullscreenInputFocus() {
     console.log('[luomo] 全屏输入框获得焦点')
+    // 聚焦后重置，以便下次进入时能再次触发 focus
+    if (this.data.fullscreenFocused) {
+      this.setData({ fullscreenFocused: false })
+    }
   },
 
   onFullscreenInputBlur() {
