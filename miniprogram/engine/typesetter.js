@@ -143,26 +143,36 @@ function getCharWidthScale(ch) {
 function typesetPage(params) {
   const { text, canvasWidth, canvasHeight, layout } = params
 
+  if (!text || typeof text !== 'string' || canvasWidth <= 0 || canvasHeight <= 0) {
+    return { glyphs: [], remainder: '', pagesFull: false }
+  }
+
+  const safeLayout = layout || {}
+  const safeCanvasW = Math.max(100, Math.floor(canvasWidth))
+  const safeCanvasH = Math.max(100, Math.floor(canvasHeight))
+
   // 排版松紧度：调整字号、行距、字距
-  const compactness = layout.compactness != null ? layout.compactness : 50
+  const compactness = safeLayout.compactness != null ? safeLayout.compactness : 50
   const compactFactor = compactness / 100 // 0.0 ~ 1.0
   const sizeScale = 0.85 + compactFactor * 0.30 // 0.85 ~ 1.15
   const lineHeightScale = 0.80 + compactFactor * 0.40 // 0.80 ~ 1.20
 
-  let fontSize = layout.fontSize * sizeScale
-  let lineHeight = fontSize * (layout.lineHeight * lineHeightScale)
+  let fontSize = (safeLayout.fontSize || 27) * sizeScale
+  fontSize = Math.max(8, Math.min(200, fontSize))
+  let lineHeight = fontSize * ((safeLayout.lineHeight || 1.6) * lineHeightScale)
+  lineHeight = Math.max(fontSize * 1.2, Math.min(fontSize * 4, lineHeight))
   // 字距：em -> px，范围 -1.0em ~ 1.0em（负值让字紧贴，正值加大间距）
-  const letterSpacing = Math.max(-fontSize * 1.0, Math.min(layout.letterSpacing * fontSize, fontSize * 1.0))
-  const direction = layout.direction || 'horizontal'
+  const letterSpacing = Math.max(-fontSize * 1.0, Math.min((safeLayout.letterSpacing || 0) * fontSize, fontSize * 1.0))
+  const direction = safeLayout.direction || 'horizontal'
 
   // 段落间距（单位：行数，合理范围 0~5，防止异常大值导致换页）
-  const paragraphSpacing = Math.min(layout.paragraphSpacing || 0, 10)
+  const paragraphSpacing = Math.min(safeLayout.paragraphSpacing || 0, 10)
   // 空行处理
-  const emptyLineHandling = layout.emptyLineHandling || 'preserve'
+  const emptyLineHandling = safeLayout.emptyLineHandling || 'preserve'
 
   // 繁简转换
   let processedText = text
-  const textScript = layout.textScript || 'sc'
+  const textScript = safeLayout.textScript || 'sc'
   if (textScript === 'tc') {
     processedText = simplifyToTraditional(text)
   }
@@ -170,13 +180,18 @@ function typesetPage(params) {
   // 半角→全角转换（数字/英文字母在中文排版中应占全角单元格）
   processedText = toFullWidth(processedText)
 
-  const marginTop = layout.marginTop
-  const marginBottom = layout.marginBottom
-  const marginLeft = layout.marginLeft
-  const marginRight = layout.marginRight
+  const marginTop = Math.max(0, safeLayout.marginTop || 20)
+  const marginBottom = Math.max(0, safeLayout.marginBottom || 20)
+  const marginLeft = Math.max(0, safeLayout.marginLeft || 10)
+  const marginRight = Math.max(0, safeLayout.marginRight || 10)
 
-  const contentWidth = canvasWidth - marginLeft - marginRight
-  const contentHeight = canvasHeight - marginTop - marginBottom
+  const contentWidth = safeCanvasW - marginLeft - marginRight
+  const contentHeight = safeCanvasH - marginTop - marginBottom
+
+  if (contentWidth <= 0 || contentHeight <= 0) {
+    console.warn('[typesetter] 内容区域无效:', { canvasW: safeCanvasW, canvasH: safeCanvasH, marginTop, marginBottom, marginLeft, marginRight })
+    return { glyphs: [], remainder: text, pagesFull: false }
+  }
 
   const glyphs = []
   let remainder = ''
@@ -184,8 +199,8 @@ function typesetPage(params) {
 
   if (direction === 'horizontal') {
     // 横排分行逻辑
-    const columns = layout.columns || 1
-    const columnGap = layout.columnGap || 0
+    const columns = safeLayout.columns || 1
+    const columnGap = safeLayout.columnGap || 0
     const colWidth = (contentWidth - columnGap * (columns - 1)) / columns
 
     const charsPerLine = Math.floor(colWidth / Math.max(fontSize * 0.5, fontSize + letterSpacing))
@@ -226,8 +241,8 @@ function typesetPage(params) {
       while (pos < para.length) {
         // 计算本行可容纳字数（考虑半角字符宽度）
         // 当每行容量较小时，禁用首行缩进避免第一行只能放极少字符
-        const shouldIndent = isFirstLineOfPara && (layout.indent || 0) > 0 && charsPerLine >= 8
-        const indent = shouldIndent ? (layout.indent || 0) : 0
+        const shouldIndent = isFirstLineOfPara && (safeLayout.indent || 0) > 0 && charsPerLine >= 8
+        const indent = shouldIndent ? (safeLayout.indent || 0) : 0
         const indentWidth = indent * (fontSize + letterSpacing)
         const availableWidth = colWidth - indentWidth
 
@@ -283,7 +298,7 @@ function typesetPage(params) {
         }
 
         // 生成字形
-        if (layout.textAlign === 'center') {
+        if (safeLayout.textAlign === 'center') {
           // 居中对齐
           const startX = colStartX + (colWidth - lineTotalWidth) / 2
           let currentX = startX
@@ -297,7 +312,7 @@ function typesetPage(params) {
             })
             currentX += charWidth + letterSpacing
           }
-        } else if (layout.textAlign === 'justify' && !isLastLineOfPara && lineChars.length > 1) {
+        } else if (safeLayout.textAlign === 'justify' && !isLastLineOfPara && lineChars.length > 1) {
           // 两端对齐：先算出 gap，只有当 gap <= letterSpacing + fontSize*0.1 才真正两端对齐
           // 否则说明行内字符太少，被过度撑开，回退到左对齐
           const gap = lineChars.length > 1

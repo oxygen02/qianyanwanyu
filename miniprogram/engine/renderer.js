@@ -121,7 +121,8 @@ async function renderPage(params) {
   console.log('[renderPage] 开始渲染:', { width, height, textLen: text ? text.length : 0, textPreview: text ? text.slice(0, 20) : 'EMPTY', pageIndex })
 
   try {
-    const dpr = wx.getWindowInfo().pixelRatio || 2
+    const rawDpr = wx.getWindowInfo().pixelRatio || 2
+    const dpr = Math.min(rawDpr, 2)
     template = _scaleTemplateForDPR(template, dpr)
     if (template.layout) {
       template.layout._dpr = dpr
@@ -247,20 +248,26 @@ async function renderPage(params) {
         }
       }
     } else {
-      // glyphs为空时，直接在画布中心绘制原始文本作为最终兜底
+      // glyphs为空时，使用模板参数在内容区域绘制原始文本作为最终兜底
       console.warn('[renderPage] glyphs为空，使用终极兜底：直接绘制文本')
       ctx.save()
-      ctx.font = `bold ${Math.max(16, Math.min(48, (template.layout.fontSize || 27)))}px serif`
-      ctx.fillStyle = '#1A1008'
-      ctx.globalAlpha = 1
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
+      const fallbackFontSize = Math.max(16, Math.min(48, (template.layout && template.layout.fontSize) || 27))
+      const fallbackFamily = (template.font && template.font.family) || 'serif'
+      const fallbackMT = (template.layout && template.layout.marginTop) || (height * 0.08)
+      const fallbackMB = (template.layout && template.layout.marginBottom) || (height * 0.08)
+      const fallbackML = (template.layout && template.layout.marginLeft) || (width * 0.05)
+      const fallbackMR = (template.layout && template.layout.marginRight) || (width * 0.05)
+
+      ctx.font = `${(template.font && template.font.weight) || '400'} ${fallbackFontSize}px ${fallbackFamily}`
+      ctx.fillStyle = (template.ink && template.ink.color) || '#1A1008'
+      ctx.globalAlpha = (template.ink && template.ink.opacity) || 0.88
+      ctx.textBaseline = 'alphabetic'
       const displayText = text || '(无文字)'
       const lines = displayText.split('\n')
-      const lineHeight = Math.max(16, Math.min(48, (template.layout.fontSize || 27))) * 1.4
-      const startY = height / 2 - ((lines.length - 1) * lineHeight) / 2
+      const fallbackLineH = fallbackFontSize * ((template.layout && template.layout.lineHeight) || 1.6)
+      const contentTop = fallbackMT + fallbackFontSize
       lines.forEach((line, i) => {
-        ctx.fillText(line, width / 2, startY + i * lineHeight)
+        ctx.fillText(line, fallbackML, contentTop + i * fallbackLineH)
       })
       ctx.restore()
     }
