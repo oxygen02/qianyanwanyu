@@ -167,7 +167,7 @@ async function loadFontFromCache(fontId) {
         filePath = cacheInfo[fontId].path
         console.log('[ink-effect] 从storage找到字体路径:', fontId, '→', filePath)
       } else {
-        console.log('[ink-effect] storage中未找到字体记录:', fontId, '，已记录的字体:', Object.keys(cacheInfo).join(','))
+        console.log('[ink-effect] opentype缓存未命中(正常):', fontId)
       }
     } catch (e) {
       console.warn('[ink-effect] 读取font cache storage异常:', e)

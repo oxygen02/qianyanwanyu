@@ -333,7 +333,7 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
       }, 300)
 
       loadTimer = setTimeout(() => {
-        console.warn('[font-loader] 字体加载超时:', fontConfig.name)
+        console.warn('[font-loader] 字体加载超时:', fontConfig.name, '(等待wx.loadFontFace回调中...)')
         if (isResolved) {
           console.log('[font-loader] 字体已成功加载，忽略超时')
           return
@@ -344,10 +344,21 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
           delete _tempUrls[fontConfig.id]
           setTimeout(attemptLoad, 300)
         } else {
-          _loadedFonts[fontConfig.id] = 'failed'
-          _loadedFonts[fontConfig.id + '_failed'] = true
-          if (onProgress) onProgress({ status: 'failed', percent: 0 })
-          safeResolve(FALLBACK_FONT)
+          // 不立即标记为failed! 给wx.loadFontFace留5秒宽限期
+          // wx.loadFontFace是异步黑盒，3s超时常在字体实际下载完成后才触发成功回调
+          // 如果立即标记failed+resolve，后续success回调会被isResolved检查跳过
+          console.log('[font-loader] 宽限期等待中，不标记失败')
+          loadTimer = setTimeout(() => {
+            if (isResolved) {
+              console.log('[font-loader] 宽限期内收到成功回调')
+              return
+            }
+            console.warn('[font-loader] 宽限期结束，字体最终失败:', fontConfig.name)
+            _loadedFonts[fontConfig.id] = 'failed'
+            _loadedFonts[fontConfig.id + '_failed'] = true
+            if (onProgress) onProgress({ status: 'failed', percent: 0 })
+            safeResolve(FALLBACK_FONT)
+          }, 5000)
         }
       }, loadTimeout)
 
