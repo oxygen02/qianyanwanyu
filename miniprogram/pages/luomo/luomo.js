@@ -802,7 +802,8 @@ Page({
 
       // 验证模板有效性
       if (!template || !template.layout || !template.paper) {
-        throw new Error('模板配置无效')
+        console.error('[luomo] 模板配置无效:', JSON.stringify({ id: template && template.id, hasLayout: !!(template && template.layout), hasPaper: !!(template && template.paper) }))
+        return
       }
 
       if (template.font && template.font.family) {
@@ -810,33 +811,34 @@ Page({
         if (this._loadedFontCache[fontFamily]) {
           template.font.family = this._loadedFontCache[fontFamily]
         } else {
-          // 字体未缓存时，直接使用fontId作为family名
-          // loadFont()成功后返回的就是fontId，wx.loadFontFace已注册该名称
-          // 如果加载失败，会在后续渲染中由引擎回退到系统默认字体
           template.font.family = fontFamily
         }
       }
 
-      // 字体切换时清除排版缓存，避免新旧字体混用导致显示异常
       if (this._lastFontId !== template.font.family) {
         clearRenderCache()
         this._lastFontId = template.font.family
       }
 
-      // 估算总页数
-      const total = estimatePageCount(
-        text,
-        this.data.activeTemplateId,
-        this._canvasWidth,
-        this._canvasHeight,
-        template
-      )
+      let total = 1
+      try {
+        total = estimatePageCount(
+          text,
+          this.data.activeTemplateId,
+          this._canvasWidth,
+          this._canvasHeight,
+          template
+        )
+      } catch (e) {
+        console.warn('[luomo] 页数估算失败，默认1页:', e.message || e)
+        total = 1
+      }
 
       const pageDots = Array.from({ length: total }, (_, i) => i)
       this.setData({ totalPages: total, pageDots })
 
-      // 渲染当前页（带超时保护）
-      const renderPromise = renderPage({
+      // 渲染当前页（renderPage内部已全链路try/catch，不会抛异常）
+      const result = await renderPage({
         canvas: this._canvas,
         width: this._canvasWidth,
         height: this._canvasHeight,
@@ -847,13 +849,7 @@ Page({
         dateStr: this.data.brandStampEnabled ? this._getDateStr() : null
       })
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('渲染超时')), 60000)
-      })
-
-      const result = await Promise.race([renderPromise, timeoutPromise])
-
-      // 保存glyph数据供Canvas点击定位使用
+      // 保存glyph数据
       if (result && result.currentPage) {
         this._lastRenderInfo = {
           glyphs: result.currentPage.glyphs || [],
@@ -864,13 +860,7 @@ Page({
       }
 
     } catch (err) {
-      console.error('[luomo] 渲染失败', err)
-      this.setData({ renderError: err.message || '渲染失败' })
-      wx.showToast({
-        title: '渲染失败，请重试',
-        icon: 'none',
-        duration: 2000
-      })
+      console.error('[luomo] 渲染失败(不应到达此处):', err)
     } finally {
       this.setData({ isRendering: false })
       this._rendering = false
