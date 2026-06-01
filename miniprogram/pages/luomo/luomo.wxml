@@ -58,7 +58,7 @@
         <text class="poem-author">—— {{waitingPoem.dynasty || ''}}{{waitingPoem.author}}</text>
         <view class="poem-divider"></view>
         <view class="poem-content typewriter">
-          <text class="typewriter-text">{{displayedText}}</text>
+          <rich-text class="typewriter-text" nodes="{{displayedText}}"></rich-text>
           <text class="typewriter-cursor" wx:if="{{!isTypingComplete}}">|</text>
         </view>
       </view>
