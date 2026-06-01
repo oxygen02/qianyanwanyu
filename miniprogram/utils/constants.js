@@ -63,7 +63,7 @@ const TEMPLATES = {
     },
     // 字体
     font: {
-      family: '上古宋体-Regular',
+      family: '方正书宋-Regular',
       fallback: 'serif',
       weight: '400'
     },

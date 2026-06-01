@@ -555,11 +555,25 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   ctx.globalCompositeOperation = 'source-over'
   if (simpleMode) {
     // simpleMode: 纯色实心填充，与 OpenType 路径的视觉效果完全一致
-    // 不做 variation 随机变化，不做 stroke 描边，不做任何 shadow
+    // 不做 variation 随机变化，不做任何 shadow
     ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity})`
     for (const g of glyphs) {
       if (!g.text || g.text === ' ') continue
       ctx.fillText(g.text, g.x, g.y)
+    }
+
+    // 描边效果（simpleMode 也支持）
+    if (strokeEnabled && strokeWidth > 0) {
+      const sc = parseColor(inkConfig.color || '#1A1008')
+      ctx.save()
+      ctx.strokeStyle = `rgba(${sc.r},${sc.g},${sc.b},${opacity * 0.6})`
+      ctx.lineWidth = strokeWidth
+      ctx.lineJoin = 'round'
+      for (const g of glyphs) {
+        if (!g.text || g.text === ' ') continue
+        ctx.strokeText(g.text, g.x, g.y)
+      }
+      ctx.restore()
     }
   } else {
     // 完整模式：带 variation 活字印刷效果 + stroke 描边
@@ -765,8 +779,8 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontId, fontSize
     const blurRadius = inkConfig.blurRadius || 0.3
     const misReg = inkConfig.misRegistration || 0.08
     const damage = inkConfig.damage || 0
-    const strokeEnabled = inkConfig.stroke || false
-    const strokeWidth = inkConfig.strokeWidth || 1
+    const strokeEnabled = fontConfig.stroke || inkConfig.stroke || false
+    const strokeWidth = fontConfig.strokeWidth || inkConfig.strokeWidth || 1
     const textSkew = (layoutConfig && layoutConfig.textSkew) || 0
     
     const paths = await getGlyphPaths(font, glyphs, fontSize)

@@ -1,0 +1,19 @@
+{
+  "name": "qianyanwanyu",
+  "version": "1.0.0",
+  "description": "",
+  "main": "auto-push.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/oxygen02/qianyanwanyu.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cc-switch": "file:../../../../../private/tmp/cc-switch"
+  }
+}

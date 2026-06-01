@@ -62,5 +62,13 @@ App({
     }
     this.globalData.navBarHeight = navBarHeight
     console.log('[app] 导航栏总高度:', navBarHeight, '状态栏:', windowInfo.statusBarHeight)
+
+    // 后台预加载默认模板字体（不阻塞用户操作）
+    try {
+      const { loadFont } = require('./utils/font-loader')
+      loadFont('方正书宋-Regular').then(() => {
+        console.log('[app] 默认字体预加载完成')
+      }).catch(() => {})
+    } catch(e) {}
   }
 })
