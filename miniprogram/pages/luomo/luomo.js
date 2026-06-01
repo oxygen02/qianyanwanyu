@@ -48,7 +48,8 @@ Page({
     // 等待诗词展示
     showWaitingPoem: false,
     waitingPoem: null,
-    displayedLines: [],
+    poemLines: [],
+    typewriterDuration: 0,
     isTypingComplete: false,
     // 全屏编辑模式
     editModeFullscreen: false,
@@ -793,11 +794,19 @@ Page({
       this._poemStartTime = Date.now()
 
       const totalChars = rawLines.join('').length
+      const baseMsPerChar = 150
+      const estimatedDuration = Math.max(4000, totalChars * baseMsPerChar)
+
+      console.log('[luomo] 诗词:', finalPoem.title, '字数:', totalChars, '预计时长:', estimatedDuration + 'ms')
 
       this.setData({
         showWaitingPoem: true,
         isTypingComplete: false,
-        displayedLines: rawLines.map(() => ''),
+        typewriterDuration: estimatedDuration,
+        poemLines: rawLines.map((line, idx) => ({
+          text: line,
+          lineIndex: idx
+        })),
         waitingPoem: {
           title: finalPoem.title,
           author: finalPoem.author,
@@ -806,52 +815,12 @@ Page({
         }
       })
 
-      let charCount = 0
-
-      const typeNextChar = () => {
-        if (charCount >= totalChars) {
-          this._typeTimer = null
-          this.setData({ isTypingComplete: true })
-          return
-        }
-
-        charCount++
-
-        let accumulated = 0
-        const displayedLines = rawLines.map(line => {
-          const lineStart = accumulated
-          const lineEnd = accumulated + line.length
-          accumulated = lineEnd
-          if (charCount <= lineStart) return ''
-          if (charCount >= lineEnd) return line
-          return line.slice(0, charCount - lineStart)
-        })
-
-        this.setData({ displayedLines })
-
-        if (charCount < totalChars) {
-          const baseDelay = 140
-          const randomJitter = Math.random() * 60
-          let extraDelay = 0
-          for (let i = 0; i < rawLines.length; i++) {
-            const lineLen = rawLines[i].length
-            const lineStart = rawLines.slice(0, i).reduce((s, l) => s + l.length, 0)
-            if (charCount - 1 === lineStart + lineLen - 1 && lineLen > 0) {
-              const lastChar = rawLines[i][lineLen - 1]
-              if ('，；、'.includes(lastChar)) extraDelay = 280
-              else if ('。！？'.includes(lastChar)) extraDelay = 480
-              break
-            }
-          }
-
-          this._typeTimer = setTimeout(typeNextChar, baseDelay + randomJitter + extraDelay)
-        } else {
-          this._typeTimer = null
-          this.setData({ isTypingComplete: true })
-        }
-      }
-
-      this._typeTimer = setTimeout(typeNextChar, 500)
+      if (this._typeTimer) clearTimeout(this._typeTimer)
+      this._typeTimer = setTimeout(() => {
+        this._typeTimer = null
+        this.setData({ isTypingComplete: true })
+        console.log('[luomo] 打字动画完成')
+      }, estimatedDuration + 600)
 
     } catch(e) {
       console.error('[luomo] 等待诗词异常:', e.message || e, e.stack || '')
@@ -889,7 +858,7 @@ Page({
     }
     this._poemStartTime = null
     if (this.data.showWaitingPoem) {
-      this.setData({ showWaitingPoem: false, waitingPoem: null, displayedLines: [], isTypingComplete: false })
+      this.setData({ showWaitingPoem: false, waitingPoem: null, poemLines: [], typewriterDuration: 0, isTypingComplete: false })
     }
   },
 

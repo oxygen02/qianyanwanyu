@@ -325,12 +325,42 @@
   align-items: center;
 }
 
+.typewriter-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  animation: poemReveal var(--duration, 8000ms) ease-out forwards;
+  animation-delay: 0.3s;
+}
+
+@keyframes poemReveal {
+  0% { max-height: 0; opacity: 0; transform: translateY(20rpx); }
+  15% { opacity: 1; }
+  100% { max-height: 1000rpx; opacity: 1; transform: translateY(0); }
+}
+
 .typewriter-line {
   font-size: 28rpx;
   color: #3D2B1F;
   line-height: 2;
   letter-spacing: 0.15em;
   text-align: center;
+  opacity: 0;
+  animation: lineFadeIn 0.6s ease-out forwards;
+}
+
+.typewriter-line:nth-child(1) { animation-delay: calc(0.3s + var(--duration, 8000ms) * 0.05); }
+.typewriter-line:nth-child(2) { animation-delay: calc(0.3s + var(--duration, 8000ms) * 0.25); }
+.typewriter-line:nth-child(3) { animation-delay: calc(0.3s + var(--duration, 8000ms) * 0.45); }
+.typewriter-line:nth-child(4) { animation-delay: calc(0.3s + var(--duration, 8000ms) * 0.65); }
+.typewriter-line:nth-child(5) { animation-delay: calc(0.3s + var(--duration, 8000ms) * 0.80); }
+
+@keyframes lineFadeIn {
+  from { opacity: 0; transform: translateY(12rpx); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .typewriter-cursor {
