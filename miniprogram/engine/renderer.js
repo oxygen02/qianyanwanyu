@@ -217,11 +217,16 @@ async function renderPage(params) {
   let pages = _getCachedGlyphs(glyphCacheKey)
 
   if (!pages) {
-    pages = typesetAllPages(text, {
-      canvasWidth: width,
-      canvasHeight: height,
-      layout: template.layout
-    })
+    try {
+      pages = typesetAllPages(text, {
+        canvasWidth: width,
+        canvasHeight: height,
+        layout: template.layout
+      })
+    } catch (e) {
+      console.error('[renderer] 排版失败:', e.message || e)
+      pages = [{ glyphs: [] }]
+    }
     _cacheGlyphs(glyphCacheKey, pages)
   }
 
@@ -230,30 +235,61 @@ async function renderPage(params) {
     const fontId = template.font && template.font.family
     const isSystemFont = !fontId || ['serif', 'sans-serif', 'monospace'].includes(fontId)
     const useOpenType = !isSystemFont && currentPage.glyphs.length <= 1500 && canUseOpenTypeFont(fontId)
+    let inkRendered = false
     if (useOpenType) {
       try {
         await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, template.font, fontId, template.layout.fontSize, template.layout)
+        inkRendered = true
       } catch (e) {
-        // OpenType失败回退：使用简洁模式渲染
-        drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, true)
+        console.warn('[renderer] OpenType渲染失败，回退到simpleMode:', e.message || e)
       }
-    } else {
-      // 非OpenType路径：自定义字体（已禁用或超字数）也用简洁模式，避免彩色异常
-      const useSimpleMode = !isSystemFont
-      drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, useSimpleMode)
+    }
+    if (!inkRendered) {
+      try {
+        const useSimpleMode = !isSystemFont
+        drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, useSimpleMode)
+        inkRendered = true
+      } catch (e) {
+        console.warn('[renderer] drawInkBlock渲染失败，回退到基础fillText:', e.message || e)
+      }
+    }
+    if (!inkRendered) {
+      try {
+        const family = (template.font && template.font.family) || 'serif'
+        const fontSize = template.layout.fontSize || 24
+        ctx.save()
+        ctx.font = `${template.font && template.font.weight || '400'} ${fontSize}px ${family}`
+        ctx.fillStyle = (template.ink && template.ink.color) || '#1A1008'
+        ctx.globalAlpha = (template.ink && template.ink.opacity) || 0.88
+        ctx.textBaseline = 'alphabetic'
+        for (const g of currentPage.glyphs) {
+          if (g.text && g.text !== ' ') ctx.fillText(g.text, g.x, g.y)
+        }
+        ctx.restore()
+        console.log('[renderer] 使用基础fillText兜底渲染完成')
+      } catch (e) {
+        console.error('[renderer] 所有渲染路径均失败:', e.message || e)
+      }
     }
   }
 
   // ============ 第四层：品牌印章（可选配置项）============
-  // 品牌印章：默认开启，右下角显示（可通过设置关闭或调整位置）
-  const brandFont = template.font && template.font.family ? template.font.family : 'serif'
-  const brandStampConfig = {
-    enabled: template.brandStamp !== false,
-    position: (template.brandStamp && template.brandStamp.position) || 'bottomRight'
+  try {
+    const brandFont = template.font && template.font.family ? template.font.family : 'serif'
+    const brandStampConfig = {
+      enabled: template.brandStamp !== false,
+      position: (template.brandStamp && template.brandStamp.position) || 'bottomRight'
+    }
+    await drawBrandStamp(ctx, width, height, brandFont, brandStampConfig)
+  } catch (e) {
+    console.warn('[renderer] 品牌印章渲染跳过:', e.message || e)
   }
-  await drawBrandStamp(ctx, width, height, brandFont, brandStampConfig)
-  if (template.layout.pageNumberEnabled && totalPages > 1) {
-    drawPageNumber(ctx, width, height, pageIndex + 1, totalPages, template.decoration)
+  try {
+    if (template.layout.pageNumberEnabled && totalPages > 1) {
+      drawPageNumber(ctx, width, height, pageIndex + 1, totalPages, template.decoration)
+    }
+  } catch (e) {
+    console.warn('[renderer] 页码渲染跳过:', e.message || e)
   }
 
   // 页眉页脚
