@@ -115,212 +115,183 @@ function clearRenderCache() {
 async function renderPage(params) {
   const { canvas, width, height, text, templateId, template: tplOverride, pageIndex, totalPages, dateStr } = params
   let template = tplOverride || TEMPLATES[templateId] || TEMPLATES['modern-prose']
-
-  // 根据设备像素比缩放模板参数，确保文字在物理像素Canvas上显示正确大小
-  const dpr = wx.getWindowInfo().pixelRatio || 2
-  template = _scaleTemplateForDPR(template, dpr)
-  // 将 DPR 保存到 layout 中，供 ink-effect.js 使用
-  if (template.layout) {
-    template.layout._dpr = dpr
-  }
-
   const ctx = canvas.getContext('2d')
+  let currentPage = null
 
-  ctx.clearRect(0, 0, width, height)
-
-  // 安全底色：确保画布始终有可见背景，避免透明空白
-  const safeBgColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
-  ctx.fillStyle = safeBgColor
-  ctx.fillRect(0, 0, width, height)
-
-  // ============ 第一层：纸张底色 + 纹理 / 背景图 ============
-  let bgReady = false
-  if (template.paper && template.paper.backgroundImage && template.paper.backgroundImage.fileID) {
-    try {
-      const bgImg = await loadImageFromFileID(template.paper.backgroundImage.fileID)
-      ctx.drawImage(bgImg, 0, 0, width, height)
-      bgReady = true
-    } catch (err) {
-      console.warn('[renderer] 背景图加载失败，回退到纸张纹理', err)
+  try {
+    // 根据设备像素比缩放模板参数，确保文字在物理像素Canvas上显示正确大小
+    const dpr = wx.getWindowInfo().pixelRatio || 2
+    template = _scaleTemplateForDPR(template, dpr)
+    if (template.layout) {
+      template.layout._dpr = dpr
     }
-  }
 
-  if (!bgReady) {
-    // 检查缓存：基于纸张配置生成缓存key
-    const paperCacheKey = _makeCacheKey(
-      'paper',
-      width, height,
-      JSON.stringify(template.paper)
-    )
-    let cachedTexture = _getCachedPaperTexture(paperCacheKey)
+    ctx.clearRect(0, 0, width, height)
 
-    if (cachedTexture) {
-      // 使用缓存的纹理
-      ctx.putImageData(cachedTexture, 0, 0)
-    } else {
-      // 创建离屏Canvas生成纸张纹理
-      const paperOffscreen = wx.createOffscreenCanvas({ type: '2d', width, height })
-      generatePaperTexture({
-        width,
-        height,
-        paperConfig: template.paper,
-        offscreenCanvas: paperOffscreen
-      })
-      // 将纸张纹理绘制到主Canvas（source-over，作为底层）
-      ctx.drawImage(paperOffscreen, 0, 0)
+    // 安全底色：确保画布始终有可见背景
+    const safeBgColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
+    ctx.fillStyle = safeBgColor
+    ctx.fillRect(0, 0, width, height)
 
-      // 缓存ImageData（从主Canvas获取）
-      try {
-        const imageData = ctx.getImageData(0, 0, width, height)
-        _cachePaperTexture(paperCacheKey, imageData)
-      } catch (e) {
-        // getImageData可能跨域失败，静默跳过
+    // ============ 第一层：纸张纹理 ============
+    try {
+      let bgReady = false
+      if (template.paper && template.paper.backgroundImage && template.paper.backgroundImage.fileID) {
+        try {
+          const bgImg = await loadImageFromFileID(template.paper.backgroundImage.fileID)
+          ctx.drawImage(bgImg, 0, 0, width, height)
+          bgReady = true
+        } catch (err) {
+          console.warn('[renderer] 背景图加载失败', err.message || err)
+        }
       }
-    }
-  }
 
-  // ============ 第二层：装饰元素（底部，在文字之下）============
-  // 界格 / 横线
-  if (template.paper.grid) {
-    drawGrid(ctx, width, height, template.paper.grid, template.layout)
-  }
-  if (template.paper.lineGuide) {
-    drawLineGuide(ctx, width, height, template.paper.lineGuide, template.layout)
-  }
+      if (!bgReady) {
+        const paperCacheKey = _makeCacheKey('paper', width, height, JSON.stringify(template.paper))
+        let cachedTexture = _getCachedPaperTexture(paperCacheKey)
 
-  // 边框
-  drawBorder(ctx, width, height, template.paper.border)
-
-  // 瑕疵效果（在边框之后、文字之前）
-  if (template.paper.imperfection) {
-    drawImperfection(ctx, width, height, {
-      type: template.paper.imperfectionType || 'stain',
-      intensity: template.paper.imperfectionIntensity || 0.5
-    })
-  }
-
-  // 装订效果（在瑕疵之后、文字之前）
-  if (template.paper.stitch) {
-    drawStitch(ctx, width, height, {
-      type: template.paper.stitchType || 'thread-hole'
-    })
-  }
-
-  // ============ 第三层：文字排版 + 油墨渲染 ============
-  // 使用缓存的排版结果（避免每次翻页都完整重新排版）
-  const glyphCacheKey = _makeCacheKey(
-    'glyphs',
-    text,
-    width, height,
-    JSON.stringify(template.layout)
-  )
-  let pages = _getCachedGlyphs(glyphCacheKey)
-
-  if (!pages) {
-    try {
-      pages = typesetAllPages(text, {
-        canvasWidth: width,
-        canvasHeight: height,
-        layout: template.layout
-      })
+        if (cachedTexture) {
+          ctx.putImageData(cachedTexture, 0, 0)
+        } else {
+          const paperOffscreen = wx.createOffscreenCanvas({ type: '2d', width, height })
+          generatePaperTexture({ width, height, paperConfig: template.paper, offscreenCanvas: paperOffscreen })
+          ctx.drawImage(paperOffscreen, 0, 0)
+          try {
+            const imageData = ctx.getImageData(0, 0, width, height)
+            _cachePaperTexture(paperCacheKey, imageData)
+          } catch (_) {}
+        }
+      }
     } catch (e) {
-      console.error('[renderer] 排版失败:', e.message || e)
-      pages = [{ glyphs: [] }]
+      console.warn('[renderer] 纸张纹理生成跳过:', e.message || e)
     }
-    _cacheGlyphs(glyphCacheKey, pages)
-  }
 
-  const currentPage = pages[pageIndex]
-  if (currentPage && currentPage.glyphs.length > 0) {
-    const fontId = template.font && template.font.family
-    const isSystemFont = !fontId || ['serif', 'sans-serif', 'monospace'].includes(fontId)
-    const useOpenType = !isSystemFont && currentPage.glyphs.length <= 1500 && canUseOpenTypeFont(fontId)
-    let inkRendered = false
-    if (useOpenType) {
+    // ============ 第二层：装饰元素 ============
+    try {
+      if (template.paper.grid) drawGrid(ctx, width, height, template.paper.grid, template.layout)
+      if (template.paper.lineGuide) drawLineGuide(ctx, width, height, template.paper.lineGuide, template.layout)
+      drawBorder(ctx, width, height, template.paper.border)
+      if (template.paper.imperfection) {
+        drawImperfection(ctx, width, height, {
+          type: template.paper.imperfectionType || 'stain',
+          intensity: template.paper.imperfectionIntensity || 0.5
+        })
+      }
+      if (template.paper.stitch) {
+        drawStitch(ctx, width, height, { type: template.paper.stitchType || 'thread-hole' })
+      }
+    } catch (e) {
+      console.warn('[renderer] 装饰元素渲染跳过:', e.message || e)
+    }
+
+    // ============ 第三层：文字排版 + 油墨渲染 ============
+    const glyphCacheKey = _makeCacheKey('glyphs', text, width, height, JSON.stringify(template.layout))
+    let pages = _getCachedGlyphs(glyphCacheKey)
+
+    if (!pages) {
       try {
-        await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, template.font, fontId, template.layout.fontSize, template.layout)
-        inkRendered = true
+        pages = typesetAllPages(text, { canvasWidth: width, canvasHeight: height, layout: template.layout })
       } catch (e) {
-        console.warn('[renderer] OpenType渲染失败，回退到simpleMode:', e.message || e)
+        console.error('[renderer] 排版失败:', e.message || e)
+        pages = [{ glyphs: [] }]
+      }
+      _cacheGlyphs(glyphCacheKey, pages)
+    }
+
+    currentPage = pages[pageIndex]
+    if (currentPage && currentPage.glyphs.length > 0) {
+      const fontId = template.font && template.font.family
+      const isSystemFont = !fontId || ['serif', 'sans-serif', 'monospace'].includes(fontId)
+      const useOpenType = !isSystemFont && currentPage.glyphs.length <= 1500 && canUseOpenTypeFont(fontId)
+      let inkRendered = false
+
+      if (useOpenType) {
+        try {
+          await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, template.font, fontId, template.layout.fontSize, template.layout)
+          inkRendered = true
+        } catch (e) {
+          console.warn('[renderer] OpenType回退:', e.message || e)
+        }
+      }
+      if (!inkRendered) {
+        try {
+          drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, !isSystemFont)
+          inkRendered = true
+        } catch (e) {
+          console.warn('[renderer] drawInkBlock回退:', e.message || e)
+        }
+      }
+      if (!inkRendered) {
+        try {
+          const family = (template.font && template.font.family) || 'serif'
+          const fontSize = template.layout.fontSize || 24
+          ctx.save()
+          ctx.font = `${template.font && template.font.weight || '400'} ${fontSize}px ${family}`
+          ctx.fillStyle = (template.ink && template.ink.color) || '#1A1008'
+          ctx.globalAlpha = (template.ink && template.ink.opacity) || 0.88
+          ctx.textBaseline = 'alphabetic'
+          for (const g of currentPage.glyphs) {
+            if (g.text && g.text !== ' ') ctx.fillText(g.text, g.x, g.y)
+          }
+          ctx.restore()
+        } catch (e) {
+          console.error('[renderer] 兜底fillText也失败:', e.message || e)
+        }
       }
     }
-    if (!inkRendered) {
-      try {
-        const useSimpleMode = !isSystemFont
-        drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, useSimpleMode)
-        inkRendered = true
-      } catch (e) {
-        console.warn('[renderer] drawInkBlock渲染失败，回退到基础fillText:', e.message || e)
-      }
+
+    // ============ 第四层：品牌印章 + 页码 ============
+    try {
+      await drawBrandStamp(ctx, width, height,
+        (template.font && template.font.family) || 'serif',
+        { enabled: template.brandStamp !== false, position: (template.brandStamp && template.brandStamp.position) || 'bottomRight' })
+    } catch (e) {
+      console.warn('[renderer] 品牌印章跳过:', e.message || e)
     }
-    if (!inkRendered) {
+    try {
+      if (template.layout.pageNumberEnabled && totalPages > 1) {
+        drawPageNumber(ctx, width, height, pageIndex + 1, totalPages, template.decoration)
+      }
+    } catch (e) {
+      console.warn('[renderer] 页码跳过:', e.message || e)
+    }
+
+    // ============ 第五层：投影 ============
+    try {
+      if (template.paper.shadow) {
+        const intensity = (template.paper.shadowIntensity != null) ? template.paper.shadowIntensity : 0.5
+        const bA = 0.12 * intensity, rA = 0.08 * intensity
+        const sg = ctx.createLinearGradient(0, height - 24, 0, height)
+        sg.addColorStop(0, 'rgba(0,0,0,0)')
+        sg.addColorStop(1, `rgba(0,0,0,${bA})`)
+        ctx.fillStyle = sg
+        ctx.fillRect(0, height - 24, width, 24)
+        const rg = ctx.createLinearGradient(width - 20, 0, width, 0)
+        rg.addColorStop(0, 'rgba(0,0,0,0)')
+        rg.addColorStop(1, `rgba(0,0,0,${rA})`)
+        ctx.fillStyle = rg
+        ctx.fillRect(width - 20, 0, 20, height)
+      }
+    } catch (e) {
+      console.warn('[renderer] 投影跳过:', e.message || e)
+    }
+
+  } catch (fatalErr) {
+    console.error('[renderPage] 致命错误（已捕获，不会崩溃）:', fatalErr.message || fatalErr)
+    ctx.fillStyle = safeBgColor || '#FAF7F2'
+    ctx.fillRect(0, 0, width, height)
+    if (currentPage && currentPage.glyphs.length > 0) {
       try {
-        const family = (template.font && template.font.family) || 'serif'
-        const fontSize = template.layout.fontSize || 24
         ctx.save()
-        ctx.font = `${template.font && template.font.weight || '400'} ${fontSize}px ${family}`
-        ctx.fillStyle = (template.ink && template.ink.color) || '#1A1008'
-        ctx.globalAlpha = (template.ink && template.ink.opacity) || 0.88
+        ctx.font = `24px ${(template.font && template.font.family) || 'serif'}`
+        ctx.fillStyle = '#1A1008'
         ctx.textBaseline = 'alphabetic'
         for (const g of currentPage.glyphs) {
           if (g.text && g.text !== ' ') ctx.fillText(g.text, g.x, g.y)
         }
         ctx.restore()
-        console.log('[renderer] 使用基础fillText兜底渲染完成')
-      } catch (e) {
-        console.error('[renderer] 所有渲染路径均失败:', e.message || e)
-      }
+      } catch (_) {}
     }
-  }
-
-  // ============ 第四层：品牌印章（可选配置项）============
-  try {
-    const brandFont = template.font && template.font.family ? template.font.family : 'serif'
-    const brandStampConfig = {
-      enabled: template.brandStamp !== false,
-      position: (template.brandStamp && template.brandStamp.position) || 'bottomRight'
-    }
-    await drawBrandStamp(ctx, width, height, brandFont, brandStampConfig)
-  } catch (e) {
-    console.warn('[renderer] 品牌印章渲染跳过:', e.message || e)
-  }
-  try {
-    if (template.layout.pageNumberEnabled && totalPages > 1) {
-      drawPageNumber(ctx, width, height, pageIndex + 1, totalPages, template.decoration)
-    }
-  } catch (e) {
-    console.warn('[renderer] 页码渲染跳过:', e.message || e)
-  }
-
-  // 页眉页脚
-  if (template.layout.headerFooterEnabled) {
-    const headerText = template.layout.headerText || ''
-    const footerText = template.layout.footerText || ''
-    const fontSize = 16
-    const margin = 24
-    const inkColor = template.ink.color || '#1A1008'
-    const opacity = template.ink.opacity || 0.88
-
-    ctx.save()
-    ctx.font = `${fontSize}px serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    ctx.fillStyle = `rgba(${parseInt(inkColor.slice(1, 3), 16)},${parseInt(inkColor.slice(3, 5), 16)},${parseInt(inkColor.slice(5, 7), 16)},${opacity * 0.5})`
-
-    if (headerText) {
-      ctx.fillText(headerText, width / 2, margin * 0.6)
-    }
-    if (footerText) {
-      ctx.textBaseline = 'bottom'
-      ctx.fillText(footerText, width / 2, height - margin * 0.6)
-    }
-    ctx.restore()
-  }
-
-  // ============ 第五层：书页投影（最顶层，营造立体感）============
-  if (template.paper.shadow) {
-    const intensity = (template.paper.shadowIntensity != null) ? template.paper.shadowIntensity : 0.5
-    _drawPageShadow(ctx, width, height, intensity)
   }
 
   return { currentPage, template }
