@@ -820,12 +820,13 @@ Page({
         this.setData({ displayedText: fullText.slice(0, charCount) })
 
         if (charCount < totalChars) {
-          const baseDelay = 55
-          const randomJitter = Math.random() * 35
+          const baseDelay = 140
+          const randomJitter = Math.random() * 60
           const currentChar = fullText[charCount - 1]
           let extraDelay = 0
-          if ('，。！？；'.includes(currentChar)) extraDelay = 130
-          else if (currentChar === '\n') extraDelay = 200
+          if ('，；、'.includes(currentChar)) extraDelay = 280
+          else if ('。！？'.includes(currentChar)) extraDelay = 480
+          else if (currentChar === '\n') extraDelay = 580
 
           this._typeTimer = setTimeout(typeNextChar, baseDelay + randomJitter + extraDelay)
         } else {
