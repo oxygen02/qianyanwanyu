@@ -437,6 +437,7 @@ function loadFont(fontId, onProgress = null) {
   if (_loadedFonts[fontId] === 'loading') {
     console.log('[font-loader] 字体正在加载中，等待:', fontId)
     return new Promise((resolve) => {
+      let waitPercent = 10
       const checkInterval = setInterval(() => {
         if (_loadedFonts[fontId] === 'loaded') {
           clearInterval(checkInterval)
@@ -446,14 +447,18 @@ function loadFont(fontId, onProgress = null) {
           clearInterval(checkInterval)
           if (onProgress) onProgress({ status: 'failed', percent: 0 })
           resolve(getFallbackFont())
+        } else if (onProgress) {
+          waitPercent += Math.random() * 5 + 2
+          if (waitPercent > 85) waitPercent = 85
+          onProgress({ status: 'loading', percent: Math.round(waitPercent) })
         }
-      }, 200)
+      }, 300)
       setTimeout(() => {
         clearInterval(checkInterval)
         console.warn('[font-loader] 字体加载等待超时:', fontId)
         if (onProgress) onProgress({ status: 'timeout', percent: 50 })
         resolve(getFallbackFont())
-      }, 8000)
+      }, 10000)
     })
   }
 

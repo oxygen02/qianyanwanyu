@@ -28,24 +28,6 @@
 
   <!-- 书页展示区（全屏编辑时彻底隐藏，避免原生 Canvas 穿透 overlay） -->
   <view class="canvas-area" wx:if="{{!editModeFullscreen}}" style="padding-top: calc(6rpx + {{safeAreaTop}}px); {{canvasAreaStyle}}">
-    <!-- 字体加载进度 -->
-    <view class="font-loading-bar" wx:if="{{fontLoading}}">
-      <view class="ink-loading">
-        <!-- 墨滴动画 -->
-        <view class="ink-drop"></view>
-        <view class="ink-drop ink-drop--delay"></view>
-        <!-- 文字 -->
-        <text class="ink-loading-text">正在载入字体</text>
-        <text class="ink-loading-percent">{{fontLoadingPercent}}%</text>
-        <!-- 进度条 -->
-        <view class="ink-progress-track">
-          <view class="ink-progress-fill" style="width:{{fontLoadingPercent}}%"></view>
-        </view>
-        <!-- 副标题 -->
-        <text class="ink-loading-sub">请稍候，好字值得等待</text>
-      </view>
-    </view>
-
     <view class="page-dots" wx:if="{{totalPages > 1 && !settingsPanelVisible && !editModeFullscreen}}">
       <view wx:for="{{pageDots}}" wx:key="index" class="page-dot {{currentPage === index ? 'active' : ''}}"/>
     </view>
