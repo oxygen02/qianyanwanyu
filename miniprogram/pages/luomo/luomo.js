@@ -762,9 +762,13 @@ Page({
 
     try {
       const poem = getRandomPoem()
-      if (!poem || !poem.lines || poem.lines.length === 0) return
+      if (!poem) return
+
+      const rawLines = (poem.content || '').split('\n').filter(l => l.trim())
+      if (rawLines.length === 0) return
 
       const shownIds = this._getShownPoemIds()
+      let finalPoem = poem
       if (shownIds.includes(poem.id)) {
         const { contentDB } = require('../../utils/content-data.js')
         const unseen = contentDB.filter(p => !shownIds.includes(p.id))
@@ -772,19 +776,19 @@ Page({
           shownIds.length = 0
           try { wx.removeStorageSync('__waiting_poems_shown__') } catch(_) {}
         } else {
-          const alt = unseen[Math.floor(Math.random() * unseen.length)]
-          poem.id = alt.id; poem.title = alt.title; poem.author = alt.author
-          poem.dynasty = alt.dynasty; poem.content = alt.content
-          poem.lines = alt.content ? alt.content.split('\n').filter(l => l.trim()) : []
+          finalPoem = unseen[Math.floor(Math.random() * unseen.length)]
         }
       }
 
-      this._recordPoemShown(poem.id)
+      this._recordPoemShown(finalPoem.id)
 
-      const lines = poem.lines.map((text, i) => ({ text, visible: false, index: i }))
+      const lines = (finalPoem.content || '').split('\n').filter(l => l.trim()).map((text, i) => ({ text, visible: false, index: i }))
+      if (lines.length === 0) return
+
+      console.log('[luomo] 等待诗词:', finalPoem.title, '-', finalPoem.author, '(', lines.length, '句)')
       this.setData({
         showWaitingPoem: true,
-        waitingPoem: { title: poem.title, author: poem.author, dynasty: poem.dynasty },
+        waitingPoem: { title: finalPoem.title, author: finalPoem.author, dynasty: finalPoem.dynasty },
         poemLines: lines
       })
 
