@@ -58,11 +58,8 @@
         <text class="poem-author">—— {{waitingPoem.dynasty || ''}}{{waitingPoem.author}}</text>
         <view class="poem-divider"></view>
         <view class="poem-content typewriter">
-          <text class="typewriter-line" wx:for="{{poemLines}}" wx:key="index">
-            <text wx:for="{{item.chars}}" wx:for-item="char" wx:key="charIndex" 
-                  class="typewriter-char {{char.visible ? 'visible' : ''}}">{{char.text}}</text>
-            <text class="typewriter-cursor" wx:if="{{item.isLastLine && !isTypingComplete}}">|</text>
-          </text>
+          <text class="typewriter-text">{{displayedText}}</text>
+          <text class="typewriter-cursor" wx:if="{{!isTypingComplete}}">|</text>
         </view>
       </view>
     </view>
