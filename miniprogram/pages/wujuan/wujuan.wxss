@@ -187,8 +187,8 @@
 }
 
 .history-delete {
-  width: 48rpx;
-  height: 48rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,8 +196,31 @@
 }
 
 .delete-icon {
-  font-size: 28rpx;
-  color: rgba(158, 148, 136, 0.5);
+  font-size: 36rpx;
+  color: rgba(158, 148, 136, 0.6);
+  font-weight: 300;
+}
+
+.history-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.history-edit-btn {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.edit-icon {
+  font-size: 32rpx;
+  color: #3D2B1F;
 }
 
 /* ---- 模板网格 ---- */
@@ -334,4 +357,26 @@
 .setting-arrow {
   font-size: 24rpx;
   color: #9E9488;
+}
+
+/* ---- 关于联系方式 ---- */
+.about-contact {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 12rpx !important;
+  padding: 24rpx 0 !important;
+}
+
+.about-contact-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8rpx 0;
+}
+
+.about-contact-value {
+  font-size: 24rpx;
+  color: #6B5B4F;
+  font-family: monospace;
 }

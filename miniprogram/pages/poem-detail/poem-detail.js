@@ -11,10 +11,11 @@ Page({
   },
 
   async onLoad(options) {
+    this.setData({ totalCount: poemService.getTotalCount() })
+    
     if (options.id) {
       await this._loadPoemById(options.id)
     } else {
-      // 如果没有ID，随机加载一首
       await this._loadRandomPoem()
     }
   },
@@ -23,8 +24,10 @@ Page({
     this.setData({ isLoading: true })
     try {
       const poem = await poemService.getById(id)
+      const idx = poemService.getCurrentIndex(id)
       this.setData({
         poem,
+        currentIndex: idx >= 0 ? idx : 0,
         isLoading: false
       })
     } catch (err) {
@@ -38,8 +41,10 @@ Page({
     this.setData({ isLoading: true })
     try {
       const poem = await poemService.getRandom()
+      const idx = poemService.getCurrentIndex(poem.id)
       this.setData({
         poem,
+        currentIndex: idx >= 0 ? idx : 0,
         isLoading: false
       })
     } catch (err) {
@@ -49,15 +54,29 @@ Page({
   },
 
   async onPrevPoem() {
+    if (this.data.isLoading) return
+    const { currentIndex } = this.data
+    
+    if (currentIndex <= 0) {
+      wx.showToast({ title: '已经是第一篇了', icon: 'none' })
+      return
+    }
+
     this.setData({ isLoading: true })
     try {
-      // 获取当前分类的上一首
-      const poem = await poemService.getRandom() // 临时用随机，后续可优化为获取上一首
-      this.setData({
-        poem,
-        isLoading: false
-      })
-      wx.pageScrollTo({ scrollTop: 0, duration: 300 })
+      const prevIndex = currentIndex - 1
+      const poem = poemService.getByIndex(prevIndex)
+      if (poem) {
+        this.setData({
+          poem,
+          currentIndex: prevIndex,
+          isLoading: false
+        })
+        wx.pageScrollTo({ scrollTop: 0, duration: 300 })
+      } else {
+        this.setData({ isLoading: false })
+        wx.showToast({ title: '加载失败', icon: 'none' })
+      }
     } catch (err) {
       this.setData({ isLoading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
@@ -65,30 +84,35 @@ Page({
   },
 
   async onRandomPoem() {
-    this.setData({ isLoading: true })
-    try {
-      const poem = await poemService.getRandom()
-      this.setData({
-        poem,
-        isLoading: false
-      })
-      wx.pageScrollTo({ scrollTop: 0, duration: 300 })
-    } catch (err) {
-      this.setData({ isLoading: false })
-      wx.showToast({ title: '加载失败', icon: 'none' })
-    }
+    if (this.data.isLoading) return
+    await this._loadRandomPoem()
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 })
   },
 
   async onNextPoem() {
+    if (this.data.isLoading) return
+    const { currentIndex, totalCount } = this.data
+
+    if (currentIndex >= totalCount - 1) {
+      wx.showToast({ title: '已经是最后一篇了', icon: 'none' })
+      return
+    }
+
     this.setData({ isLoading: true })
     try {
-      // 获取当前分类的下一首
-      const poem = await poemService.getRandom() // 临时用随机，后续可优化为获取下一首
-      this.setData({
-        poem,
-        isLoading: false
-      })
-      wx.pageScrollTo({ scrollTop: 0, duration: 300 })
+      const nextIndex = currentIndex + 1
+      const poem = poemService.getByIndex(nextIndex)
+      if (poem) {
+        this.setData({
+          poem,
+          currentIndex: nextIndex,
+          isLoading: false
+        })
+        wx.pageScrollTo({ scrollTop: 0, duration: 300 })
+      } else {
+        this.setData({ isLoading: false })
+        wx.showToast({ title: '加载失败', icon: 'none' })
+      }
     } catch (err) {
       this.setData({ isLoading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
@@ -128,7 +152,6 @@ Page({
     }
   },
 
-  // 阻止触摸事件冒泡
   preventTouchMove() {
     return false
   }

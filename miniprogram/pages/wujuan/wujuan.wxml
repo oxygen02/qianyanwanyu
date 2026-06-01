@@ -47,8 +47,6 @@
         wx:for="{{historyList}}"
         wx:key="id"
         class="history-item"
-        bind:tap="onHistoryItemTap"
-        data-id="{{item.id}}"
       >
         <!-- 缩略图 -->
         <view class="history-thumb" style="background-color:#FAF7F2">
@@ -61,16 +59,21 @@
           <text wx:else class="history-thumb-placeholder">文</text>
         </view>
         <!-- 信息 -->
-        <view class="history-info">
+        <view class="history-info" bindtap="onEditHistory" data-id="{{item.id}}">
           <text class="history-text">{{item.text}}</text>
           <view class="history-meta">
             <text class="history-template">{{item.templateName || item.templateId}}</text>
             <text class="history-date">{{item.dateStr}}</text>
           </view>
         </view>
-        <!-- 删除按钮 -->
-        <view class="history-delete" bind:tap="onDeleteHistory" data-id="{{item.id}}" catch:tap="_noop">
-          <text class="delete-icon">x</text>
+        <!-- 操作按钮 -->
+        <view class="history-actions">
+          <view class="history-edit-btn" bindtap="onEditHistory" data-id="{{item.id}}" catchtap="_noop">
+            <text class="edit-icon">✎</text>
+          </view>
+          <view class="history-delete" bindtap="onDeleteHistory" data-id="{{item.id}}" catchtap="_noop">
+            <text class="delete-icon">×</text>
+          </view>
         </view>
       </view>
     </view>
@@ -127,25 +130,32 @@
       </view>
 
       <!-- 导出质量 -->
-      <view class="setting-item">
+      <view class="setting-item" bindtap="onExportQualityTap">
         <view class="setting-info">
           <text class="setting-label">导出清晰度</text>
-          <text class="setting-desc">高清（2倍分辨率）</text>
+          <text class="setting-desc">{{settings.exportQuality === 'standard' ? '标清（1倍分辨率）' : settings.exportQuality === 'high' ? '高清（2倍分辨率）' : '超清（3倍分辨率）'}}</text>
         </view>
-        <text class="setting-value">高清</text>
+        <text class="setting-arrow">›</text>
       </view>
 
       <!-- 关于 -->
       <view class="setting-section-title">关于</view>
+      <view class="setting-item about-contact">
+        <view class="about-contact-row">
+          <text class="setting-label">微信号</text>
+          <text class="about-contact-value" bindtap="onCopyWechat" data-value="oygq15510183555">oygq15510183555</text>
+        </view>
+        <view class="about-contact-row">
+          <text class="setting-label">邮箱</text>
+          <text class="about-contact-value" bindtap="onCopyEmail" data-value="oygq15510183555@163.com">oygq15510183555@163.com</text>
+        </view>
+      </view>
       <view class="setting-item" bind:tap="onAbout">
         <text class="setting-label">铅言万语</text>
         <text class="setting-arrow">v1.0</text>
       </view>
       <view class="setting-item">
         <text class="setting-label">为文字造一页纸</text>
-      </view>
-      <view class="setting-item">
-        <text class="setting-label">让阅读回到阅读</text>
       </view>
 
     </view>

@@ -65,8 +65,8 @@ Page({
     activeFontId: '',
     // 当前选中字体下载状态 'idle' | 'loading' | 'loaded' | 'failed'
     activeFontDownloadStatus: 'idle',
-    // 水印开关
-    watermarkEnabled: true,
+    // 品牌印章开关
+    brandStampEnabled: true,
     // 设置面板
     settingsPanelVisible: false,
     // 设置面板当前 Tab（text | paper | layout）
@@ -123,7 +123,8 @@ Page({
 
       // 装饰元素 ===
       stampEnabled: null,
-      watermarkPosition: 'bottomRight',
+      brandStampEnabled: true,
+      brandStampPosition: 'bottomRight',
 
       // === 纸张尺寸 ===
       paperSizeId: 'a4',
@@ -134,7 +135,6 @@ Page({
       textScript: 'sc',
       preserveLineBreaks: true,
       textSkew: 0,
-      watermarkType: 'none',
 
       // === 排版新增设置 ===
       paragraphSpacing: 15,
@@ -205,9 +205,8 @@ Page({
       inkColorIndex: 0,  // 默认松烟墨黑，与模板一致
       inkOpacity: 65,
       textAlign: 'left',
-      watermarkEnabled: false,
-      watermarkOptions: ['无水印', '浅纹暗水印', '自定义文字水印', '书页暗纹水印'],
-      watermarkIndex: 0,
+      brandStampEnabled: true,
+      brandStampPosition: 'bottomRight',
       traditionalChinese: false,
       strokeEnabled: false,
       strokeWidth: 1,
@@ -362,13 +361,17 @@ Page({
     // 构建模板列表（轻量版，仅 id + name + desc + paper color）
     const templateList = TEMPLATE_ORDER.map(id => {
       const t = TEMPLATES[id]
+      if (!t || !t.id) {
+        console.warn('[initPageData] 模板不存在或缺少 id:', id)
+        return null
+      }
       return {
         id: t.id,
         name: t.name,
         desc: t.desc,
-        paper: { baseColor: t.paper.baseColor }
+        paper: { baseColor: (t.paper && t.paper.baseColor) || '#FAF7F2' }
       }
-    })
+    }).filter(Boolean)
 
     // 构建纸张尺寸列表
     const paperSizeList = Object.values(PAPER_SIZES)
@@ -408,7 +411,7 @@ Page({
       paperSizeList,
       activeFontId: currentFontId,
       activeFontDownloadStatus: currentFontStatus === 'loaded' ? 'loaded' : 'idle',
-      watermarkEnabled: userSettings.watermarkEnabled !== false,
+      brandStampEnabled: userSettings.brandStampEnabled !== false,
       settings: initialSettings,
       'textSettings.fontSize': initialSettings.fontSize,
       'textSettings.fontSizeDisplay': initialSettings.fontSizeDisplay,
@@ -471,6 +474,32 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 })
     }
+    this._checkAndLoadHistory()
+  },
+
+  _checkAndLoadHistory() {
+    try {
+      const editId = wx.getStorageSync('__edit_history_id')
+      if (!editId) return
+      wx.removeStorageSync('__edit_history_id')
+      this._pendingText = null
+      const { loadHistory } = require('../../utils/storage')
+      const list = loadHistory()
+      const item = list.find(h => h.id === editId)
+      if (item && item.text) {
+        this._stopCursorBlink()
+        this._renderTimer && clearTimeout(this._renderTimer)
+        this.setData({ text: item.text }, () => {
+          this._renderTimer = setTimeout(() => {
+            this._renderTimer = null
+            if (this._canvasReady) {
+              this._doRender(item.text)
+            }
+          }, 300)
+        })
+        wx.showToast({ title: '已加载历史记录', icon: 'none', duration: 1200 })
+      }
+    } catch (e) {}
   },
 
   onUnload() {
@@ -544,7 +573,9 @@ Page({
    * 输入框获得焦点
    */
   onInputFocus() {
-    // 可以在这里添加额外的聚焦逻辑，如滚动到输入框位置等
+    if (this._inputFocused) return
+    this._inputFocused = true
+    this._focusTime = Date.now()
     console.log('[luomo] 输入框获得焦点')
   },
 
@@ -552,6 +583,7 @@ Page({
    * 输入框失去焦点
    */
   onInputBlur() {
+    this._inputFocused = false
     console.log('[luomo] 输入框失去焦点')
   },
 
@@ -613,7 +645,7 @@ Page({
         wx.onKeyboardHeightChange(this._fullscreenKeyboardCallback)
       }
     } else {
-      // 退出全屏模式：取消键盘监听、重置 Canvas 状态并重新初始化
+      // 退出全屏模式：取消键盘监听、重置状态
       if (this._fullscreenKeyboardCallback) {
         wx.offKeyboardHeightChange(this._fullscreenKeyboardCallback)
         this._fullscreenKeyboardCallback = null
@@ -623,13 +655,12 @@ Page({
         fullscreenFocused: false,
         fullscreenTextareaHeight: 400
       })
-      // Canvas 被 wx:if 重建后需要重新获取上下文
+      // 延迟重建 Canvas（避免与 tabBar 冲突）
       this._canvasReady = false
       this._canvas = null
-      // 等 DOM 更新完成后重新初始化 Canvas 并触发渲染
-      wx.nextTick(() => {
-        setTimeout(() => { this._initCanvas() }, 50)
-      })
+      setTimeout(() => {
+        this._initCanvas()
+      }, 200)
     }
   },
 
@@ -662,6 +693,37 @@ Page({
       data: text,
       success: () => {
         wx.showToast({ title: '已复制', icon: 'success', duration: 1000 })
+      }
+    })
+  },
+
+  onInputLongPress() {
+    wx.showActionSheet({
+      itemList: ['粘贴', '全选', '清空'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          wx.getClipboardData({
+            success: (clipRes) => {
+              const clipText = clipRes.data
+              if (clipText) {
+                const newText = this.data.text + clipText
+                this.setData({ text: newText })
+                this._pendingText = newText
+                this._triggerRender()
+                wx.showToast({ title: '已粘贴', icon: 'success' })
+              } else {
+                wx.showToast({ title: '剪贴板为空', icon: 'none' })
+              }
+            },
+            fail: () => {
+              wx.showToast({ title: '读取剪贴板失败', icon: 'none' })
+            }
+          })
+        } else if (res.tapIndex === 1) {
+          this.onSelectAllText()
+        } else if (res.tapIndex === 2) {
+          this.onClearDraft()
+        }
       }
     })
   },
@@ -762,7 +824,7 @@ Page({
       this._settingsDebounceTimer = setTimeout(() => {
         this._doRender(text)
         this._settingsDebounceTimer = null
-      }, 100)
+      }, 150)
     } catch (e) {
       console.error('[luomo] _triggerRender 异常:', e)
     }
@@ -848,7 +910,7 @@ Page({
         template,
         pageIndex: this.data.currentPage,
         totalPages: total,
-        dateStr: this.data.watermarkEnabled ? this._getDateStr() : null
+        dateStr: this.data.brandStampEnabled ? this._getDateStr() : null
       })
 
       const timeoutPromise = new Promise((_, reject) => {
@@ -1136,6 +1198,9 @@ Page({
    */
   _registerKeyboardListener() {
     _keyboardChangeCallback = (res) => {
+      if (this._kbTimer) return
+      this._kbTimer = setTimeout(() => { this._kbTimer = null }, 100)
+
       const keyboardHeight = res.height
       const windowInfo = wx.getWindowInfo()
       const screenWidth = windowInfo.windowWidth
@@ -1650,11 +1715,6 @@ Page({
     this._triggerRender()
   },
 
-  onWatermarkTypeChange(e) {
-    this.setData({ 'settings.watermarkType': e.currentTarget.dataset.type })
-    this._triggerRender()
-  },
-
   onLineHeightChange(e) {
     const val = e.detail.value
     this.setData({
@@ -1838,12 +1898,6 @@ Page({
 
   onStampToggle() {
     this.setData({ 'settings.stampEnabled': !this.data.settings.stampEnabled })
-    this._triggerRender()
-
-  },
-
-  onWatermarkPositionChange(e) {
-    this.setData({ 'settings.watermarkPosition': e.currentTarget.dataset.pos })
     this._triggerRender()
 
   },
@@ -2090,7 +2144,8 @@ Page({
       textSkew: 0,
       textSkewDisplay: '0°',
       autoFilter: false,
-      watermarkType: 'none', // none, light, custom, page
+      brandStampEnabled: true,
+      brandStampPosition: 'bottomRight',
 
       // 排版设置新增
       paragraphSpacing: 15,
@@ -2124,8 +2179,8 @@ Page({
       lightIntensityVal: (t.paper.light && t.paper.light.enabled) ? Math.round((t.paper.light.opacity || 0.2) * 100) : 0,
 
       // 装饰元素
-      stampEnabled: !!(t.decoration && t.decoration.stamp),
-      watermarkPosition: (t.decoration && t.decoration.watermark && t.decoration.watermark.position) || 'bottomRight',
+      brandStampEnabled: (t.brandStamp && t.brandStamp.enabled !== false) ? true : false,
+      brandStampPosition: (t.brandStamp && t.brandStamp.position) || 'bottomRight',
 
       // 纸张尺寸
       paperSizeId: 'a4'
@@ -2197,7 +2252,8 @@ Page({
       textScript: s.textScript || 'sc',
       preserveLineBreaks: s.preserveLineBreaks != null ? s.preserveLineBreaks : true,
       autoFilter: s.autoFilter || false,
-      watermarkType: s.watermarkType || 'none',
+      brandStampEnabled: s.brandStampEnabled != null ? s.brandStampEnabled : true,
+      brandStampPosition: s.brandStampPosition || 'bottomRight',
 
       // 装饰元素（保留）
       pageNumberEnabled: s.pageNumberEnabled || false,
@@ -2222,8 +2278,8 @@ Page({
       lightIntensityVal: (t.paper.light && t.paper.light.enabled) ? Math.round((t.paper.light.opacity || 0) * 100) : 0,
 
       // 装饰元素（跟随模板变化）
-      stampEnabled: !!(t.decoration && t.decoration.stamp),
-      watermarkPosition: (t.decoration && t.decoration.watermark && t.decoration.watermark.position) || 'bottomRight',
+      brandStampEnabled: (t.brandStamp && t.brandStamp.enabled !== false) ? true : (s.brandStampEnabled || true),
+      brandStampPosition: (t.brandStamp && t.brandStamp.position) || s.brandStampPosition || 'bottomRight',
 
       // 纸张尺寸
       paperSizeId: s.paperSizeId || 'a4'
@@ -2295,9 +2351,9 @@ Page({
       ink: { ...base.ink },
       decoration: base.decoration ? {
         ...base.decoration,
-        stamp: base.decoration.stamp ? { ...base.decoration.stamp } : null,
-        watermark: base.decoration.watermark ? { ...base.decoration.watermark } : null
-      } : null
+        stamp: base.decoration.stamp ? { ...base.decoration.stamp } : null
+      } : null,
+      brandStamp: base.brandStamp ? { ...base.brandStamp } : { enabled: true, position: 'bottomRight' }
     }
     const s = this.data.settings
 
@@ -2339,8 +2395,13 @@ Page({
     // === 质感效果 ===
     if (s.aging != null) tpl.paper.ageOpacity = s.aging
     if (s.fiberOpacity != null) tpl.paper.fiberOpacity = s.fiberOpacity
-    if (s.shadowIntensity != null) {
+    // 阴影：优先使用开关状态，其次用强度值
+    if (s.shadowEnabled != null) {
+      tpl.paper.shadow = s.shadowEnabled
+      tpl.paper.shadowIntensity = (s.shadowIntensity != null) ? s.shadowIntensity : 0.5
+    } else if (s.shadowIntensity != null) {
       tpl.paper.shadow = s.shadowIntensity > 0.05
+      tpl.paper.shadowIntensity = s.shadowIntensity
     }
     if (s.lightIntensity != null) {
       if (s.lightIntensity > 0.05) {
@@ -2372,13 +2433,24 @@ Page({
         tpl.decoration.stamp = null
       }
     }
-    if (s.watermarkPosition != null) {
-      if (s.watermarkPosition === 'none') {
-        tpl.watermark = null
-      } else {
-        tpl.watermark = tpl.watermark || { text: '铅言万语', position: 'bottomRight', opacity: 0.15, fontSize: 20 }
-        tpl.watermark.position = s.watermarkPosition
+    if (s.brandStampEnabled != null) {
+      tpl.brandStamp = {
+        enabled: s.brandStampEnabled,
+        position: s.brandStampPosition || 'bottomRight'
       }
+    }
+
+    // === 纸张特效：瑕疵 ===
+    if (s.imperfectionEnabled != null) {
+      tpl.paper.imperfection = s.imperfectionEnabled
+      tpl.paper.imperfectionType = s.imperfectionTypeIndex != null ? ['stain', 'inkspot', 'dust', 'watermark'][s.imperfectionTypeIndex] || 'stain' : 'stain'
+      tpl.paper.imperfectionIntensity = (s.imperfectionIntensity != null) ? s.imperfectionIntensity / 100 : 0.5
+    }
+
+    // === 纸张特效：装订 ===
+    if (s.stitchEnabled != null) {
+      tpl.paper.stitch = s.stitchEnabled
+      tpl.paper.stitchType = s.stitchTypeIndex != null ? ['thread-hole', 'spine-crease'][s.stitchTypeIndex] || 'thread-hole' : 'thread-hole'
     }
 
     // === 文字新增设置 ===
@@ -2400,10 +2472,6 @@ Page({
     // 文字倾斜
     if (s.textSkew != null) {
       tpl.layout.textSkew = s.textSkew
-    }
-    // 水印类型
-    if (s.watermarkType != null) {
-      tpl.layout.watermarkType = s.watermarkType
     }
 
     // === 排版新增设置 ===
@@ -2458,14 +2526,6 @@ Page({
     return tpl
   },
 
-  // ============ 水印 ============
-
-  onToggleWatermark() {
-    const enabled = !this.data.watermarkEnabled
-    this.setData({ watermarkEnabled: enabled })
-    this._triggerRender()
-  },
-
   // ============ 导出 ============
 
   async onExport() {
@@ -2477,10 +2537,13 @@ Page({
     this.setData({ isRendering: true })
 
     try {
+      const userSettings = loadSettings()
+      const quality = (userSettings && userSettings.exportQuality) || 'high'
       const tempPath = await exportFlow({
         canvas: this._canvas,
         pageInstance: this,
-        canvasSize: { width: this._canvasWidth, height: this._canvasHeight }
+        canvasSize: { width: this._canvasWidth, height: this._canvasHeight },
+        quality
       })
 
       // 保存到历史记录
@@ -2732,11 +2795,11 @@ Page({
     })
   },
 
-  onWatermarkToggle(e) {
+  onBrandStampToggle(e) {
     const enabled = e.detail.value
     this.setData({
-      'textSettings.watermarkEnabled': enabled,
-      'settings.watermarkType': enabled ? 'light' : 'none'
+      'textSettings.brandStampEnabled': enabled,
+      'brandStampEnabled': enabled
     }, () => {
       this._triggerRender()
     })
@@ -2747,17 +2810,6 @@ Page({
     this.setData({
       'textSettings.traditionalChinese': enabled,
       'settings.textScript': enabled ? 'tc' : 'sc'
-    }, () => {
-      this._triggerRender()
-    })
-  },
-
-  onWatermarkTypeChange(e) {
-    const index = e.detail.value
-    const typeMap = ['none', 'light', 'custom', 'page']
-    this.setData({
-      'textSettings.watermarkIndex': index,
-      'settings.watermarkType': typeMap[index] || 'none'
     }, () => {
       this._triggerRender()
     })
@@ -2836,9 +2888,7 @@ Page({
         inkColorIndex: 0,
         inkOpacity: 35,
         textAlign: 'left',
-        watermarkEnabled: false,
-        watermarkOptions: ['无水印', '浅纹暗水印', '自定义文字水印', '书页暗纹水印'],
-        watermarkIndex: 0,
+        brandStampEnabled: true,
         traditionalChinese: false,
         strokeEnabled: false,
         strokeWidth: 1,

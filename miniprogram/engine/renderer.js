@@ -1,7 +1,7 @@
 // engine/renderer.js
 // 主渲染器 - 协调 paper.js + ink-effect.js + typesetter.js
 
-const { generatePaperTexture, drawBorder, drawGrid, drawLineGuide } = require('./paper')
+const { generatePaperTexture, drawBorder, drawGrid, drawLineGuide, drawImperfection, drawStitch } = require('./paper')
 const { drawInkBlock, drawInkBlockWithOpenType, drawBrandStamp, drawPageNumber, canUseOpenTypeFont } = require('./ink-effect')
 const { typesetAllPages } = require('./typesetter')
 const { TEMPLATES } = require('../utils/constants')
@@ -191,6 +191,21 @@ async function renderPage(params) {
   // 边框
   drawBorder(ctx, width, height, template.paper.border)
 
+  // 瑕疵效果（在边框之后、文字之前）
+  if (template.paper.imperfection) {
+    drawImperfection(ctx, width, height, {
+      type: template.paper.imperfectionType || 'stain',
+      intensity: template.paper.imperfectionIntensity || 0.5
+    })
+  }
+
+  // 装订效果（在瑕疵之后、文字之前）
+  if (template.paper.stitch) {
+    drawStitch(ctx, width, height, {
+      type: template.paper.stitchType || 'thread-hole'
+    })
+  }
+
   // ============ 第三层：文字排版 + 油墨渲染 ============
   // 使用缓存的排版结果（避免每次翻页都完整重新排版）
   const glyphCacheKey = _makeCacheKey(
@@ -236,7 +251,7 @@ async function renderPage(params) {
     enabled: template.brandStamp !== false,
     position: (template.brandStamp && template.brandStamp.position) || 'bottomRight'
   }
-  drawBrandStamp(ctx, width, height, brandFont, brandStampConfig)
+  await drawBrandStamp(ctx, width, height, brandFont, brandStampConfig)
   if (template.layout.pageNumberEnabled && totalPages > 1) {
     drawPageNumber(ctx, width, height, pageIndex + 1, totalPages, template.decoration)
   }

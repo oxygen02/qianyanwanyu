@@ -228,15 +228,21 @@ async function resolveFontURL(fontConfig) {
  * @returns {Promise<void>}
  */
 function ensureCanvasFontReady(fontFamily) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      console.warn('[font-loader] ensureCanvasFontReady 超时:', fontFamily)
+      resolve()
+    }, 2000)
+
     try {
       const offscreen = wx.createOffscreenCanvas({ type: '2d', width: 20, height: 20 })
       const ctx = offscreen.getContext('2d')
       ctx.font = `16px "${fontFamily}"`
       ctx.fillText('字', 5, 15)
-      // 给 Canvas 引擎一帧时间真正加载字形
+      clearTimeout(timeout)
       setTimeout(resolve, 60)
     } catch (e) {
+      clearTimeout(timeout)
       console.warn('[font-loader] ensureCanvasFontReady 失败:', e)
       resolve()
     }
@@ -300,12 +306,12 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
   return new Promise((resolve) => {
     const FALLBACK_FONT = getFallbackFont()
     let retryCount = 0
+    let isResolved = false
 
     const attemptLoad = () => {
-      // 优化超时时间：根据文件大小动态调整，最长不超过3秒
-      const loadTimeout = Math.min(3000, Math.max(1500, (fontConfig.fileSize || 0) * 0.3))
+      // 优化超时时间：根据文件大小动态调整，最长不超过5秒（模拟器需要更长时间）
+      const loadTimeout = Math.min(5000, Math.max(2000, (fontConfig.fileSize || 0) * 0.3))
       let loadTimer = null
-      let isResolved = false
 
       const safeResolve = (result) => {
         if (!isResolved) {
@@ -317,10 +323,14 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
 
       loadTimer = setTimeout(() => {
         console.warn('[font-loader] 字体加载超时:', fontConfig.name)
+        if (isResolved) {
+          console.log('[font-loader] 字体已成功加载，忽略超时')
+          return
+        }
         if (retryCount < maxRetries) {
           retryCount++
           delete _tempUrls[fontConfig.id]
-          setTimeout(attemptLoad, 200)
+          setTimeout(attemptLoad, 300)
         } else {
           _loadedFonts[fontConfig.id] = 'failed'
           _loadedFonts[fontConfig.id + '_failed'] = true
@@ -336,8 +346,15 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
           style: fontConfig.style || 'normal'
         },
         success: async () => {
+          if (isResolved) return
           console.log('[font-loader] wx.loadFontFace 成功:', fontConfig.name)
-          await ensureCanvasFontReady(fontConfig.family)
+
+          try {
+            await ensureCanvasFontReady(fontConfig.family)
+          } catch (e) {
+            console.warn('[font-loader] ensureCanvasFontReady 超时或失败，继续使用字体:', e.message || e)
+          }
+
           _loadedFonts[fontConfig.id] = 'loaded'
           console.log('[font-loader] 字体完全就绪:', fontConfig.name)
           if (isSimulatorDetected()) {
@@ -391,6 +408,27 @@ function loadFont(fontId) {
   // 已加载，直接返回
   if (_loadedFonts[fontId] === 'loaded') {
     return Promise.resolve(fontId)
+  }
+
+  // 正在加载中，等待完成（防止重复请求导致无限循环）
+  if (_loadedFonts[fontId] === 'loading') {
+    console.log('[font-loader] 字体正在加载中，等待:', fontId)
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (_loadedFonts[fontId] === 'loaded') {
+          clearInterval(checkInterval)
+          resolve(fontId)
+        } else if (_loadedFonts[fontId] === 'failed') {
+          clearInterval(checkInterval)
+          resolve(getFallbackFont())
+        }
+      }, 200)
+      setTimeout(() => {
+        clearInterval(checkInterval)
+        console.warn('[font-loader] 字体加载等待超时:', fontId)
+        resolve(getFallbackFont())
+      }, 30000)
+    })
   }
 
   // 系统字体无需加载

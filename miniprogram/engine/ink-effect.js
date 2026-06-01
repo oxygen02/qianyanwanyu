@@ -327,7 +327,7 @@ function drawInkChar(ctx, char, x, y, inkConfig, fontConfig, fontSize) {
 /**
  * 绘制品牌印章（铅言万语）
  * 可选配置项：默认开启，右下角显示
- * 包含红色方印图标 + "铅言万语"文字（字体跟随用户选择，24rpx固定大小）
+ * 使用真实印章图片 qianyanwanyu.png
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} width - Canvas宽度
@@ -335,91 +335,78 @@ function drawInkChar(ctx, char, x, y, inkConfig, fontConfig, fontSize) {
  * @param {string} fontFamily - 用户选择的字体
  * @param {object} config - 配置选项 { enabled: true, position: 'bottomRight' }
  */
-function drawBrandStamp(ctx, width, height, fontFamily, config) {
+async function drawBrandStamp(ctx, width, height, fontFamily, config) {
   if (!config || !config.enabled) return
 
   const dpr = getPixelRatio()
-  const margin = 16 * dpr
+  const margin = 8 * dpr
   const sealSize = 28 * dpr
-  const textFontSize = 12 * dpr
-  const text = '铅言万语'
-  const sealColor = '#C41E3A'
-  const textColor = '#8B4513'
-  const textOpacity = 0.55
-
-  ctx.save()
-
-  const textWidth = (text.length * textFontSize * 0.65)
-  const totalWidth = sealSize + 6 * dpr + textWidth
 
   let startX, startY
   const position = config.position || 'bottomRight'
 
   if (position === 'bottomRight') {
-    startX = width - margin - totalWidth
-    startY = height - margin - Math.max(sealSize, textFontSize) / 2
+    startX = width - margin - sealSize
+    startY = height - margin - sealSize / 2
   } else if (position === 'bottomLeft') {
     startX = margin
-    startY = height - margin - Math.max(sealSize, textFontSize) / 2
+    startY = height - margin - sealSize / 2
   } else if (position === 'topRight') {
-    startX = width - margin - totalWidth
-    startY = margin + Math.max(sealSize, textFontSize) / 2
+    startX = width - margin - sealSize
+    startY = margin + sealSize / 2
   } else {
     startX = margin
-    startY = margin + Math.max(sealSize, textFontSize) / 2
+    startY = margin + sealSize / 2
   }
 
-  ctx.globalCompositeOperation = 'source-over'
+  try {
+    const sealImg = await _loadSealImage()
+    if (sealImg) {
+      ctx.save()
+      ctx.globalAlpha = 0.5
+      ctx.drawImage(sealImg, startX, startY - sealSize / 2, sealSize, sealSize)
+      ctx.restore()
+    }
+  } catch (e) {
+    console.warn('[ink-effect] 品牌印章图片加载失败:', e)
+  }
+}
 
-  ctx.save()
-  ctx.translate(startX + sealSize / 2, startY)
-  ctx.fillStyle = sealColor
-  ctx.globalAlpha = 0.75
-
-  const half = sealSize / 2
-  const r = 1.5 * dpr
-  ctx.beginPath()
-  ctx.moveTo(-half + r, -half)
-  ctx.lineTo(half - r * 1.3, -half + r * 0.5)
-  ctx.lineTo(half, -half + r * 1.8)
-  ctx.lineTo(half - r * 0.3, half - r * 1.2)
-  ctx.lineTo(half - r * 1.5, half)
-  ctx.lineTo(-half + r * 0.8, half - r * 0.4)
-  ctx.lineTo(-half, half - r * 1.6)
-  ctx.lineTo(-half + r * 1.2, -half + r)
-  ctx.closePath()
-  ctx.fill()
-
-  ctx.fillStyle = 'rgba(255,250,240,0.9)'
-  ctx.font = `bold ${sealSize * 0.42}px ${fontFamily || 'serif'}`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('铅', 0, -sealSize * 0.15)
-  ctx.fillText('言', 0, sealSize * 0.18)
-
-  ctx.strokeStyle = 'rgba(180,30,50,0.6)'
-  ctx.lineWidth = 1.2 * dpr
-  ctx.beginPath()
-  ctx.moveTo(-half + r, -half)
-  ctx.lineTo(half - r * 1.3, -half + r * 0.5)
-  ctx.lineTo(half, -half + r * 1.8)
-  ctx.lineTo(half - r * 0.3, half - r * 1.2)
-  ctx.lineTo(half - r * 1.5, half)
-  ctx.lineTo(-half + r * 0.8, half - r * 0.4)
-  ctx.lineTo(-half, half - r * 1.6)
-  ctx.lineTo(-half + r * 1.2, -half + r)
-  ctx.closePath()
-  ctx.stroke()
-  ctx.restore()
-
-  ctx.globalAlpha = textOpacity
-  ctx.fillStyle = textColor
-  ctx.font = `${textFontSize}px ${fontFamily || 'serif'}`
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(text, startX + sealSize + 6 * dpr, startY)
-
-  ctx.restore()
+/**
+ * 加载品牌印章图片（缓存）
+ * 路径：/qianyanwanyu.png
+ */
+let _sealImageCache = null
+let _sealImageLoading = false
+function _loadSealImage() {
+  return new Promise((resolve) => {
+    if (_sealImageCache) {
+      resolve(_sealImageCache)
+      return
+    }
+    if (_sealImageLoading) {
+      resolve(null)
+      return
+    }
+    _sealImageLoading = true
+    try {
+      const canvas = wx.createOffscreenCanvas({ type: '2d', width: 1, height: 1 })
+      const img = canvas.createImage()
+      img.onload = () => {
+        _sealImageCache = img
+        _sealImageLoading = false
+        resolve(img)
+      }
+      img.onerror = () => {
+        _sealImageLoading = false
+        resolve(null)
+      }
+      img.src = '/images/qianyanwanyu.png'
+    } catch (e) {
+      _sealImageLoading = false
+      resolve(null)
+    }
+  })
 }
 
 /**

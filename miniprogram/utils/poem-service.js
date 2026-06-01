@@ -273,6 +273,33 @@ function clearCache() {
 // 初始化
 initCloud()
 
+/**
+ * 获取诗词总数
+ */
+function getTotalCount() {
+  return contentDB.length
+}
+
+/**
+ * 获取指定ID的索引位置
+ */
+function getCurrentIndex(id) {
+  return contentDB.findIndex(item => item.id === id)
+}
+
+/**
+ * 根据索引获取诗词（用于上一篇/下一篇）
+ */
+function getByIndex(index) {
+  if (index < 0 || index >= contentDB.length) return null
+  const poem = contentDB[index]
+  return {
+    ...poem,
+    lines: poem.content ? poem.content.split('\n').filter(line => line.trim()) : [],
+    alignClass: getAlignClass(poem)
+  }
+}
+
 module.exports = {
   getList,
   getById,
@@ -280,5 +307,8 @@ module.exports = {
   search: searchPoems,
   getRandom,
   getCategories,
+  getTotalCount,
+  getCurrentIndex,
+  getByIndex,
   clearCache
 }

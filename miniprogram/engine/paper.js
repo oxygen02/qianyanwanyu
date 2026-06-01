@@ -611,5 +611,236 @@ module.exports = {
   drawBorder,
   drawGrid,
   drawLineGuide,
-  SimplexNoise
+  SimplexNoise,
+  drawImperfection,
+  drawStitch
+}
+
+/**
+ * 绘制纸张瑕疵效果（公开接口）
+ * 支持四种类型：黄斑斑点(stain)、细微墨点(inkspot)、尘土杂点(dust)、老旧水渍(watermark)
+ */
+function drawImperfection(ctx, width, height, config) {
+  if (!config) return
+
+  const type = config.type || 'stain'
+  const intensity = config.intensity || 0.5
+  const seed = config.seed || 0.42
+
+  ctx.save()
+
+  switch (type) {
+    case 'stain':
+      _drawStains(ctx, width, height, {
+        count: Math.round(2 + intensity * 3),
+        opacity: 0.04 + intensity * 0.1,
+        seed: seed
+      })
+      break
+
+    case 'inkspot':
+      _drawInkSpots(ctx, width, height, {
+        count: Math.round(3 + intensity * 5),
+        opacity: 0.03 + intensity * 0.08,
+        seed: seed + 0.17
+      })
+      break
+
+    case 'dust':
+      _drawDustParticles(ctx, width, height, {
+        count: Math.round(8 + intensity * 15),
+        opacity: 0.02 + intensity * 0.05,
+        size: 0.5 + intensity * 1.5,
+        seed: seed + 0.33
+      })
+      break
+
+    case 'watermark':
+      _drawWaterStain(ctx, width, height, {
+        count: 1,
+        opacity: 0.02 + intensity * 0.06,
+        seed: seed + 0.51
+      })
+      break
+  }
+
+  ctx.restore()
+}
+
+/**
+ * 细微墨点（模拟印刷墨迹飞溅）
+ */
+function _drawInkSpots(ctx, width, height, config) {
+  const count = config.count || 5
+  const opacity = config.opacity || 0.06
+  const seed = config.seed || 0.3
+
+  for (let i = 0; i < count; i++) {
+    const cx = width * (0.1 + _pseudoRandom(seed, i * 7) * 0.8)
+    const cy = height * (0.1 + _pseudoRandom(seed, i * 7 + 1) * 0.8)
+    const r = Math.min(width, height) * (0.003 + _pseudoRandom(seed, i * 7 + 2) * 0.012)
+
+    ctx.globalCompositeOperation = 'multiply'
+    ctx.fillStyle = `rgba(20,15,10,${opacity * (0.5 + _pseudoRandom(seed, i * 7 + 3) * 0.5)})`
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalCompositeOperation = 'source-over'
+}
+
+/**
+ * 尘土杂点（模拟纸张纤维杂质）
+ */
+function _drawDustParticles(ctx, width, height, config) {
+  const count = config.count || 12
+  const opacity = config.opacity || 0.03
+  const size = config.size || 1
+  const seed = config.seed || 0.6
+
+  for (let i = 0; i < count; i++) {
+    const cx = width * _pseudoRandom(seed, i * 11)
+    const cy = height * _pseudoRandom(seed, i * 11 + 1)
+    const r = size * (0.3 + _pseudoRandom(seed, i * 11 + 2) * 0.7)
+
+    ctx.globalCompositeOperation = 'multiply'
+    ctx.fillStyle = `rgba(90,75,55,${opacity * (0.4 + _pseudoRandom(seed, i * 11 + 3) * 0.6)})`
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalCompositeOperation = 'source-over'
+}
+
+/**
+ * 老旧水渍（模拟纸张受潮痕迹）
+ */
+function _drawWaterStain(ctx, width, height, config) {
+  const opacity = config.opacity || 0.04
+  const seed = config.seed || 0.8
+
+  const cx = width * (0.15 + _pseudoRandom(seed, 0) * 0.7)
+  const cy = height * (0.2 + _pseudoRandom(seed, 1) * 0.6)
+  const rx = Math.min(width, height) * (0.12 + _pseudoRandom(seed, 2) * 0.15)
+  const ry = rx * (0.6 + _pseudoRandom(seed, 3) * 0.5)
+
+  ctx.globalCompositeOperation = 'multiply'
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx)
+  gradient.addColorStop(0, `rgba(140,120,90,${opacity})`)
+  gradient.addColorStop(0.4, `rgba(130,110,80,${opacity * 0.6})`)
+  gradient.addColorStop(0.8, `rgba(110,95,70,${opacity * 0.2})`)
+  gradient.addColorStop(1, 'rgba(0,0,0,0)')
+
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(_pseudoRandom(seed, 4) * 0.3 - 0.15)
+  ctx.scale(1, ry / rx)
+  ctx.translate(-cx, -cy)
+  ctx.fillStyle = gradient
+  ctx.beginPath()
+  ctx.arc(cx, cy, rx, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  ctx.globalCompositeOperation = 'source-over'
+}
+
+/**
+ * 绘制装订效果（线装孔 / 书脊压痕）
+ */
+function drawStitch(ctx, width, height, config) {
+  if (!config) return
+
+  const type = config.type || 'thread-hole'
+  const dpr = typeof getPixelRatio === 'function' ? getPixelRatio() : 1
+
+  ctx.save()
+
+  if (type === 'thread-hole') {
+    _drawThreadHoles(ctx, width, height, dpr)
+  } else if (type === 'spine-crease') {
+    _drawSpineCrease(ctx, width, height, dpr)
+  }
+
+  ctx.restore()
+}
+
+/**
+ * 线装书孔（传统中式线装书的装订孔）
+ */
+function _drawThreadHoles(ctx, width, height, dpr) {
+  const holeRadius = 3.5 * dpr
+  const holeMargin = 22 * dpr
+  const holeSpacing = (height - holeMargin * 2) / 3
+
+  for (let i = 0; i < 4; i++) {
+    const y = holeMargin + i * holeSpacing
+    // 左侧孔
+    _drawSingleHole(ctx, holeMargin, y, holeRadius)
+    // 右侧孔
+    _drawSingleHole(ctx, width - holeMargin, y, holeRadius)
+  }
+}
+
+function _drawSingleHole(ctx, x, y, radius) {
+  // 孔洞阴影
+  ctx.globalCompositeOperation = 'multiply'
+  const shadowGrad = ctx.createRadialGradient(x, y, 0, x, y, radius * 2)
+  shadowGrad.addColorStop(0, 'rgba(40,30,20,0.25)')
+  shadowGrad.addColorStop(0.6, 'rgba(40,30,20,0.08)')
+  shadowGrad.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = shadowGrad
+  ctx.beginPath()
+  ctx.arc(x, y, radius * 2, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 孔洞本体
+  ctx.fillStyle = 'rgba(30,22,15,0.45)'
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 内部高光（模拟穿孔深度）
+  const innerGrad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 0, x, y, radius)
+  innerGrad.addColorStop(0, 'rgba(60,50,40,0.15)')
+  innerGrad.addColorStop(1, 'rgba(20,15,10,0.3)')
+  ctx.fillStyle = innerGrad
+  ctx.beginPath()
+  ctx.arc(x, y, radius * 0.85, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.globalCompositeOperation = 'source-over'
+}
+
+/**
+ * 书脊压痕（精装书/胶装书的书脊折痕）
+ */
+function _drawSpineCrease(ctx, width, height, dpr) {
+  const creaseX = 28 * dpr
+  const creaseWidth = 3 * dpr
+
+  // 主压痕阴影
+  const shadowGrad = ctx.createLinearGradient(creaseX - creaseWidth * 2, 0, creaseX + creaseWidth, 0)
+  shadowGrad.addColorStop(0, 'rgba(0,0,0,0)')
+  shadowGrad.addColorStop(0.5, 'rgba(30,25,18,0.06)')
+  shadowGrad.addColorStop(0.8, 'rgba(30,25,18,0.1)')
+  shadowGrad.addColorStop(1, 'rgba(30,25,18,0.04)')
+  ctx.fillStyle = shadowGrad
+  ctx.fillRect(creaseX - creaseWidth * 2, 0, creaseWidth * 3, height)
+
+  // 压痕高光线（右侧）
+  const highlightGrad = ctx.createLinearGradient(creaseX, 0, creaseX + creaseWidth * 0.5, 0)
+  highlightGrad.addColorStop(0, 'rgba(255,255,255,0)')
+  highlightGrad.addColorStop(0.5, 'rgba(255,250,240,0.04)')
+  highlightGrad.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = highlightGrad
+  ctx.fillRect(creaseX, 0, creaseWidth * 0.5, height)
+
+  // 压痕中心深色线
+  ctx.strokeStyle = 'rgba(35,28,18,0.07)'
+  ctx.lineWidth = 1 * dpr
+  ctx.beginPath()
+  ctx.moveTo(creaseX, 0)
+  ctx.lineTo(creaseX, height)
+  ctx.stroke()
 }

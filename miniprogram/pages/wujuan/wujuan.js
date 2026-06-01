@@ -82,11 +82,29 @@ Page({
   // ============ 历史记录 ============
 
   onHistoryItemTap(e) {
-    // 预留：点击历史记录项目可以在落墨页中重新加载
-    // 暂时不做跳转，后续版本实现
+    const id = e.currentTarget.dataset.id
+    const item = this.data.historyList.find(h => h.id === id)
+    if (!item) return
+    wx.navigateTo({
+      url: `/pages/luomo/luomo?historyId=${id}&loadHistory=1`
+    })
+  },
+
+  onEditHistory(e) {
+    console.log('[wujuan] onEditHistory triggered, id:', e.currentTarget.dataset.id)
+    const id = e.currentTarget.dataset.id
+    const item = this.data.historyList.find(h => h.id === id)
+    if (!item) return
+    try {
+      wx.setStorageSync('__edit_history_id', id)
+    } catch (ex) {}
+    wx.switchTab({
+      url: '/pages/luomo/luomo'
+    })
   },
 
   onDeleteHistory(e) {
+    console.log('[wujuan] onDeleteHistory triggered, id:', e.currentTarget.dataset.id)
     const id = e.currentTarget.dataset.id
     wx.showModal({
       title: '删除记录',
@@ -119,6 +137,27 @@ Page({
     const settings = { ...this.data.settings, watermarkEnabled: enabled }
     this.setData({ settings })
     saveSettings(settings)
+  },
+
+  onExportQualityTap() {
+    wx.showActionSheet({
+      itemList: ['标清（1倍分辨率）', '高清（2倍分辨率）', '超清（3倍分辨率）'],
+      success: (res) => {
+        const values = ['standard', 'high', 'ultra']
+        const quality = values[res.tapIndex]
+        const settings = { ...this.data.settings, exportQuality: quality }
+        this.setData({ settings })
+        saveSettings(settings)
+      }
+    })
+  },
+
+  onCopyWechat(e) {
+    wx.setClipboardData({ data: e.currentTarget.dataset.value })
+  },
+
+  onCopyEmail(e) {
+    wx.setClipboardData({ data: e.currentTarget.dataset.value })
   },
 
   onAbout() {

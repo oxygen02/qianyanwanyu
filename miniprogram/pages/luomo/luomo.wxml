@@ -76,10 +76,11 @@
     </view>
 
     <view class="input-area {{settingsPanelVisible ? 'input-area--hidden' : ''}}" style="height: {{inputAreaHeight}}px;">
-      <textarea class="text-input" model:value="{{text}}" placeholder="在此写下文字..."
-        placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{false}}"
+      <textarea class="text-input" id="mainTextInput" model:value="{{text}}" placeholder="在此写下文字..."
+        placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{true}}"
         show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
         bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
+        bindlongpress="onInputLongPress"
         maxlength="{{-1}}" cursor-spacing="25"
         cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"
         style="height: {{textInputHeight}}px;"/>
@@ -90,7 +91,7 @@
     </view>
 
     <view class="settings-panel {{settingsPanelVisible ? 'settings-panel--visible' : ''}}" wx:if="{{settingsPanelVisible}}">
-      <view class="settings-body">
+      <scroll-view scroll-y class="settings-body" enhanced show-scrollbar="{{false}}">
         <block wx:if="{{settingsTab === 'text'}}">
           <view class="settings-content">
             <view class="settings-row">
@@ -121,7 +122,7 @@
               </view>
             </view>
             <view class="settings-row">
-              <view class="settings-cell settings-cell-switch"><view class="setting-label">水印</view><switch checked="{{textSettings.watermarkEnabled}}" bindchange="onWatermarkToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
+              <view class="settings-cell settings-cell-switch"><view class="setting-label">品牌印</view><switch checked="{{textSettings.brandStampEnabled}}" bindchange="onBrandStampToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell-switch"><view class="setting-label">繁简</view><switch checked="{{textSettings.traditionalChinese}}" bindchange="onTraditionalChineseToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell-switch"><view class="setting-label">描边</view><switch checked="{{textSettings.strokeEnabled}}" bindchange="onStrokeToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell-switch"><view class="setting-label">换行</view><switch checked="{{textSettings.preserveLineBreaks}}" bindchange="onLineBreakToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
@@ -130,9 +131,6 @@
               <view class="settings-cell"><view class="setting-label">字号</view><view class="setting-value"><slider class="slider-mini" min="20" max="60" step="1" value="{{textSettings.fontSize}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="16" bindchange="onFontSizeChange"/><text class="slider-value-mini">{{textSettings.fontSize}}px</text></view></view>
               <view class="settings-cell"><view class="setting-label">深浅</view><view class="setting-value"><slider class="slider-mini" min="10" max="100" step="5" value="{{textSettings.inkOpacity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onTextInkOpacityChange"/><text class="slider-value-mini">{{textSettings.inkOpacity}}%</text></view></view>
               <view class="settings-cell"><view class="setting-label">倾斜</view><view class="setting-value"><slider class="slider-mini" min="-10" max="10" step="1" value="{{textSettings.textSkew}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onTextSkewChange"/><text class="slider-value-mini">{{textSettings.textSkewDisplay}}</text></view></view>
-            </view>
-            <view class="settings-row" wx:if="{{textSettings.watermarkEnabled}}">
-              <view class="settings-cell settings-cell--wide"><view class="setting-label">水印样式</view><picker mode="selector" range="{{textSettings.watermarkOptions}}" bindchange="onWatermarkTypeChange" value="{{textSettings.watermarkIndex}}"><view class="setting-value"><text class="value-text-mini">{{textSettings.watermarkOptions[textSettings.watermarkIndex]}}</text><text class="arrow">›</text></view></picker></view>
             </view>
             <view class="settings-row" wx:if="{{textSettings.strokeEnabled}}">
               <view class="settings-cell settings-cell--wide"><view class="setting-label">描边粗细</view><view class="setting-value"><slider class="slider-mini" min="0" max="5" step="0.5" value="{{textSettings.strokeWidth}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onStrokeWidthChange"/><text class="slider-value-mini">{{textSettings.strokeWidth}}px</text></view></view>
@@ -193,9 +191,21 @@
               <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">套印错位</view><switch checked="{{layoutSettings.misregistrationEnabled}}" bindchange="onLayoutMisregistrationToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell--fourth settings-cell-switch"><view class="setting-label">页面破损</view><switch checked="{{layoutSettings.damageEnabled}}" bindchange="onLayoutDamageToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
             </view>
+            <view class="settings-row" wx:if="{{layoutSettings.weatheringEnabled}}">
+              <view class="settings-cell"><view class="setting-label">风化强度</view><view class="setting-value"><slider class="slider-mini" min="0" max="100" step="5" value="{{layoutSettings.weatheringIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutWeatheringIntensityChange"/><text class="slider-value-mini">{{layoutSettings.weatheringIntensity}}%</text></view></view>
+            </view>
+            <view class="settings-row" wx:if="{{layoutSettings.inkSpreadEnabled}}">
+              <view class="settings-cell"><view class="setting-label">浸染强度</view><view class="setting-value"><slider class="slider-mini" min="0" max="100" step="5" value="{{layoutSettings.inkSpreadIntensity}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutInkSpreadIntensityChange"/><text class="slider-value-mini">{{layoutSettings.inkSpreadIntensity}}%</text></view></view>
+            </view>
+            <view class="settings-row" wx:if="{{layoutSettings.misregistrationEnabled}}">
+              <view class="settings-cell"><view class="setting-label">错位偏移</view><view class="setting-value"><slider class="slider-mini" min="0" max="10" step="1" value="{{layoutSettings.misregistrationOffset}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onLayoutMisregistrationOffsetChange"/><text class="slider-value-mini">{{layoutSettings.misregistrationOffset}}</text></view></view>
+            </view>
+            <view class="settings-row" wx:if="{{layoutSettings.damageEnabled}}">
+              <view class="settings-cell"><view class="setting-label">破损程度</view><view class="setting-value"><slider class="slider-mini" min="0" max="20" step="1" value="{{settings.damageVal}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onDamageChange"/><text class="slider-value-mini">{{settings.damageVal}}</text></view></view>
+            </view>
           </view>
         </block>
-      </view>
+      </scroll-view>
     </view>
   </view>
 
