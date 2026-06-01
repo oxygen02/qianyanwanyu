@@ -232,7 +232,7 @@ async function renderPage(params) {
     const useOpenType = !isSystemFont && currentPage.glyphs.length <= 1500 && canUseOpenTypeFont(fontId)
     if (useOpenType) {
       try {
-        await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, fontId, template.layout.fontSize, template.layout)
+        await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, template.font, fontId, template.layout.fontSize, template.layout)
       } catch (e) {
         // OpenType失败回退：使用简洁模式渲染
         drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, true)

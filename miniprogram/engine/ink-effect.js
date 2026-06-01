@@ -764,7 +764,7 @@ function drawPageNumber(ctx, width, height, pageNum, totalPages, decorationConfi
  * @param {object} layoutConfig - 排版配置
  * @returns {Promise}
  */
-async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontId, fontSize, layoutConfig) {
+async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontConfig, fontId, fontSize, layoutConfig) {
   if (!glyphs || glyphs.length === 0) return
   if (fontId && _opentypeDisabledFonts[fontId]) {
     throw new Error(`opentype_disabled:${fontId}`)
@@ -779,8 +779,8 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontId, fontSize
     const blurRadius = inkConfig.blurRadius || 0.3
     const misReg = inkConfig.misRegistration || 0.08
     const damage = inkConfig.damage || 0
-    const strokeEnabled = fontConfig.stroke || inkConfig.stroke || false
-    const strokeWidth = fontConfig.strokeWidth || inkConfig.strokeWidth || 1
+    const strokeEnabled = (fontConfig && fontConfig.stroke) || (inkConfig && inkConfig.stroke) || false
+    const strokeWidth = (fontConfig && fontConfig.strokeWidth) || (inkConfig && inkConfig.strokeWidth) || 1
     const textSkew = (layoutConfig && layoutConfig.textSkew) || 0
     
     const paths = await getGlyphPaths(font, glyphs, fontSize)
