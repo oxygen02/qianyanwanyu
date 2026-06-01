@@ -410,7 +410,7 @@ function typesetPage(params) {
 
       const ch = chars[textIdx]
       // 半角字符在竖排时旋转显示，占用高度为宽度（即半角宽度）
-      const charAdvance = isHalfWidth(ch) ? fontSize * 0.5 + letterSpacing : charHeight
+      const charAdvance = getCharWidthScale(ch) < 1 ? fontSize * 0.5 + letterSpacing : charHeight
 
       const x = marginLeft + (totalColumns - 1 - col) * fontSize * 1.5 + fontSize * 0.5 // 从右往左
       const y = marginTop + charInCol * charHeight + fontSize
