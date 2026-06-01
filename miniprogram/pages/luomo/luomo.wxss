@@ -248,6 +248,76 @@
   white-space: nowrap;
 }
 
+/* ========== 等待诗词展示（加载期间显示）========== */
+.waiting-poem {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  background-color: rgba(250, 247, 242, 0.75);
+}
+
+.poem-container {
+  width: 80%;
+  max-width: 560rpx;
+  padding: 48rpx 40rpx;
+  background: linear-gradient(145deg, rgba(255,255,255,0.85), rgba(250,247,242,0.7));
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(180,168,152,0.25);
+  box-shadow:
+    0 4rpx 24rpx rgba(61,43,31,0.08),
+    inset 0 1rpx 0 rgba(255,255,255,0.6);
+}
+
+.poem-scroll-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.poem-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #3D2B1F;
+  letter-spacing: 0.15em;
+  margin-bottom: 4rpx;
+}
+
+.poem-author {
+  font-size: 24rpx;
+  color: #8C7A66;
+  letter-spacing: 0.08em;
+  margin-bottom: 20rpx;
+}
+
+.poem-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+  width: 100%;
+}
+
+.poem-line {
+  display: block;
+  font-size: 28rpx;
+  color: #3D2B1F;
+  line-height: 1.8;
+  text-align: center;
+  letter-spacing: 0.12em;
+  opacity: 0;
+  transform: translateY(12rpx);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.poem-line.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* 空状态提示 */
 .empty-hint {
   position: absolute;

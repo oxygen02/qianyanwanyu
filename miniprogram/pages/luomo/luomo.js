@@ -6,6 +6,7 @@ const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
 const { loadFont, getFontStatus, getFallbackFont, formatFileSize, loadFontWithProgress } = require('../../utils/font-loader')
+const { getRandom: getRandomPoem } = require('../../utils/poem-service')
 
 // 防抖计时器
 let _draftSaveTimer = null
@@ -44,6 +45,10 @@ Page({
     fontLoading: false,
     // 字体加载进度百分比
     fontLoadingPercent: 0,
+    // 等待诗词展示
+    showWaitingPoem: false,
+    waitingPoem: null,
+    poemLines: [],
     // 全屏编辑模式
     editModeFullscreen: false,
     // 全屏模式下 textarea 动态高度（px）
@@ -437,6 +442,7 @@ Page({
       // 异步预加载字体（显示加载提示）
       if (template.font && template.font.family) {
         this.setData({ fontLoadingVisible: true, fontLoading: true, fontLoadingPercent: 10 })
+        this._startWaitingPoem()
         setTimeout(() => {
           loadFontWithProgress(template.font.family, (progress) => {
             this.setData({
@@ -453,6 +459,7 @@ Page({
           }).catch(err => {
             console.warn('[luomo] 预加载字体失败（使用默认字体）:', err)
           }).finally(() => {
+            this._stopWaitingPoem()
             this.setData({ fontLoadingVisible: false, fontLoading: false, fontLoadingPercent: 0 })
           })
         }, 100)
@@ -496,6 +503,7 @@ Page({
       const list = loadHistory()
       const item = list.find(h => h.id === editId)
       if (item && item.text) {
+        this._stopWaitingPoem()
         this._stopCursorBlink()
         this._renderTimer && clearTimeout(this._renderTimer)
         this.setData({ text: item.text }, () => {
@@ -513,6 +521,7 @@ Page({
 
   onUnload() {
     this._clearAllTimers()
+    this._stopWaitingPoem()
     this._stopCursorBlink()
     // 取消键盘监听
     this._unregisterKeyboardListener()
@@ -559,6 +568,7 @@ Page({
       this.setData({ text })
 
       if (text && text.length > 0) {
+        this._stopWaitingPoem()
         this._stopCursorBlink()
       } else {
         this._startCursorBlink()
@@ -744,6 +754,85 @@ Page({
     })
   },
 
+  // ============ 等待诗词展示（加载期间显示）============
+
+  _startWaitingPoem() {
+    if (this._poemTimer) return
+    this._stopWaitingPoem()
+
+    try {
+      const poem = getRandomPoem()
+      if (!poem || !poem.lines || poem.lines.length === 0) return
+
+      const shownIds = this._getShownPoemIds()
+      if (shownIds.includes(poem.id)) {
+        const { contentDB } = require('../../utils/content-data.js')
+        const unseen = contentDB.filter(p => !shownIds.includes(p.id))
+        if (unseen.length === 0) {
+          shownIds.length = 0
+          try { wx.removeStorageSync('__waiting_poems_shown__') } catch(_) {}
+        } else {
+          const alt = unseen[Math.floor(Math.random() * unseen.length)]
+          poem.id = alt.id; poem.title = alt.title; poem.author = alt.author
+          poem.dynasty = alt.dynasty; poem.content = alt.content
+          poem.lines = alt.content ? alt.content.split('\n').filter(l => l.trim()) : []
+        }
+      }
+
+      this._recordPoemShown(poem.id)
+
+      const lines = poem.lines.map((text, i) => ({ text, visible: false, index: i }))
+      this.setData({
+        showWaitingPoem: true,
+        waitingPoem: { title: poem.title, author: poem.author, dynasty: poem.dynasty },
+        poemLines: lines
+      })
+
+      let lineIdx = 0
+      const showNext = () => {
+        if (lineIdx >= lines.length) {
+          this._poemTimer = null
+          return
+        }
+        const key = `poemLines[${lineIdx}].visible`
+        this.setData({ [key]: true })
+        lineIdx++
+        if (lineIdx < lines.length) {
+          this._poemTimer = setTimeout(showNext, 700 + Math.random() * 400)
+        } else {
+          this._poemTimer = null
+        }
+      }
+      this._poemTimer = setTimeout(showNext, 300)
+
+    } catch(e) {
+      console.warn('[luomo] 等待诗词加载失败:', e.message || e)
+    }
+  },
+
+  _stopWaitingPoem() {
+    if (this._poemTimer) {
+      clearTimeout(this._poemTimer)
+      this._poemTimer = null
+    }
+    if (this.data.showWaitingPoem) {
+      this.setData({ showWaitingPoem: false, waitingPoem: null, poemLines: [] })
+    }
+  },
+
+  _getShownPoemIds() {
+    try { return wx.getStorageSync('__waiting_poems_shown__') || [] } catch(_) { return [] }
+  },
+
+  _recordPoemShown(id) {
+    try {
+      let ids = this._getShownPoemIds()
+      ids.push(id)
+      if (ids.length > 50) ids = ids.slice(-30)
+      wx.setStorageSync('__waiting_poems_shown__', ids)
+    } catch(_) {}
+  },
+
   // ============ 渲染触发 ============
 
   _triggerRender() {
@@ -795,6 +884,7 @@ Page({
     this._needsRerender = false
 
     this.setData({ isRendering: true, renderError: null })
+    this._stopWaitingPoem()
 
     try {
       // 获取生效模板（含设置覆盖）

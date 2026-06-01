@@ -68,7 +68,19 @@
       </view>
     </view>
 
-    <view class="empty-hint" wx:if="{{!text && !isRendering && !fontLoadingVisible}}">
+    <view class="waiting-poem" wx:if="{{showWaitingPoem && !text}}">
+      <view class="poem-container">
+        <view class="poem-scroll-area">
+          <text class="poem-title">{{waitingPoem.title}}</text>
+          <text class="poem-author">—— {{waitingPoem.dynasty || ''}}{{waitingPoem.author}}</text>
+          <view class="poem-lines">
+            <text class="poem-line {{item.visible ? 'visible' : ''}}" wx:for="{{poemLines}}" wx:key="index">{{item.text}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-hint" wx:if="{{!text && !isRendering && !fontLoadingVisible && !showWaitingPoem}}">
       <text class="empty-text">为文字造一页纸</text>
       <text class="empty-sub">让阅读回到阅读</text>
     </view>
