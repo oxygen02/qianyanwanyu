@@ -68,10 +68,10 @@
         </view>
         <!-- 操作按钮 -->
         <view class="history-actions">
-          <view class="history-edit-btn" bindtap="onEditHistory" data-id="{{item.id}}" catchtap="_noop">
+          <view class="history-edit-btn" catchtap="onEditHistory" data-id="{{item.id}}">
             <text class="edit-icon">✎</text>
           </view>
-          <view class="history-delete" bindtap="onDeleteHistory" data-id="{{item.id}}" catchtap="_noop">
+          <view class="history-delete" catchtap="onDeleteHistory" data-id="{{item.id}}">
             <text class="delete-icon">×</text>
           </view>
         </view>
