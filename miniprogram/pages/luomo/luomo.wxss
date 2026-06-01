@@ -319,13 +319,43 @@
   margin: 8rpx 0;
 }
 
-.poem-content {
+.poem-content.typewriter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.typewriter-line {
+  display: inline;
   font-size: 28rpx;
   color: #3D2B1F;
   line-height: 2;
-  text-align: center;
   letter-spacing: 0.15em;
-  white-space: pre-line;
+}
+
+.typewriter-char {
+  opacity: 0;
+  transition: opacity 0.05s ease-in;
+  display: inline;
+}
+
+.typewriter-char.visible {
+  opacity: 1;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  font-size: 28rpx;
+  color: #6B5B4F;
+  animation: cursorBlink 0.8s ease-in-out infinite;
+  margin-left: 2rpx;
+  font-weight: 300;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* 空状态提示 */

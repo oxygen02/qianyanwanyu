@@ -48,6 +48,8 @@ Page({
     // 等待诗词展示
     showWaitingPoem: false,
     waitingPoem: null,
+    poemLines: [],
+    isTypingComplete: false,
     // 全屏编辑模式
     editModeFullscreen: false,
     // 全屏模式下 textarea 动态高度（px）
@@ -785,19 +787,92 @@ Page({
       this._recordPoemShown(finalPoem.id)
 
       const finalContent = (finalPoem.content || '').trim()
-      console.log('[luomo] 准备显示诗词:', finalPoem.title, '-', finalPoem.author, '内容长度:', finalContent.length)
+      const rawLines = finalContent.split('\n').map(line => line.trim()).filter(line => line)
+      console.log('[luomo] 准备显示诗词:', finalPoem.title, '-', finalPoem.author, '行数:', rawLines.length)
 
       this._poemStartTime = Date.now()
 
+      const poemLines = rawLines.map((line, idx) => ({
+        chars: line.split('').map((char, charIdx) => ({ text: char, visible: false, charIndex: charIdx })),
+        isLastLine: idx === rawLines.length - 1,
+        lineIndex: idx
+      }))
+
       this.setData({
         showWaitingPoem: true,
+        isTypingComplete: false,
         waitingPoem: {
           title: finalPoem.title,
           author: finalPoem.author,
           dynasty: finalPoem.dynasty,
           contentText: finalContent
-        }
+        },
+        poemLines
       })
+
+      let globalCharIdx = 0
+      const totalChars = poemLines.reduce((sum, line) => sum + line.chars.length, 0)
+
+      const typeNextChar = () => {
+        if (globalCharIdx >= totalChars) {
+          this._typeTimer = null
+          this.setData({ isTypingComplete: true })
+          return
+        }
+
+        for (let lineIdx = 0; lineIdx < poemLines.length; lineIdx++) {
+          const line = poemLines[lineIdx]
+          for (let charIdx = 0; charIdx < line.chars.length; charIdx++) {
+            if (globalCharIdx === lineIdx * poemLines[0].chars.length + charIdx ||
+                (lineIdx > 0 && globalCharIdx >= poemLines.slice(0, lineIdx).reduce((s, l) => s + l.chars.length, 0) + charIdx)) {
+              const flatIdx = poemLines.slice(0, lineIdx).reduce((s, l) => s + l.chars.length, 0)
+              if (globalCharIdx === flatIdx + charIdx && charIdx < line.chars.length) {
+                break
+              }
+            }
+          }
+        }
+
+        let accumulated = 0
+        let targetLineIdx = -1
+        let targetCharIdx = -1
+
+        for (let li = 0; li < poemLines.length; li++) {
+          const lineLen = poemLines[li].chars.length
+          if (globalCharIdx < accumulated + lineLen) {
+            targetLineIdx = li
+            targetCharIdx = globalCharIdx - accumulated
+            break
+          }
+          accumulated += lineLen
+        }
+
+        if (targetLineIdx >= 0 && targetCharIdx >= 0) {
+          const key = `poemLines[${targetLineIdx}].chars[${targetCharIdx}].visible`
+          this.setData({ [key]: true })
+        }
+
+        globalCharIdx++
+
+        if (globalCharIdx < totalChars) {
+          const baseDelay = 60
+          const randomJitter = Math.random() * 40
+          const punctuationDelay = (() => {
+            if (targetLineIdx >= 0 && targetCharIdx >= 0) {
+              const char = poemLines[targetLineIdx].chars[targetCharIdx]?.text
+              if (char === '，' || char === '。' || char === '！' || char === '？' || char === '；') return 150
+              if (char === '\n' || targetCharIdx === poemLines[targetLineIdx].chars.length - 1) return 200
+            }
+            return 0
+          })()
+          this._typeTimer = setTimeout(typeNextChar, baseDelay + randomJitter + punctuationDelay)
+        } else {
+          this._typeTimer = null
+          this.setData({ isTypingComplete: true })
+        }
+      }
+
+      this._typeTimer = setTimeout(typeNextChar, 400)
 
     } catch(e) {
       console.error('[luomo] 等待诗词异常:', e.message || e, e.stack || '')
@@ -825,13 +900,17 @@ Page({
   },
 
   _doStopWaitingPoem() {
+    if (this._typeTimer) {
+      clearTimeout(this._typeTimer)
+      this._typeTimer = null
+    }
     if (this._poemStopTimer) {
       clearTimeout(this._poemStopTimer)
       this._poemStopTimer = null
     }
     this._poemStartTime = null
     if (this.data.showWaitingPoem) {
-      this.setData({ showWaitingPoem: false, waitingPoem: null })
+      this.setData({ showWaitingPoem: false, waitingPoem: null, poemLines: [], isTypingComplete: false })
     }
   },
 
