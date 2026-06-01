@@ -232,7 +232,7 @@ function ensureCanvasFontReady(fontFamily) {
     const timeout = setTimeout(() => {
       console.warn('[font-loader] ensureCanvasFontReady 超时:', fontFamily)
       resolve()
-    }, 2000)
+    }, 500)
 
     try {
       const offscreen = wx.createOffscreenCanvas({ type: '2d', width: 20, height: 20 })
@@ -302,15 +302,14 @@ function getDefaultTextStyle() {
  * @param {number} maxRetries - 最大重试次数
  * @returns {Promise<string>} 加载成功的 fontFamily 或回退字体
  */
-function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
+function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
   return new Promise((resolve) => {
     const FALLBACK_FONT = getFallbackFont()
     let retryCount = 0
     let isResolved = false
 
     const attemptLoad = () => {
-      // 优化超时时间：根据文件大小动态调整，最长不超过5秒（模拟器需要更长时间）
-      const loadTimeout = Math.min(5000, Math.max(2000, (fontConfig.fileSize || 0) * 0.3))
+      const loadTimeout = 3000
       let loadTimer = null
 
       const safeResolve = (result) => {
@@ -357,15 +356,10 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 2) {
 
           _loadedFonts[fontConfig.id] = 'loaded'
           console.log('[font-loader] 字体完全就绪:', fontConfig.name)
-          if (isSimulatorDetected()) {
-            console.log('[font-loader] 检测到模拟器环境，跳过 OpenType 预热（使用传统渲染）')
-          } else {
-            loadFontFromCache(fontConfig.id).then(() => {
-              console.log('[font-loader] OpenType字体预热完成:', fontConfig.name)
-            }).catch((err) => {
-              console.warn('[font-loader] OpenType字体预热失败（将使用传统渲染）:', fontConfig.name, err.message || err)
-              markOpenTypeIncompatible(fontConfig.id)
-            })
+          if (!isSimulatorDetected()) {
+            setTimeout(() => {
+              loadFontFromCache(fontConfig.id).catch(() => {})
+            }, 1000)
           }
           safeResolve(fontConfig.family)
         },
@@ -427,7 +421,7 @@ function loadFont(fontId) {
         clearInterval(checkInterval)
         console.warn('[font-loader] 字体加载等待超时:', fontId)
         resolve(getFallbackFont())
-      }, 30000)
+      }, 8000)
     })
   }
 
@@ -456,7 +450,7 @@ function loadFont(fontId) {
   // 检查失败冷却期：如果网络持续失败，1分钟内不重试
   const now = Date.now()
   const failTime = _fontFailTimes[fontId]
-  if (failTime && (now - failTime) < 60000) {
+  if (failTime && (now - failTime) < 15000) {
     console.warn('[font-loader] 字体', fontConfig.name, '网络失败不久，跳过重试，使用系统字体:', FALLBACK_FONT)
     return Promise.resolve(FALLBACK_FONT)
   }
@@ -483,23 +477,6 @@ function loadFont(fontId) {
     ensureCacheDir().then(() => {
       resolveFontURL(fontConfig)
         .then(async (fontUrl) => {
-          // 判断是否是本地路径
-          const isLocalPath = fontUrl.startsWith(wx.env.USER_DATA_PATH)
-
-          if (!isLocalPath) {
-            // 是在线链接，下载到本地缓存（仅用于记录，不用于加载）
-            try {
-              console.log('[font-loader] 开始下载字体到本地缓存:', fontConfig.name, '(', fontConfig.id, ')', formatFileSize(fontConfig.fileSize || 0))
-              await downloadFontToCache(fontUrl, fontConfig.id)
-              // 注意：不使用本地路径，因为 wx.loadFontFace 不支持本地文件路径
-            } catch (err) {
-              console.warn('[font-loader] 下载到本地缓存失败，继续使用在线链接:', err.message)
-              // 继续使用在线链接
-            }
-          } else {
-            console.log('[font-loader] 使用本地缓存字体:', fontConfig.name)
-          }
-
           // 使用带重试的字体加载
           const result = await tryLoadFontFace(fontConfig, fontUrl, 2)
           resolve(result)
