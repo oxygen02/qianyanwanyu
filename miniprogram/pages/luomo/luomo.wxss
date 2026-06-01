@@ -8,6 +8,46 @@
   position: relative;
 }
 
+/* ========== 字体加载进度条 ========== */
+.font-loading-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background-color: rgba(61, 43, 31, 0.95);
+  padding: 16rpx 32rpx;
+}
+
+.font-loading-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.font-loading-text {
+  font-size: 24rpx;
+  color: #FAF7F2;
+  white-space: nowrap;
+  font-family: serif;
+}
+
+.font-loading-track {
+  flex: 1;
+  height: 8rpx;
+  background-color: rgba(250, 247, 242, 0.2);
+  border-radius: 4rpx;
+  overflow: hidden;
+}
+
+.font-loading-fill {
+  height: 100%;
+  background-color: #FAF7F2;
+  border-radius: 4rpx;
+  transition: width 0.3s ease;
+}
+
 /* ========== 书页展示区（Canvas 区域）- 填充剩余高度，纸张效果 ========== */
 .canvas-area {
   flex: 1;
@@ -186,7 +226,7 @@
 
 /* ========== 底部区域（工具栏 + 输入框/设置面板）- 高度由JS动态计算 ========== */
 .bottom-area {
-  height: calc(580rpx + env(safe-area-inset-bottom));
+  height: calc(480rpx + env(safe-area-inset-bottom));
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -222,6 +262,7 @@
 .settings-body {
   flex: 1;
   min-height: 0;
+  min-height: 300rpx;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(12rpx + env(safe-area-inset-bottom));

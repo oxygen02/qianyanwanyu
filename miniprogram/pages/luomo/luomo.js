@@ -5,7 +5,7 @@ const { renderPage, estimatePageCount, clearRenderCache } = require('../../engin
 const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, hasVisited, markVisited } = require('../../utils/storage')
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
-const { loadFont, getFontStatus, getFallbackFont, formatFileSize } = require('../../utils/font-loader')
+const { loadFont, getFontStatus, getFallbackFont, formatFileSize, loadFontWithProgress } = require('../../utils/font-loader')
 
 // 防抖计时器
 let _draftSaveTimer = null
@@ -40,6 +40,10 @@ Page({
     isRendering: false,
     // 字体加载中提示（首次载入时显示）
     fontLoadingVisible: false,
+    // 字体加载进度条状态
+    fontLoading: false,
+    // 字体加载进度百分比
+    fontLoadingPercent: 0,
     // 全屏编辑模式
     editModeFullscreen: false,
     // 全屏模式下 textarea 动态高度（px）
@@ -432,9 +436,14 @@ Page({
 
       // 异步预加载字体（显示加载提示）
       if (template.font && template.font.family) {
-        this.setData({ fontLoadingVisible: true })
+        this.setData({ fontLoadingVisible: true, fontLoading: true, fontLoadingPercent: 10 })
         setTimeout(() => {
-          loadFont(template.font.family).then(fontFamily => {
+          loadFontWithProgress(template.font.family, (progress) => {
+            this.setData({
+              fontLoading: progress.status === 'loading',
+              fontLoadingPercent: progress.percent || 0
+            })
+          }).then(fontFamily => {
             if (fontFamily && fontFamily !== getFallbackFont()) {
               this._loadedFontCache[template.font.family] = fontFamily
               if (this.data.text) {
@@ -444,7 +453,7 @@ Page({
           }).catch(err => {
             console.warn('[luomo] 预加载字体失败（使用默认字体）:', err)
           }).finally(() => {
-            this.setData({ fontLoadingVisible: false })
+            this.setData({ fontLoadingVisible: false, fontLoading: false, fontLoadingPercent: 0 })
           })
         }, 100)
       }
@@ -628,6 +637,7 @@ Page({
     if (newMode) {
       // 进入全屏模式：计算初始高度、注册键盘监听、触发聚焦
       const initHeight = this._calcFullscreenTextareaHeight(0)
+      this._stopCursorBlink()
       this.setData({
         editModeFullscreen: true,
         fullscreenTextareaHeight: initHeight,
@@ -660,6 +670,12 @@ Page({
       this._canvas = null
       setTimeout(() => {
         this._initCanvas()
+        // Canvas 重建完成后，如果无文字则重启光标闪烁
+        if (!this.data.text || this.data.text.length === 0) {
+          setTimeout(() => {
+            this._startCursorBlink()
+          }, 300)
+        }
       }, 200)
     }
   },

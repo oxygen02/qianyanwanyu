@@ -1,6 +1,16 @@
 <!-- pages/luomo/luomo.wxml -->
 <view class="page-root">
 
+  <!-- 字体加载进度 -->
+  <view class="font-loading-bar" wx:if="{{fontLoading}}">
+    <view class="font-loading-inner">
+      <text class="font-loading-text">正在加载字体 {{fontLoadingPercent}}%</text>
+      <view class="font-loading-track">
+        <view class="font-loading-fill" style="width:{{fontLoadingPercent}}%"></view>
+      </view>
+    </view>
+  </view>
+
   <!-- 全屏编辑遮罩（输入框全屏，彻底覆盖底层 Canvas 原生组件） -->
   <view class="fullscreen-edit-overlay" wx:if="{{editModeFullscreen}}" style="background-color: #FFFFFF;">
     <view class="fullscreen-header" style="background-color: #FFFFFF;">
@@ -85,7 +95,7 @@
         cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"
         style="height: {{textInputHeight}}px;"/>
       <view class="input-toolbar">
-        <view class="input-actions-left"><text class="char-count">{{text.length}} 字</text><text class="action-btn action-btn--small" bindtap="toggleEditMode">全屏</text></view>
+        <view class="input-actions-left"><text class="char-count">{{text.length}} 字</text><text class="action-btn action-btn--small" bindtap="toggleEditMode">全屏编辑</text></view>
         <view class="input-actions-right"><text class="action-btn" bindtap="onClearDraft">清空</text></view>
       </view>
     </view>

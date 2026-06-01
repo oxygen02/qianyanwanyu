@@ -302,7 +302,7 @@ function getDefaultTextStyle() {
  * @param {number} maxRetries - 最大重试次数
  * @returns {Promise<string>} 加载成功的 fontFamily 或回退字体
  */
-function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
+function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null) {
   return new Promise((resolve) => {
     const FALLBACK_FONT = getFallbackFont()
     let retryCount = 0
@@ -320,12 +320,15 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
         }
       }
 
+      if (onProgress) onProgress({ status: 'loading', percent: 10 })
+
       loadTimer = setTimeout(() => {
         console.warn('[font-loader] 字体加载超时:', fontConfig.name)
         if (isResolved) {
           console.log('[font-loader] 字体已成功加载，忽略超时')
           return
         }
+        if (onProgress) onProgress({ status: 'timeout', percent: 50 })
         if (retryCount < maxRetries) {
           retryCount++
           delete _tempUrls[fontConfig.id]
@@ -333,6 +336,7 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
         } else {
           _loadedFonts[fontConfig.id] = 'failed'
           _loadedFonts[fontConfig.id + '_failed'] = true
+          if (onProgress) onProgress({ status: 'failed', percent: 0 })
           safeResolve(FALLBACK_FONT)
         }
       }, loadTimeout)
@@ -356,6 +360,7 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
 
           _loadedFonts[fontConfig.id] = 'loaded'
           console.log('[font-loader] 字体完全就绪:', fontConfig.name)
+          if (onProgress) onProgress({ status: 'done', percent: 100 })
           if (!isSimulatorDetected()) {
             setTimeout(() => {
               loadFontFromCache(fontConfig.id).catch(() => {})
@@ -365,14 +370,14 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
         },
         fail: (err) => {
           console.error('[font-loader] wx.loadFontFace 失败:', fontConfig.name, err)
-          
+
           const errMsg = (err && err.errMsg) || ''
           const isCacheError = errMsg.includes('CACHE_MISS') || errMsg.includes('cache') || errMsg.includes('CACHE_WRIT')
-          
+
           if (isCacheError) {
             delete _tempUrls[fontConfig.id]
           }
-          
+
           if (retryCount < maxRetries) {
             retryCount++
             console.log('[font-loader] 重试加载字体:', fontConfig.name, `第${retryCount}次`)
@@ -383,12 +388,13 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
             _loadedFonts[fontConfig.id + '_failed'] = true
             _fontFailTimes[fontConfig.id] = Date.now()
             console.warn('[font-loader] 回退到系统字体:', FALLBACK_FONT)
+            if (onProgress) onProgress({ status: 'failed', percent: 0 })
             safeResolve(FALLBACK_FONT)
           }
         }
       })
     }
-    
+
     attemptLoad()
   })
 }
@@ -396,11 +402,13 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0) {
 /**
  * 加载字体（优先从本地缓存加载，没有则下载并缓存）
  * @param {string} fontId - 字体ID，对应 BUILT_IN_FONTS 的 id
+ * @param {function} [onProgress] - 进度回调，参数为 { status, percent }
  * @returns {Promise<string>} 返回实际可用的 font-family 名称
  */
-function loadFont(fontId) {
+function loadFont(fontId, onProgress = null) {
   // 已加载，直接返回
   if (_loadedFonts[fontId] === 'loaded') {
+    if (onProgress) onProgress({ status: 'done', percent: 100 })
     return Promise.resolve(fontId)
   }
 
@@ -411,15 +419,18 @@ function loadFont(fontId) {
       const checkInterval = setInterval(() => {
         if (_loadedFonts[fontId] === 'loaded') {
           clearInterval(checkInterval)
+          if (onProgress) onProgress({ status: 'done', percent: 100 })
           resolve(fontId)
         } else if (_loadedFonts[fontId] === 'failed') {
           clearInterval(checkInterval)
+          if (onProgress) onProgress({ status: 'failed', percent: 0 })
           resolve(getFallbackFont())
         }
       }, 200)
       setTimeout(() => {
         clearInterval(checkInterval)
         console.warn('[font-loader] 字体加载等待超时:', fontId)
+        if (onProgress) onProgress({ status: 'timeout', percent: 50 })
         resolve(getFallbackFont())
       }, 8000)
     })
@@ -427,9 +438,11 @@ function loadFont(fontId) {
 
   // 系统字体无需加载
   if (fontId === 'HeitiSC') {
+    if (onProgress) onProgress({ status: 'done', percent: 100 })
     return Promise.resolve('sans-serif')
   }
   if (fontId === 'SongtiSC') {
+    if (onProgress) onProgress({ status: 'done', percent: 100 })
     return Promise.resolve('serif')
   }
 
@@ -438,12 +451,14 @@ function loadFont(fontId) {
   const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
   if (!fontConfig) {
     console.warn('[font-loader] 未找到字体配置:', fontId, '，使用系统宋体回退:', FALLBACK_FONT)
+    if (onProgress) onProgress({ status: 'failed', percent: 0 })
     return Promise.resolve(FALLBACK_FONT)
   }
 
   // 未配置 fileID 或 fileID 为空，直接降级
   if (!fontConfig.fileID) {
     console.warn('[font-loader] 字体未配置 fileID:', fontConfig.name, '，使用系统字体回退:', FALLBACK_FONT)
+    if (onProgress) onProgress({ status: 'failed', percent: 0 })
     return Promise.resolve(FALLBACK_FONT)
   }
 
@@ -452,6 +467,7 @@ function loadFont(fontId) {
   const failTime = _fontFailTimes[fontId]
   if (failTime && (now - failTime) < 15000) {
     console.warn('[font-loader] 字体', fontConfig.name, '网络失败不久，跳过重试，使用系统字体:', FALLBACK_FONT)
+    if (onProgress) onProgress({ status: 'failed', percent: 0 })
     return Promise.resolve(FALLBACK_FONT)
   }
 
@@ -468,6 +484,7 @@ function loadFont(fontId) {
         delete _loadedFonts[fontId + '_failed']
       } else {
         console.warn('[font-loader] 字体', fontConfig.name, '之前加载失败，跳过重试')
+        if (onProgress) onProgress({ status: 'failed', percent: 0 })
         resolve(FALLBACK_FONT)
         return
       }
@@ -477,8 +494,8 @@ function loadFont(fontId) {
     ensureCacheDir().then(() => {
       resolveFontURL(fontConfig)
         .then(async (fontUrl) => {
-          // 使用带重试的字体加载
-          const result = await tryLoadFontFace(fontConfig, fontUrl, 2)
+          // 使用带重试的字体加载（透传 onProgress）
+          const result = await tryLoadFontFace(fontConfig, fontUrl, 2, onProgress)
           resolve(result)
         })
         .catch((err) => {
@@ -490,7 +507,7 @@ function loadFont(fontId) {
           _loadedFonts[fontId] = 'failed'
           _loadedFonts[fontId + '_failed'] = true
           _fontFailTimes[fontId] = Date.now()
-          
+
           if (typeof wx !== 'undefined' && wx.showToast) {
             wx.showToast({
               title: `${fontConfig.name}加载失败`,
@@ -498,7 +515,9 @@ function loadFont(fontId) {
               duration: 2000
             })
           }
-          
+
+          if (onProgress) onProgress({ status: 'failed', percent: 0 })
+
           const fallbackFont = BUILT_IN_FONTS.find(f => f.id.endsWith('-Regular') && f.id !== fontId && !_loadedFonts[f.id + '_failed'])
           if (fallbackFont) {
             console.warn('[font-loader] 尝试回退到备用字体:', fallbackFont.name)
@@ -512,7 +531,7 @@ function loadFont(fontId) {
               }, 2100)
             }
             // 确保回退字体也是真正可用（已加载）
-            loadFont(fallbackFont.id)
+            loadFont(fallbackFont.id, onProgress)
               .then((loadedFallbackFamily) => resolve(loadedFallbackFamily))
               .catch(() => resolve(FALLBACK_FONT))
           } else {
@@ -522,6 +541,16 @@ function loadFont(fontId) {
         })
     })
   })
+}
+
+/**
+ * 带进度回调的字体加载函数（便捷方法）
+ * @param {string} fontId - 字体ID
+ * @param {function} onProgress - 进度回调
+ * @returns {Promise<string>}
+ */
+function loadFontWithProgress(fontId, onProgress) {
+  return loadFont(fontId, onProgress)
 }
 
 /**
@@ -571,6 +600,7 @@ function getCacheStats() {
 
 module.exports = {
   loadFont,
+  loadFontWithProgress,
   preloadFonts,
   getFontStatus,
   getFallbackFont,
