@@ -1,16 +1,6 @@
 <!-- pages/luomo/luomo.wxml -->
 <view class="page-root">
 
-  <!-- 字体加载进度 -->
-  <view class="font-loading-bar" wx:if="{{fontLoading}}">
-    <view class="font-loading-inner">
-      <text class="font-loading-text">正在加载字体 {{fontLoadingPercent}}%</text>
-      <view class="font-loading-track">
-        <view class="font-loading-fill" style="width:{{fontLoadingPercent}}%"></view>
-      </view>
-    </view>
-  </view>
-
   <!-- 全屏编辑遮罩（输入框全屏，彻底覆盖底层 Canvas 原生组件） -->
   <view class="fullscreen-edit-overlay" wx:if="{{editModeFullscreen}}" style="background-color: #FFFFFF;">
     <view class="fullscreen-header" style="background-color: #FFFFFF;">
@@ -38,6 +28,16 @@
 
   <!-- 书页展示区（全屏编辑时彻底隐藏，避免原生 Canvas 穿透 overlay） -->
   <view class="canvas-area" wx:if="{{!editModeFullscreen}}" style="padding-top: calc(6rpx + {{safeAreaTop}}px); {{canvasAreaStyle}}">
+    <!-- 字体加载进度 -->
+    <view class="font-loading-bar font-loading--center" wx:if="{{fontLoading}}">
+      <view class="font-loading-inner">
+        <text class="font-loading-text">正在加载字体 {{fontLoadingPercent}}%</text>
+        <view class="font-loading-track">
+          <view class="font-loading-fill" style="width:{{fontLoadingPercent}}%"></view>
+        </view>
+      </view>
+    </view>
+
     <view class="page-dots" wx:if="{{totalPages > 1 && !settingsPanelVisible && !editModeFullscreen}}">
       <view wx:for="{{pageDots}}" wx:key="index" class="page-dot {{currentPage === index ? 'active' : ''}}"/>
     </view>

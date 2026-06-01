@@ -11,19 +11,22 @@
 /* ========== 字体加载进度条 ========== */
 .font-loading-bar {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 100;
-  background-color: rgba(61, 43, 31, 0.95);
-  padding: 16rpx 32rpx;
+  background-color: rgba(61, 43, 31, 0.92);
+  padding: 32rpx 48rpx;
+  border-radius: 16rpx;
+  min-width: 400rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
 }
 
 .font-loading-inner {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .font-loading-text {
