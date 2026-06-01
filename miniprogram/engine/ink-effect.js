@@ -202,7 +202,7 @@ async function loadFontFromCache(fontId) {
           _cachedFonts[fontId] = font
           resolve(font)
         } catch (err) {
-          console.error('[ink-effect] opentype.parse解析失败:', fontId, err)
+          console.warn('[ink-effect] opentype.parse解析失败:', fontId, '（模拟器已知问题，真机不影响）')
           reject(err)
         }
       },

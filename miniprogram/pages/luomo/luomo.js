@@ -2543,6 +2543,12 @@ Page({
       tpl.layout.paragraphSpacing = (s.paragraphSpacing / 100) * 4
     }
 
+    // 最终防线：确保direction始终有效（横排为默认）
+    if (!tpl.layout.direction || (tpl.layout.direction !== 'horizontal' && tpl.layout.direction !== 'vertical')) {
+      console.warn('[luomo] direction无效:', tpl.layout.direction, '→ 强制horizontal')
+      tpl.layout.direction = 'horizontal'
+    }
+
     return tpl
   },
 

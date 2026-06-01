@@ -164,6 +164,12 @@ function typesetPage(params) {
   // 字距：em -> px，范围 -1.0em ~ 1.0em（负值让字紧贴，正值加大间距）
   const letterSpacing = Math.max(-fontSize * 1.0, Math.min((safeLayout.letterSpacing || 0) * fontSize, fontSize * 1.0))
   const direction = safeLayout.direction || 'horizontal'
+  console.log('[typesetter] 排版方向:', direction, '(raw:', (layout && layout.direction), ')')
+  if (direction !== 'horizontal' && direction !== 'vertical') {
+    console.warn('[typesetter] 无效方向值，强制设为horizontal:', direction)
+    // 强制修正为横排
+    safeLayout.direction = 'horizontal'
+  }
 
   // 段落间距（单位：行数，合理范围 0~5，防止异常大值导致换页）
   const paragraphSpacing = Math.min(safeLayout.paragraphSpacing || 0, 10)

@@ -68,7 +68,7 @@
       </view>
     </view>
 
-    <view class="waiting-poem" wx:if="{{showWaitingPoem && !text}}">
+    <view class="waiting-poem" wx:if="{{showWaitingPoem}}">
       <view class="poem-container">
         <view class="poem-scroll-area">
           <text class="poem-title">{{waitingPoem.title}}</text>
