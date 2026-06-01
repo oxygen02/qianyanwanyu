@@ -53,15 +53,12 @@
         </view>
       </view>
 
-      <view class="poem-card" wx:if="{{showWaitingPoem && waitingPoem}}">
+      <view class="poem-content" wx:if="{{showWaitingPoem && waitingPoem}}">
         <text class="poem-title">{{waitingPoem.title}}</text>
         <text class="poem-author">—— {{waitingPoem.dynasty || ''}}{{waitingPoem.author}}</text>
         <view class="poem-divider"></view>
-        <view class="poem-content typewriter">
-          <view class="typewriter-reveal" style="--duration: {{typewriterDuration}}ms;">
-            <text class="typewriter-line" wx:for="{{poemLines}}" wx:key="index">{{item.text}}</text>
-          </view>
-          <text class="typewriter-cursor" wx:if="{{!isTypingComplete}}">|</text>
+        <view class="typewriter-reveal" style="--duration: {{typewriterDuration}}ms;">
+          <text class="typewriter-line" wx:for="{{poemLines}}" wx:key="index">{{item.text}}</text>
         </view>
       </view>
     </view>

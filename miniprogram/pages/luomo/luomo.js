@@ -574,6 +574,8 @@ Page({
         this._stopCursorBlink()
       } else {
         this._startCursorBlink()
+        this._clearCanvas()
+        this.setData({ currentPage: 0, totalPages: 1, pageDots: [0] })
       }
 
       clearTimeout(_draftSaveTimer)
@@ -583,7 +585,9 @@ Page({
 
       clearTimeout(_renderDebounceTimer)
       _renderDebounceTimer = setTimeout(() => {
-        this._triggerRender()
+        if (text && text.length > 0) {
+          this._triggerRender()
+        }
       }, 200)
     } catch (err) {
       console.error('[luomo] onTextInput 异常:', err)
