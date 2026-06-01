@@ -756,14 +756,14 @@ Page({
 
   // ============ 等待诗词展示（加载期间显示）============
 
-  _startWaitingPoem() {
+  async _startWaitingPoem() {
     console.log('[luomo] _startWaitingPoem 被调用')
     if (this._poemTimer) { console.log('[luomo] 诗词已在播放中，跳过'); return }
     this._stopWaitingPoem()
 
     try {
-      const poem = getRandomPoem()
-      console.log('[luomo] getRandomPoem返回:', poem ? '有数据' : 'NULL', poem ? ('id=' + poem.id + ' title=' + poem.title) : '')
+      const poem = await getRandomPoem()
+      console.log('[luomo] getRandomPoem返回:', poem ? '有数据(id=' + poem.id + ')' : 'NULL', poem ? ('title=' + poem.title) : '')
       if (!poem) { console.log('[luomo] poem为null，退出'); return }
 
       const rawLines = (poem.content || '').split('\n').filter(l => l.trim())
