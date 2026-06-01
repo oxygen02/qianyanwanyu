@@ -3096,7 +3096,12 @@ Page({
   // ============ 排版设置页面事件处理 ============
 
   onLayoutDirectionChange(e) {
-    this.setData({ 'layoutSettings.directionIndex': e.detail.value })
+    const idx = e.detail.value
+    const dirVal = idx === 0 ? 'horizontal' : 'vertical'
+    this.setData({
+      'layoutSettings.directionIndex': idx,
+      'settings.direction': dirVal
+    })
     this._triggerRender()
   },
 

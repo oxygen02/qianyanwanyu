@@ -118,7 +118,7 @@ async function renderPage(params) {
   const ctx = canvas.getContext('2d')
   let currentPage = null
 
-  console.log('[renderPage] 开始渲染:', { width, height, textLen: text ? text.length : 0, textPreview: text ? text.slice(0, 20) : 'EMPTY', pageIndex })
+  console.log('[renderPage] 开始渲染:', { width, height, textLen: text ? text.length : 0, textPreview: text ? text.slice(0, 20) : 'EMPTY', pageIndex, direction: (template.layout && template.layout.direction) || 'UNKNOWN' })
 
   try {
     const rawDpr = wx.getWindowInfo().pixelRatio || 2
