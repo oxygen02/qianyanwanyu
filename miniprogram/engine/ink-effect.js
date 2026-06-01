@@ -565,10 +565,13 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
     // 描边效果（simpleMode 也支持）
     if (strokeEnabled && strokeWidth > 0) {
       const sc = parseColor(inkConfig.color || '#1A1008')
+      const actualStrokeWidth = Math.max(0.5, strokeWidth * ((layoutConfig && layoutConfig._dpr) || 2))
+      console.log('[ink-effect] simpleMode描边: width=', strokeWidth, 'actual=', actualStrokeWidth.toFixed(1))
       ctx.save()
       ctx.strokeStyle = `rgba(${sc.r},${sc.g},${sc.b},${opacity * 0.6})`
-      ctx.lineWidth = strokeWidth
+      ctx.lineWidth = actualStrokeWidth
       ctx.lineJoin = 'round'
+      ctx.miterLimit = 2
       for (const g of glyphs) {
         if (!g.text || g.text === ' ') continue
         ctx.strokeText(g.text, g.x, g.y)
@@ -800,8 +803,12 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontConfig, font
     }
     
     if (strokeEnabled && strokeWidth > 0) {
+      const actualStrokeWidth = Math.max(0.5, strokeWidth * ((layoutConfig && layoutConfig._dpr) || 2))
+      console.log('[ink-effect] OpenType描边: width=', strokeWidth, 'actual=', actualStrokeWidth.toFixed(1))
       ctx.strokeStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.6})`
-      ctx.lineWidth = strokeWidth
+      ctx.lineWidth = actualStrokeWidth
+      ctx.lineJoin = 'round'
+      ctx.miterLimit = 2
       for (const p of paths) {
         p.path.draw(ctx, null, true)
       }

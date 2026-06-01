@@ -233,6 +233,9 @@ async function renderPage(params) {
         try {
           const family = (template.font && template.font.family) || 'serif'
           const fontSize = template.layout.fontSize || 24
+          const dpr = (template.layout && template.layout._dpr) || 2
+          const strokeOn = (template.font && template.font.stroke) || false
+          const sw = (template.font && template.font.strokeWidth) || 1
           ctx.save()
           ctx.font = `${template.font && template.font.weight || '400'} ${fontSize}px ${family}`
           ctx.fillStyle = (template.ink && template.ink.color) || '#1A1008'
@@ -240,6 +243,17 @@ async function renderPage(params) {
           ctx.textBaseline = 'alphabetic'
           for (const g of currentPage.glyphs) {
             if (g.text && g.text !== ' ') ctx.fillText(g.text, g.x, g.y)
+          }
+          if (strokeOn && sw > 0) {
+            const actualSW = Math.max(0.5, sw * dpr)
+            console.log('[renderPage] 兜底fillText描边: sw=', sw, 'actual=', actualSW.toFixed(1))
+            ctx.strokeStyle = (template.ink && template.ink.color) || '#1A1008'
+            ctx.lineWidth = actualSW
+            ctx.lineJoin = 'round'
+            ctx.globalAlpha = ((template.ink && template.ink.opacity) || 0.88) * 0.6
+            for (const g of currentPage.glyphs) {
+              if (g.text && g.text !== ' ') ctx.strokeText(g.text, g.x, g.y)
+            }
           }
           ctx.restore()
           console.log('[renderPage] 兜底fillText渲染成功')
