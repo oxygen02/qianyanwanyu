@@ -69,8 +69,8 @@
     </view>
 
     <view class="empty-hint" wx:if="{{!text && !isRendering && !fontLoadingVisible}}">
-      <text class="empty-text">输入文字后在此预览</text>
-      <text class="empty-sub">工具栏调整字体与纸张</text>
+      <text class="empty-text">为文字造一页纸</text>
+      <text class="empty-sub">让阅读回到阅读</text>
     </view>
   </view>
 
