@@ -118,8 +118,9 @@ async function renderPage(params) {
   const ctx = canvas.getContext('2d')
   let currentPage = null
 
+  console.log('[renderPage] 开始渲染:', { width, height, textLen: text ? text.length : 0, textPreview: text ? text.slice(0, 20) : 'EMPTY', pageIndex })
+
   try {
-    // 根据设备像素比缩放模板参数，确保文字在物理像素Canvas上显示正确大小
     const dpr = wx.getWindowInfo().pixelRatio || 2
     template = _scaleTemplateForDPR(template, dpr)
     if (template.layout) {
@@ -128,7 +129,6 @@ async function renderPage(params) {
 
     ctx.clearRect(0, 0, width, height)
 
-    // 安全底色：确保画布始终有可见背景
     const safeBgColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
     ctx.fillStyle = safeBgColor
     ctx.fillRect(0, 0, width, height)
@@ -190,15 +190,20 @@ async function renderPage(params) {
 
     if (!pages) {
       try {
+        console.log('[renderPage] 开始排版, fontSize:', template.layout.fontSize, 'fontFamily:', template.font && template.font.family)
         pages = typesetAllPages(text, { canvasWidth: width, canvasHeight: height, layout: template.layout })
+        console.log('[renderPage] 排版完成, 页数:', pages ? pages.length : 'NULL', '首页glyphs数:', (pages && pages[0]) ? pages[0].glyphs.length : 'N/A')
       } catch (e) {
-        console.error('[renderer] 排版失败:', e.message || e)
+        console.error('[renderer] 排版失败:', e.message || e, e.stack || '')
         pages = [{ glyphs: [] }]
       }
       _cacheGlyphs(glyphCacheKey, pages)
     }
 
     currentPage = pages[pageIndex]
+    const glyphCount = (currentPage && currentPage.glyphs) ? currentPage.glyphs.length : 0
+    console.log('[renderPage] 当前页glyphs数量:', glyphCount)
+
     if (currentPage && currentPage.glyphs.length > 0) {
       const fontId = template.font && template.font.family
       const isSystemFont = !fontId || ['serif', 'sans-serif', 'monospace'].includes(fontId)
@@ -209,6 +214,7 @@ async function renderPage(params) {
         try {
           await drawInkBlockWithOpenType(ctx, currentPage.glyphs, template.ink, template.font, fontId, template.layout.fontSize, template.layout)
           inkRendered = true
+          console.log('[renderPage] OpenType渲染成功')
         } catch (e) {
           console.warn('[renderer] OpenType回退:', e.message || e)
         }
@@ -217,6 +223,7 @@ async function renderPage(params) {
         try {
           drawInkBlock(ctx, currentPage.glyphs, template.ink, template.font, template.layout.fontSize, template.layout, !isSystemFont)
           inkRendered = true
+          console.log('[renderPage] drawInkBlock渲染成功')
         } catch (e) {
           console.warn('[renderer] drawInkBlock回退:', e.message || e)
         }
@@ -234,10 +241,28 @@ async function renderPage(params) {
             if (g.text && g.text !== ' ') ctx.fillText(g.text, g.x, g.y)
           }
           ctx.restore()
+          console.log('[renderPage] 兜底fillText渲染成功')
         } catch (e) {
           console.error('[renderer] 兜底fillText也失败:', e.message || e)
         }
       }
+    } else {
+      // glyphs为空时，直接在画布中心绘制原始文本作为最终兜底
+      console.warn('[renderPage] glyphs为空，使用终极兜底：直接绘制文本')
+      ctx.save()
+      ctx.font = `bold ${Math.max(16, Math.min(48, (template.layout.fontSize || 27)))}px serif`
+      ctx.fillStyle = '#1A1008'
+      ctx.globalAlpha = 1
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      const displayText = text || '(无文字)'
+      const lines = displayText.split('\n')
+      const lineHeight = Math.max(16, Math.min(48, (template.layout.fontSize || 27))) * 1.4
+      const startY = height / 2 - ((lines.length - 1) * lineHeight) / 2
+      lines.forEach((line, i) => {
+        ctx.fillText(line, width / 2, startY + i * lineHeight)
+      })
+      ctx.restore()
     }
 
     // ============ 第四层：品牌印章 + 页码 ============
@@ -276,22 +301,20 @@ async function renderPage(params) {
       console.warn('[renderer] 投影跳过:', e.message || e)
     }
 
+    console.log('[renderPage] 渲染完成')
+
   } catch (fatalErr) {
-    console.error('[renderPage] 致命错误（已捕获，不会崩溃）:', fatalErr.message || fatalErr)
+    console.error('[renderPage] 致命错误（已捕获）:', fatalErr.message || fatalErr, fatalErr.stack || '')
     ctx.fillStyle = safeBgColor || '#FAF7F2'
     ctx.fillRect(0, 0, width, height)
-    if (currentPage && currentPage.glyphs.length > 0) {
-      try {
-        ctx.save()
-        ctx.font = `24px ${(template.font && template.font.family) || 'serif'}`
-        ctx.fillStyle = '#1A1008'
-        ctx.textBaseline = 'alphabetic'
-        for (const g of currentPage.glyphs) {
-          if (g.text && g.text !== ' ') ctx.fillText(g.text, g.x, g.y)
-        }
-        ctx.restore()
-      } catch (_) {}
-    }
+    ctx.save()
+    ctx.font = 'bold 28px serif'
+    ctx.fillStyle = '#CC0000'
+    ctx.globalAlpha = 1
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('渲染错误: ' + (fatalErr.message || 'unknown'), width / 2, height / 2)
+    ctx.restore()
   }
 
   return { currentPage, template }
