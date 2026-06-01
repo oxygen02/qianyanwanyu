@@ -2283,7 +2283,9 @@ Page({
 
     // === 基础排版（不受布局模式影响的）===
     if (s.fontSize != null) tpl.layout.fontSize = s.fontSize
-    if (s.direction != null) tpl.layout.direction = s.direction
+    if (s.direction != null && s.direction !== '') tpl.layout.direction = s.direction
+    // 安全兜底：确保direction始终有值
+    if (!tpl.layout.direction) tpl.layout.direction = 'horizontal'
     // 字体：优先用 settings.fontId，其次用模板的 family
     if (s.fontId != null) {
       tpl.font.family = s.fontId

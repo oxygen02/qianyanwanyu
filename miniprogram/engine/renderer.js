@@ -129,8 +129,13 @@ async function renderPage(params) {
     }
 
     ctx.clearRect(0, 0, width, height)
-
+// 安全底色
     const safeBgColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
+    // 安全方向：确保始终有值
+    if (!template.layout.direction) {
+      console.warn('[renderPage] direction缺失，强制设为horizontal')
+      template.layout.direction = 'horizontal'
+    }
     ctx.fillStyle = safeBgColor
     ctx.fillRect(0, 0, width, height)
 
