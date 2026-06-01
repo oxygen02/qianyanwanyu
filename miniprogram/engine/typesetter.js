@@ -163,13 +163,17 @@ function typesetPage(params) {
   lineHeight = Math.max(fontSize * 1.2, Math.min(fontSize * 4, lineHeight))
   // 字距：em -> px，范围 -1.0em ~ 1.0em（负值让字紧贴，正值加大间距）
   const letterSpacing = Math.max(-fontSize * 1.0, Math.min((safeLayout.letterSpacing || 0) * fontSize, fontSize * 1.0))
-  const direction = safeLayout.direction || 'horizontal'
-  console.log('[typesetter] 排版方向:', direction, '(raw:', (layout && layout.direction), ')')
+  let direction = safeLayout.direction || 'horizontal'
+  console.log('[typesetter] 原始direction值:', JSON.stringify(direction), '类型:', typeof direction)
+  // 强制安全检查：只允许两个合法值
   if (direction !== 'horizontal' && direction !== 'vertical') {
-    console.warn('[typesetter] 无效方向值，强制设为horizontal:', direction)
-    // 强制修正为横排
+    console.warn('[typesetter] 非法direction值:', JSON.stringify(direction), '→ 强制改为horizontal')
+    direction = 'horizontal'
     safeLayout.direction = 'horizontal'
   }
+  // TODO: 调试完成后可评估是否删除此强制覆盖（当前用于确保横排显示）
+  direction = 'horizontal'
+  console.log('[typesetter] ✅ 强制设置为horizontal（确保横排书写）')
 
   // 段落间距（单位：行数，合理范围 0~5，防止异常大值导致换页）
   const paragraphSpacing = Math.min(safeLayout.paragraphSpacing || 0, 10)

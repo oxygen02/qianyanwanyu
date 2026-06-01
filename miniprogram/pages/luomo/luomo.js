@@ -757,21 +757,25 @@ Page({
   // ============ 等待诗词展示（加载期间显示）============
 
   _startWaitingPoem() {
-    if (this._poemTimer) return
+    console.log('[luomo] _startWaitingPoem 被调用')
+    if (this._poemTimer) { console.log('[luomo] 诗词已在播放中，跳过'); return }
     this._stopWaitingPoem()
 
     try {
       const poem = getRandomPoem()
-      if (!poem) return
+      console.log('[luomo] getRandomPoem返回:', poem ? '有数据' : 'NULL', poem ? ('id=' + poem.id + ' title=' + poem.title) : '')
+      if (!poem) { console.log('[luomo] poem为null，退出'); return }
 
       const rawLines = (poem.content || '').split('\n').filter(l => l.trim())
-      if (rawLines.length === 0) return
+      console.log('[luomo] 原始诗句行数:', rawLines.length, 'content前50字:', (poem.content || '').slice(0, 50))
+      if (rawLines.length === 0) { console.log('[luomo] 无有效诗句行，退出'); return }
 
       const shownIds = this._getShownPoemIds()
       let finalPoem = poem
       if (shownIds.includes(poem.id)) {
         const { contentDB } = require('../../utils/content-data.js')
         const unseen = contentDB.filter(p => !shownIds.includes(p.id))
+        console.log('[luomo] 已展示过，未看过的诗词数:', unseen.length)
         if (unseen.length === 0) {
           shownIds.length = 0
           try { wx.removeStorageSync('__waiting_poems_shown__') } catch(_) {}
@@ -783,9 +787,11 @@ Page({
       this._recordPoemShown(finalPoem.id)
 
       const lines = (finalPoem.content || '').split('\n').filter(l => l.trim()).map((text, i) => ({ text, visible: false, index: i }))
-      if (lines.length === 0) return
+      console.log('[luomo] 准备显示诗词:', finalPoem.title, '-', finalPoem.author, '句数:', lines.length)
 
-      console.log('[luomo] 等待诗词:', finalPoem.title, '-', finalPoem.author, '(', lines.length, '句)')
+      // 记录开始时间（用于最小显示时间保护）
+      this._poemStartTime = Date.now()
+
       this.setData({
         showWaitingPoem: true,
         waitingPoem: { title: finalPoem.title, author: finalPoem.author, dynasty: finalPoem.dynasty },
@@ -810,15 +816,40 @@ Page({
       this._poemTimer = setTimeout(showNext, 300)
 
     } catch(e) {
-      console.warn('[luomo] 等待诗词加载失败:', e.message || e)
+      console.error('[luomo] 等待诗词异常:', e.message || e, e.stack || '')
     }
   },
 
   _stopWaitingPoem() {
+    // 最小显示时间保护（至少显示4秒，让用户能看到完整的诗词体验）
+    const MIN_DISPLAY_TIME = 4000
+    if (this._poemStartTime && this.data.showWaitingPoem) {
+      const elapsed = Date.now() - this._poemStartTime
+      if (elapsed < MIN_DISPLAY_TIME) {
+        console.log('[luomo] 诗词显示时间不足(', elapsed, 'ms), 延迟', MIN_DISPLAY_TIME - elapsed, 'ms后停止')
+        const delay = MIN_DISPLAY_TIME - elapsed
+        if (!this._poemStopTimer) {
+          this._poemStopTimer = setTimeout(() => {
+            this._poemStopTimer = null
+            this._doStopWaitingPoem()
+          }, delay)
+        }
+        return
+      }
+    }
+    this._doStopWaitingPoem()
+  },
+
+  _doStopWaitingPoem() {
     if (this._poemTimer) {
       clearTimeout(this._poemTimer)
       this._poemTimer = null
     }
+    if (this._poemStopTimer) {
+      clearTimeout(this._poemStopTimer)
+      this._poemStopTimer = null
+    }
+    this._poemStartTime = null
     if (this.data.showWaitingPoem) {
       this.setData({ showWaitingPoem: false, waitingPoem: null, poemLines: [] })
     }
