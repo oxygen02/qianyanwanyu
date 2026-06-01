@@ -48,7 +48,6 @@ Page({
     // 等待诗词展示
     showWaitingPoem: false,
     waitingPoem: null,
-    poemLines: [],
     // 全屏编辑模式
     editModeFullscreen: false,
     // 全屏模式下 textarea 动态高度（px）
@@ -758,7 +757,7 @@ Page({
 
   async _startWaitingPoem() {
     console.log('[luomo] _startWaitingPoem 被调用')
-    if (this._poemTimer) { console.log('[luomo] 诗词已在播放中，跳过'); return }
+    if (this.data.showWaitingPoem) { console.log('[luomo] 诗词已在显示中，跳过'); return }
     this._stopWaitingPoem()
 
     try {
@@ -766,9 +765,8 @@ Page({
       console.log('[luomo] getRandomPoem返回:', poem ? '有数据(id=' + poem.id + ')' : 'NULL', poem ? ('title=' + poem.title) : '')
       if (!poem) { console.log('[luomo] poem为null，退出'); return }
 
-      const rawLines = (poem.content || '').split('\n').filter(l => l.trim())
-      console.log('[luomo] 原始诗句行数:', rawLines.length, 'content前50字:', (poem.content || '').slice(0, 50))
-      if (rawLines.length === 0) { console.log('[luomo] 无有效诗句行，退出'); return }
+      const contentText = (poem.content || '').trim()
+      if (!contentText) { console.log('[luomo] content为空，退出'); return }
 
       const shownIds = this._getShownPoemIds()
       let finalPoem = poem
@@ -786,34 +784,20 @@ Page({
 
       this._recordPoemShown(finalPoem.id)
 
-      const lines = (finalPoem.content || '').split('\n').filter(l => l.trim()).map((text, i) => ({ text, visible: false, index: i }))
-      console.log('[luomo] 准备显示诗词:', finalPoem.title, '-', finalPoem.author, '句数:', lines.length)
+      const finalContent = (finalPoem.content || '').trim()
+      console.log('[luomo] 准备显示诗词:', finalPoem.title, '-', finalPoem.author, '内容长度:', finalContent.length)
 
-      // 记录开始时间（用于最小显示时间保护）
       this._poemStartTime = Date.now()
 
       this.setData({
         showWaitingPoem: true,
-        waitingPoem: { title: finalPoem.title, author: finalPoem.author, dynasty: finalPoem.dynasty },
-        poemLines: lines
+        waitingPoem: {
+          title: finalPoem.title,
+          author: finalPoem.author,
+          dynasty: finalPoem.dynasty,
+          contentText: finalContent
+        }
       })
-
-      let lineIdx = 0
-      const showNext = () => {
-        if (lineIdx >= lines.length) {
-          this._poemTimer = null
-          return
-        }
-        const key = `poemLines[${lineIdx}].visible`
-        this.setData({ [key]: true })
-        lineIdx++
-        if (lineIdx < lines.length) {
-          this._poemTimer = setTimeout(showNext, 700 + Math.random() * 400)
-        } else {
-          this._poemTimer = null
-        }
-      }
-      this._poemTimer = setTimeout(showNext, 300)
 
     } catch(e) {
       console.error('[luomo] 等待诗词异常:', e.message || e, e.stack || '')
@@ -841,17 +825,13 @@ Page({
   },
 
   _doStopWaitingPoem() {
-    if (this._poemTimer) {
-      clearTimeout(this._poemTimer)
-      this._poemTimer = null
-    }
     if (this._poemStopTimer) {
       clearTimeout(this._poemStopTimer)
       this._poemStopTimer = null
     }
     this._poemStartTime = null
     if (this.data.showWaitingPoem) {
-      this.setData({ showWaitingPoem: false, waitingPoem: null, poemLines: [] })
+      this.setData({ showWaitingPoem: false, waitingPoem: null })
     }
   },
 

@@ -61,22 +61,21 @@
       </view>
     </view>
 
-    <view class="font-loading-mask" wx:if="{{fontLoadingVisible && !isRendering}}">
-      <view class="font-loading-content">
+    <!-- 等待界面：字体加载 + 诗词展示（合二为一，不重叠） -->
+    <view class="waiting-overlay" wx:if="{{showWaitingPoem || fontLoadingVisible}}">
+      <view class="loading-status" wx:if="{{fontLoadingVisible}}">
         <view class="font-loading-spinner"></view>
-        <text class="font-loading-text">正在加载字体，请稍候...</text>
-      </view>
-    </view>
-
-    <view class="waiting-poem" wx:if="{{showWaitingPoem}}">
-      <view class="poem-container">
-        <view class="poem-scroll-area">
-          <text class="poem-title">{{waitingPoem.title}}</text>
-          <text class="poem-author">—— {{waitingPoem.dynasty || ''}}{{waitingPoem.author}}</text>
-          <view class="poem-lines">
-            <text class="poem-line {{item.visible ? 'visible' : ''}}" wx:for="{{poemLines}}" wx:key="index">{{item.text}}</text>
-          </view>
+        <text class="loading-text">{{fontLoading ? '正在准备字体...' : '准备就绪'}}</text>
+        <view class="loading-progress-bar" wx:if="{{fontLoading}}">
+          <view class="progress-fill" style="width: {{fontLoadingPercent}}%"></view>
         </view>
+      </view>
+
+      <view class="poem-card" wx:if="{{showWaitingPoem && waitingPoem}}">
+        <text class="poem-title">{{waitingPoem.title}}</text>
+        <text class="poem-author">—— {{waitingPoem.dynasty || ''}}{{waitingPoem.author}}</text>
+        <view class="poem-divider"></view>
+        <text class="poem-content">{{waitingPoem.contentText}}</text>
       </view>
     </view>
 

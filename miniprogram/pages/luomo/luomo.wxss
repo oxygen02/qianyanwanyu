@@ -206,31 +206,37 @@
 }
 
 /* 字体加载中提示 */
-.font-loading-mask {
+/* ========== 等待界面：字体加载 + 诗词展示（统一布局）========== */
+.waiting-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: rgba(250, 247, 242, 0.85);
-  z-index: 25;
+  gap: 48rpx;
+  z-index: 110;
+  background-color: rgba(250, 247, 242, 0.88);
+  animation: fadeInOverlay 0.4s ease-out;
 }
 
-.font-loading-content {
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 加载状态区域（上方） */
+.loading-status {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20rpx;
-  padding: 40rpx 48rpx;
-  background-color: #FFFFFF;
-  border-radius: 16rpx;
-  box-shadow: 0 4rpx 20rpx rgba(107, 91, 79, 0.12);
+  gap: 16rpx;
 }
 
 .font-loading-spinner {
-  width: 48rpx;
-  height: 48rpx;
-  border: 4rpx solid rgba(158, 148, 136, 0.2);
+  width: 44rpx;
+  height: 44rpx;
+  border: 3rpx solid rgba(158, 148, 136, 0.25);
   border-top-color: #6B5B4F;
   border-radius: 50%;
   animation: fontSpin 0.8s linear infinite;
@@ -240,82 +246,86 @@
   to { transform: rotate(360deg); }
 }
 
-.font-loading-text {
-  font-size: 26rpx;
-  color: #6B5B4F;
+.loading-text {
+  font-size: 24rpx;
+  color: #8C7A66;
   font-weight: 500;
   letter-spacing: 1rpx;
-  white-space: nowrap;
 }
 
-/* ========== 等待诗词展示（加载期间显示）========== */
-.waiting-poem {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 110;
-  background-color: rgba(250, 247, 242, 0.75);
+.loading-progress-bar {
+  width: 240rpx;
+  height: 6rpx;
+  background-color: rgba(180, 168, 152, 0.2);
+  border-radius: 3rpx;
+  overflow: hidden;
 }
 
-.poem-container {
-  width: 80%;
-  max-width: 560rpx;
-  padding: 48rpx 40rpx;
-  background: linear-gradient(145deg, rgba(255,255,255,0.85), rgba(250,247,242,0.7));
-  border-radius: 12rpx;
-  border: 1rpx solid rgba(180,168,152,0.25);
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #9E9488, #6B5B4F);
+  border-radius: 3rpx;
+  transition: width 0.3s ease-out;
+}
+
+/* 诗词卡片（下方） */
+.poem-card {
+  width: 82%;
+  max-width: 580rpx;
+  padding: 44rpx 36rpx;
+  background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(250,247,242,0.85));
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(180,168,152,0.2);
   box-shadow:
-    0 4rpx 24rpx rgba(61,43,31,0.08),
-    inset 0 1rpx 0 rgba(255,255,255,0.6);
-}
-
-.poem-scroll-area {
+    0 8rpx 32rpx rgba(61,43,31,0.1),
+    inset 0 1rpx 0 rgba(255,255,255,0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16rpx;
+  gap: 12rpx;
+  animation: slideUpCard 0.5s ease-out 0.2s both;
+}
+
+@keyframes slideUpCard {
+  from {
+    opacity: 0;
+    transform: translateY(30rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .poem-title {
-  font-size: 34rpx;
+  font-size: 36rpx;
   font-weight: 600;
   color: #3D2B1F;
-  letter-spacing: 0.15em;
-  margin-bottom: 4rpx;
+  letter-spacing: 0.18em;
+  margin-bottom: 2rpx;
 }
 
 .poem-author {
   font-size: 24rpx;
   color: #8C7A66;
   letter-spacing: 0.08em;
-  margin-bottom: 20rpx;
+  margin-bottom: 8rpx;
 }
 
-.poem-lines {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10rpx;
-  width: 100%;
+.poem-divider {
+  width: 60%;
+  height: 1rpx;
+  background: linear-gradient(90deg, transparent, rgba(180,168,152,0.4), transparent);
+  margin: 8rpx 0;
 }
 
-.poem-line {
-  display: block;
+.poem-content {
   font-size: 28rpx;
   color: #3D2B1F;
-  line-height: 1.8;
+  line-height: 2;
   text-align: center;
-  letter-spacing: 0.12em;
-  opacity: 0;
-  transform: translateY(12rpx);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-
-.poem-line.visible {
-  opacity: 1;
-  transform: translateY(0);
+  letter-spacing: 0.15em;
+  white-space: pre-line;
 }
 
 /* 空状态提示 */
