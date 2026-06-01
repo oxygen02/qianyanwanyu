@@ -315,12 +315,22 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
       const safeResolve = (result) => {
         if (!isResolved) {
           isResolved = true
+          clearInterval(simTimer)
           if (loadTimer) clearTimeout(loadTimer)
           resolve(result)
         }
       }
 
       if (onProgress) onProgress({ status: 'loading', percent: 10 })
+
+      // 模拟渐进进度：从起始值平滑递增到90%
+      let simPercent = 10
+      const simTimer = setInterval(() => {
+        if (isResolved) { clearInterval(simTimer); return }
+        simPercent += Math.random() * 8 + 2  // 每次增加2-10%
+        if (simPercent > 90) simPercent = 90
+        if (onProgress) onProgress({ status: 'loading', percent: Math.round(simPercent) })
+      }, 300)
 
       loadTimer = setTimeout(() => {
         console.warn('[font-loader] 字体加载超时:', fontConfig.name)
