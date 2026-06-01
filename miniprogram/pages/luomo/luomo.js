@@ -48,7 +48,7 @@ Page({
     // 等待诗词展示
     showWaitingPoem: false,
     waitingPoem: null,
-    displayedText: '',
+    displayedLines: [],
     isTypingComplete: false,
     // 全屏编辑模式
     editModeFullscreen: false,
@@ -792,13 +792,12 @@ Page({
 
       this._poemStartTime = Date.now()
 
-      const fullText = rawLines.join('\n')
-      const totalChars = fullText.length
+      const totalChars = rawLines.join('').length
 
       this.setData({
         showWaitingPoem: true,
         isTypingComplete: false,
-        displayedText: '',
+        displayedLines: rawLines.map(() => ''),
         waitingPoem: {
           title: finalPoem.title,
           author: finalPoem.author,
@@ -817,16 +816,33 @@ Page({
         }
 
         charCount++
-        this.setData({ displayedText: fullText.slice(0, charCount) })
+
+        let accumulated = 0
+        const displayedLines = rawLines.map(line => {
+          const lineStart = accumulated
+          const lineEnd = accumulated + line.length
+          accumulated = lineEnd
+          if (charCount <= lineStart) return ''
+          if (charCount >= lineEnd) return line
+          return line.slice(0, charCount - lineStart)
+        })
+
+        this.setData({ displayedLines })
 
         if (charCount < totalChars) {
           const baseDelay = 140
           const randomJitter = Math.random() * 60
-          const currentChar = fullText[charCount - 1]
           let extraDelay = 0
-          if ('，；、'.includes(currentChar)) extraDelay = 280
-          else if ('。！？'.includes(currentChar)) extraDelay = 480
-          else if (currentChar === '\n') extraDelay = 580
+          for (let i = 0; i < rawLines.length; i++) {
+            const lineLen = rawLines[i].length
+            const lineStart = rawLines.slice(0, i).reduce((s, l) => s + l.length, 0)
+            if (charCount - 1 === lineStart + lineLen - 1 && lineLen > 0) {
+              const lastChar = rawLines[i][lineLen - 1]
+              if ('，；、'.includes(lastChar)) extraDelay = 280
+              else if ('。！？'.includes(lastChar)) extraDelay = 480
+              break
+            }
+          }
 
           this._typeTimer = setTimeout(typeNextChar, baseDelay + randomJitter + extraDelay)
         } else {
@@ -873,7 +889,7 @@ Page({
     }
     this._poemStartTime = null
     if (this.data.showWaitingPoem) {
-      this.setData({ showWaitingPoem: false, waitingPoem: null, displayedText: '', isTypingComplete: false })
+      this.setData({ showWaitingPoem: false, waitingPoem: null, displayedLines: [], isTypingComplete: false })
     }
   },
 

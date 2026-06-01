@@ -325,12 +325,11 @@
   align-items: center;
 }
 
-.typewriter-text {
+.typewriter-line {
   font-size: 28rpx;
   color: #3D2B1F;
   line-height: 2;
   letter-spacing: 0.15em;
-  white-space: pre-line;
   text-align: center;
 }
 
