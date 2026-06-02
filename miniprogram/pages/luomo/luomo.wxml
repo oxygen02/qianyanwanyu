@@ -269,7 +269,6 @@
       </view>
       <view class="save-options">
         <view class="save-option" bindtap="onSaveToAlbum"><text class="save-option-label">保存到相册</text></view>
-        <view class="save-option" bindtap="onShareToFriends"><text class="save-option-label">分享给好友</text></view>
       </view>
     </view>
   </view>

@@ -1,0 +1,1 @@
+{"requiredPrivateInfos": ["chooseImage"], "requiredPermissions": {"scope.writePhotosAlbum": {"reason": "用于保存生成的书法作品图片到手机相册"}}, "privacyApiList": ["wx.chooseMedia", "wx.saveImageToPhotosAlbum"]}

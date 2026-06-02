@@ -1229,15 +1229,10 @@ Page({
 
   // 纸张设置中点击"纸张模板"设置项，切换展开/收起状态
   onTogglePaperTemplates() {
-    console.log('[DEBUG] onTogglePaperTemplates called')
-    console.log('[DEBUG] current templateExpanded:', this.data.paperSettings.templateExpanded)
-    console.log('[DEBUG] templateOptions length:', this.data.paperSettings.templateOptions.length)
-    console.log('[DEBUG] templateOptions:', JSON.stringify(this.data.paperSettings.templateOptions))
     const newValue = !this.data.paperSettings.templateExpanded
     this.setData({
       'paperSettings.templateExpanded': newValue
     })
-    console.log('[DEBUG] set templateExpanded to:', newValue)
   },
 
   // 纸张设置中点击"纸张模板"设置项，打开模板选择弹窗（保留向后兼容）
@@ -1641,8 +1636,6 @@ Page({
   },
 
   onInkColorCustom() {
-    // 自定义取色功能，这里留空或用微信 API
-    wx.showToast({ title: '自定义取色开发中', icon: 'none' })
   },
 
   onStrokeToggle(e) {
