@@ -92,7 +92,6 @@
         placeholder-class="input-placeholder" auto-height="{{false}}" fixed="{{true}}"
         show-confirm-bar="{{false}}" adjust-position="{{false}}" hold-keyboard="{{true}}"
         bindinput="onTextInput" bindfocus="onInputFocus" bindblur="onInputBlur"
-        bindlongpress="onInputLongPress"
         maxlength="{{-1}}" cursor-spacing="25"
         cursor="{{cursorPos}}" selection-start="{{selectionStart}}" selection-end="{{selectionEnd}}"
         style="height: {{textInputHeight}}px;"/>
@@ -169,7 +168,7 @@
               </view></scroll-view>
             </view>
             <view class="settings-row settings-row--four">
-              <view class="settings-cell settings-cell--margin"><view class="setting-label">上下边距</view><view class="setting-value"><slider class="slider-mini" min="5" max="80" step="1" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onPaperMarginVerticalChange"/><text class="slider-value-mini">{{paperSettings.marginVertical}}</text></view></view>
+              <view class="settings-cell settings-cell--margin"><view class="setting-label">上下边距</view><view class="setting-value"><slider class="slider-mini" min="5" max="100" step="1" value="{{paperSettings.marginVertical}}" activeColor="#6B5B4F" backgroundColor="rgba(158,148,136,0.2)" block-size="20" bindchange="onPaperMarginVerticalChange"/><text class="slider-value-mini">{{paperSettings.marginVertical}}</text></view></view>
               <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">阴影</view><switch checked="{{paperSettings.shadowEnabled}}" bindchange="onPaperShadowToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">瑕疵</view><switch checked="{{paperSettings.imperfectionEnabled}}" bindchange="onPaperImperfectionToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>
               <view class="settings-cell settings-cell-switch settings-cell--fourth"><view class="setting-label">装订</view><switch checked="{{paperSettings.stitchEnabled}}" bindchange="onPaperStitchToggle" color="#6B5B4F" style="transform: scale(0.6); transform-origin: right center;"/></view>

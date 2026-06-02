@@ -70,6 +70,22 @@
   border-radius: 2rpx;
 }
 
+.tab-badge {
+  position: absolute;
+  top: 12rpx;
+  right: -4rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  background-color: #6B5B4F;
+  color: #FFF;
+  font-size: 20rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+}
+
 /* ---- 标签内容区 ---- */
 .tab-content {
   flex: 1;
@@ -379,4 +395,97 @@
   font-size: 24rpx;
   color: #6B5B4F;
   font-family: monospace;
+}
+
+/* ---- 字体管理 ---- */
+.font-list {
+  padding: 20rpx 32rpx;
+}
+
+.font-item {
+  display: flex;
+  align-items: center;
+  background-color: #FFF;
+  border-radius: 12rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(61,43,31,0.06);
+}
+
+.font-icon {
+  width: 72rpx;
+  height: 72rpx;
+  background: linear-gradient(135deg, #FAF7F2, #F0EAD6);
+  border-radius: 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #6B5B4F;
+  font-weight: 600;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.font-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.font-name {
+  display: block;
+  font-size: 30rpx;
+  color: #3D2B1F;
+  font-weight: 500;
+  margin-bottom: 6rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.font-size {
+  font-size: 22rpx;
+  color: #9E9488;
+}
+
+.font-time {
+  font-size: 22rpx;
+  color: #B8AEA4;
+}
+
+.font-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  width: 14rpx;
+  height: 14rpx;
+  background-color: #5BA67D;
+  border-radius: 50%;
+  margin-bottom: 4rpx;
+}
+
+.status-text {
+  font-size: 20rpx;
+  color: #5BA67D;
+}
+
+.font-tip {
+  padding: 32rpx 40rpx;
+}
+
+.tip-text {
+  font-size: 22rpx;
+  color: #B8AEA4;
+  line-height: 1.6;
 }

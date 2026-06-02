@@ -339,24 +339,30 @@ async function drawBrandStamp(ctx, width, height, fontFamily, config) {
   if (!config || !config.enabled) return
 
   const dpr = getPixelRatio()
-  const margin = 8 * dpr
-  const sealSize = 28 * dpr
+  const margin = 2 * dpr
+  const sealSize = 21 * dpr
 
   let startX, startY
-  const position = config.position || 'bottomRight'
+  const position = config.position || 'bottomCenter'
 
   if (position === 'bottomRight') {
     startX = width - margin - sealSize
-    startY = height - margin - sealSize / 2
+    startY = height - margin
   } else if (position === 'bottomLeft') {
     startX = margin
-    startY = height - margin - sealSize / 2
+    startY = height - margin
+  } else if (position === 'bottomCenter') {
+    startX = (width - sealSize) / 2
+    startY = height - margin
   } else if (position === 'topRight') {
     startX = width - margin - sealSize
     startY = margin + sealSize / 2
-  } else {
+  } else if (position === 'topLeft') {
     startX = margin
     startY = margin + sealSize / 2
+  } else {
+    startX = (width - sealSize) / 2
+    startY = height - margin
   }
 
   try {
@@ -364,7 +370,7 @@ async function drawBrandStamp(ctx, width, height, fontFamily, config) {
     if (sealImg) {
       ctx.save()
       ctx.globalAlpha = 0.5
-      ctx.drawImage(sealImg, startX, startY - sealSize / 2, sealSize, sealSize)
+      ctx.drawImage(sealImg, startX, startY - sealSize, sealSize, sealSize)
       ctx.restore()
     }
   } catch (e) {

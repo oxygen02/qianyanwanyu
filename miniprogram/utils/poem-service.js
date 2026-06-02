@@ -229,21 +229,14 @@ async function searchPoems(keyword, limit = 20, offset = 0) {
  * 随机获取一首诗词
  */
 async function getRandom() {
-  const cacheKey = getCacheKey('getRandom', {})
-  const cached = getCache(cacheKey)
-  if (cached) return cached
-
-  // 优先使用本地数据
   if (contentDB.length > 0) {
     const randomIndex = Math.floor(Math.random() * contentDB.length)
     const poem = contentDB[randomIndex]
-    const data = {
+    return {
       ...poem,
       lines: poem.content ? poem.content.split('\n').filter(line => line.trim()) : [],
       alignClass: getAlignClass(poem)
     }
-    setCache(cacheKey, data)
-    return data
   }
 
   throw new Error('暂无诗词数据')

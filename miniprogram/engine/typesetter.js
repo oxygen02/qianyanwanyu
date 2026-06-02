@@ -171,9 +171,6 @@ function typesetPage(params) {
     direction = 'horizontal'
     safeLayout.direction = 'horizontal'
   }
-  // TODO: 调试完成后可评估是否删除此强制覆盖（当前用于确保横排显示）
-  direction = 'horizontal'
-  console.log('[typesetter] ✅ 强制设置为horizontal（确保横排书写）')
 
   // 段落间距（单位：行数，合理范围 0~5，防止异常大值导致换页）
   const paragraphSpacing = Math.min(safeLayout.paragraphSpacing || 0, 10)

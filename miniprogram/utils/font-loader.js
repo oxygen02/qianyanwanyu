@@ -5,6 +5,67 @@
 const { BUILT_IN_FONTS } = require('./constants')
 const { loadFontFromCache, markOpenTypeIncompatible, isSimulatorDetected } = require('../engine/ink-effect')
 
+/**
+ * 扫描本地字体缓存目录，获取所有已缓存字体ID列表
+ * 作为 isFontDownloaded 的最终回退：即使 font_cache_info 和 downloaded_fonts 都丢失，
+ * 只要文件系统中有字体文件就能识别为"已下载"
+ * @returns {string[]} 已缓存的字体ID数组
+ */
+function scanLocalFontCache() {
+  try {
+    const fs = getFS()
+    fs.accessSync(FONT_CACHE_DIR)
+    const files = fs.readdirSync(FONT_CACHE_DIR)
+    const fontIds = []
+    files.forEach(file => {
+      if (file.endsWith('.ttf') || file.endsWith('.otf')) {
+        const fontId = file.replace(/\.(ttf|otf)$/, '')
+        fontIds.push(fontId)
+      }
+    })
+    return fontIds
+  } catch (e) {
+    return []
+  }
+}
+
+/**
+ * 同步下载记录与本地文件缓存
+ * 将文件系统中存在但 downloaded_fonts 记录中缺失的字体补录
+ * 应在应用启动时调用一次
+ */
+function reconcileDownloadedRecords() {
+  try {
+    const cachedIds = scanLocalFontCache()
+    if (cachedIds.length === 0) return
+
+    const downloaded = getDownloadedFonts()
+    let patched = false
+    cachedIds.forEach(fontId => {
+      if (!downloaded.some(f => f.id === fontId)) {
+        const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
+        if (fontConfig) {
+          downloaded.push({
+            id: fontConfig.id,
+            name: fontConfig.name,
+            family: fontConfig.family,
+            fileSize: fontConfig.fileSize || 0,
+            downloadTime: Date.now(),
+            accessTime: Date.now()
+          })
+          console.log('[font-loader] 补录缺失的字体下载记录:', fontConfig.name, '(从本地文件检测到)')
+          patched = true
+        }
+      }
+    })
+    if (patched) {
+      wx.setStorageSync(DOWNLOADED_FONTS_KEY, downloaded)
+    }
+  } catch (e) {
+    console.warn('[font-loader] 补录字体下载记录失败:', e)
+  }
+}
+
 // 已加载字体缓存：{ fontId: 'loaded'|'loading'|'failed' }
 const _loadedFonts = {}
 // 临时链接缓存：{ fontId: { url: string, timestamp: number } }
@@ -18,6 +79,8 @@ const TEMP_URL_MAX_AGE = 5 * 60 * 1000
 const FONT_CACHE_DIR = `${wx.env.USER_DATA_PATH}/font_cache`
 // 缓存信息存储键
 const FONT_CACHE_INFO_KEY = 'font_cache_info'
+// 已下载字体列表存储键（持久化，用于吾卷展示）
+const DOWNLOADED_FONTS_KEY = 'downloaded_fonts'
 
 /**
  * 获取文件系统管理器
@@ -70,6 +133,83 @@ function saveCacheInfo(info) {
   } catch (e) {
     console.warn('[font-loader] 保存缓存信息失败:', e)
   }
+}
+
+/**
+ * 记录字体已下载（持久化存储，用于吾卷展示）
+ * @param {string} fontId - 字体ID
+ */
+function recordFontDownloaded(fontId) {
+  try {
+    const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
+    if (!fontConfig) return
+
+    const downloaded = getDownloadedFonts()
+    const existing = downloaded.find(f => f.id === fontId)
+
+    if (existing) {
+      existing.downloadTime = Date.now()
+      existing.accessTime = Date.now()
+    } else {
+      downloaded.push({
+        id: fontConfig.id,
+        name: fontConfig.name,
+        family: fontConfig.family,
+        fileSize: fontConfig.fileSize || 0,
+        downloadTime: Date.now(),
+        accessTime: Date.now()
+      })
+      console.log('[font-loader] 记录新下载字体:', fontConfig.name, '(' + formatFileSize(fontConfig.fileSize || 0) + ')')
+    }
+
+    wx.setStorageSync(DOWNLOADED_FONTS_KEY, downloaded)
+  } catch (e) {
+    console.warn('[font-loader] 记录下载字体失败:', e)
+  }
+}
+
+/**
+ * 获取所有已下载的字体列表
+ * @returns {Array} 已下载字体信息数组
+ */
+function getDownloadedFonts() {
+  try {
+    return wx.getStorageSync(DOWNLOADED_FONTS_KEY) || []
+  } catch (e) {
+    return []
+  }
+}
+
+/**
+ * 检查某个字体是否已下载
+ * @param {string} fontId
+ * @returns {boolean}
+ */
+function isFontDownloaded(fontId) {
+  const downloaded = getDownloadedFonts()
+  if (downloaded.some(f => f.id === fontId)) return true
+
+  const localPath = getLocalFontPath(fontId)
+  if (localPath) {
+    console.log('[font-loader] 从本地文件缓存确认字体已下载，补录记录:', fontId)
+    const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
+    if (fontConfig) {
+      recordFontDownloaded(fontId)
+    }
+    return true
+  }
+
+  const cachedIds = scanLocalFontCache()
+  if (cachedIds.includes(fontId)) {
+    console.log('[font-loader] 从本地目录扫描确认字体已下载，补录记录:', fontId)
+    const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
+    if (fontConfig) {
+      recordFontDownloaded(fontId)
+    }
+    return true
+  }
+
+  return false
 }
 
 /**
@@ -380,12 +520,14 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
           }
 
           _loadedFonts[fontConfig.id] = 'loaded'
+          recordFontDownloaded(fontConfig.id)
           console.log('[font-loader] 字体完全就绪:', fontConfig.name)
           if (onProgress) onProgress({ status: 'done', percent: 100 })
           if (!isSimulatorDetected()) {
-            setTimeout(() => {
-              loadFontFromCache(fontConfig.id).catch(() => {})
-            }, 1000)
+            downloadFontToCache(fontUrl, fontConfig.id).then(() => {
+              console.log('[font-loader] 字体已缓存到本地，可用于OpenType渲染:', fontConfig.name)
+              return loadFontFromCache(fontConfig.id)
+            }).catch(() => {})
           }
           safeResolve(fontConfig.family)
         },
@@ -503,9 +645,10 @@ function loadFont(fontId, onProgress = null) {
   return new Promise((resolve) => {
     // 快速失败：如果之前已经失败过，不再重试（但允许一次刷新重试机会）
     if (_loadedFonts[fontId + '_failed']) {
-      // fileID 格式修复后，给一次重新尝试的机会
-      const fileID = fontConfig.fileID || ''
-      if (fileID.includes('cloud://cloud1-')) {
+      if (isFontDownloaded(fontId)) {
+        console.log('[font-loader] 字体', fontConfig.name, '之前已下载成功，允许重新尝试')
+        delete _loadedFonts[fontId + '_failed']
+      } else if (fontConfig.fileID && fontConfig.fileID.includes('cloud://cloud1-')) {
         console.log('[font-loader] 字体', fontConfig.name, 'fileID格式已更新，允许重新尝试')
         delete _loadedFonts[fontId + '_failed']
       } else {
@@ -634,5 +777,9 @@ module.exports = {
   clearTempUrlCache,
   clearLocalCache,
   formatFileSize,
-  getCacheStats
+  getCacheStats,
+  recordFontDownloaded,
+  getDownloadedFonts,
+  isFontDownloaded,
+  reconcileDownloadedRecords
 }

@@ -3,6 +3,7 @@
 
 const { loadHistory, deleteHistory, loadActiveTemplate, saveActiveTemplate, loadCustomTemplates, loadSettings, saveSettings } = require('../../utils/storage')
 const { TEMPLATES, TEMPLATE_ORDER } = require('../../utils/constants')
+const { getDownloadedFonts, formatFileSize } = require('../../utils/font-loader')
 
 Page({
   data: {
@@ -20,6 +21,8 @@ Page({
       watermarkEnabled: true,
       exportQuality: 'high'
     },
+    // 已下载字体列表
+    downloadedFonts: [],
     statusBarHeight: 0
   },
 
@@ -68,7 +71,20 @@ Page({
       systemTemplates,
       customTemplates,
       activeTemplateId,
-      settings
+      settings,
+      downloadedFonts: this._formatDownloadedFonts()
+    })
+  },
+
+  _formatDownloadedFonts() {
+    const fonts = getDownloadedFonts()
+    return fonts.map(f => {
+      const date = new Date(f.downloadTime)
+      return {
+        ...f,
+        sizeText: formatFileSize(f.fileSize || 0),
+        dateStr: `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
+      }
     })
   },
 

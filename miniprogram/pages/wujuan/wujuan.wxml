@@ -17,6 +17,14 @@
       <text class="tab-text">历史</text>
     </view>
     <view
+      class="tab-item {{activeTab === 'fonts' ? 'active' : ''}}"
+      bind:tap="onSwitchTab"
+      data-tab="fonts"
+    >
+      <text class="tab-text">字体</text>
+      <view class="tab-badge" wx:if="{{downloadedFonts.length > 0}}">{{downloadedFonts.length}}</view>
+    </view>
+    <view
       class="tab-item {{activeTab === 'templates' ? 'active' : ''}}"
       bind:tap="onSwitchTab"
       data-tab="templates"
@@ -76,6 +84,48 @@
           </view>
         </view>
       </view>
+    </view>
+  </scroll-view>
+
+  <!-- 字体管理 -->
+  <scroll-view scroll-y class="tab-content" wx:if="{{activeTab === 'fonts'}}">
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{downloadedFonts.length === 0}}">
+      <text class="empty-icon">字</text>
+      <text class="empty-text">还没有下载字体</text>
+      <text class="empty-sub">打开落墨页面，系统会自动下载上古宋体</text>
+    </view>
+
+    <!-- 已下载字体列表 -->
+    <view class="font-list" wx:else>
+      <view class="section-header">
+        <text class="section-title">已下载字体</text>
+        <text class="section-count">{{downloadedFonts.length}} 款 · 已保存至本地</text>
+      </view>
+
+      <view
+        wx:for="{{downloadedFonts}}"
+        wx:key="id"
+        class="font-item"
+      >
+        <view class="font-icon">Aa</view>
+        <view class="font-info">
+          <text class="font-name">{{item.name}}</text>
+          <view class="font-meta">
+            <text class="font-size">{{item.sizeText}}</text>
+            <text class="font-time">{{item.dateStr}}</text>
+          </view>
+        </view>
+        <view class="font-status">
+          <text class="status-dot"></text>
+          <text class="status-text">已缓存</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 提示信息 -->
+    <view class="font-tip">
+      <text class="tip-text">字体下载后保存在本地，无需重复下载。清除小程序缓存后需重新下载。</text>
     </view>
   </scroll-view>
 

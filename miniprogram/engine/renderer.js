@@ -295,7 +295,7 @@ async function renderPage(params) {
     try {
       await drawBrandStamp(ctx, width, height,
         (template.font && template.font.family) || 'serif',
-        { enabled: template.brandStamp !== false, position: (template.brandStamp && template.brandStamp.position) || 'bottomRight' })
+        { enabled: template.brandStamp !== false, position: (template.brandStamp && template.brandStamp.position) || 'bottomCenter' })
     } catch (e) {
       console.warn('[renderer] 品牌印章跳过:', e.message || e)
     }

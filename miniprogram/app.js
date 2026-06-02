@@ -21,7 +21,11 @@ App({
     // 字体加载状态
     fontLoaded: false,
     // 字体名称（实际加载成功的）
-    activeFontFamily: 'serif'
+    activeFontFamily: 'serif',
+    // 预加载字体ID（上古宋体）
+    preloadFontId: '上古宋体-Regular',
+    // 预加载字体状态：'idle'|'loading'|'done'|'failed'
+    preloadFontStatus: 'idle'
   },
 
   onLaunch() {
@@ -63,12 +67,25 @@ App({
     this.globalData.navBarHeight = navBarHeight
     console.log('[app] 导航栏总高度:', navBarHeight, '状态栏:', windowInfo.statusBarHeight)
 
-    // 后台预加载默认模板字体（不阻塞用户操作）
+    // 后台预加载上古宋体（不阻塞用户操作，下载期间显示等待诗词）
     try {
       const { loadFont } = require('./utils/font-loader')
-      loadFont('方正书宋-Regular').then(() => {
-        console.log('[app] 默认字体预加载完成')
-      }).catch(() => {})
-    } catch(e) {}
+      const fontId = '上古宋体-Regular'
+      this.globalData.preloadFontStatus = 'loading'
+      this.globalData.preloadFontId = fontId
+
+      loadFont(fontId).then((family) => {
+        console.log('[app] 上古宋体预加载完成:', family)
+        this.globalData.fontLoaded = true
+        this.globalData.activeFontFamily = family
+        this.globalData.preloadFontStatus = 'done'
+      }).catch((err) => {
+        console.warn('[app] 上古宋体预加载失败:', err?.message || err)
+        this.globalData.preloadFontStatus = 'failed'
+      })
+    } catch(e) {
+      console.warn('[app] 字体预加载启动失败:', e.message || e)
+      this.globalData.preloadFontStatus = 'failed'
+    }
   }
 })
