@@ -96,7 +96,7 @@ Page({
       lineHeightVal: 100,
       letterSpacing: null,
       letterSpacingVal: 0,
-      direction: null,
+      direction: 'horizontal',
       fontWeight: '400',
       textAlign: 'left',
       firstLineIndent: 2,
@@ -534,10 +534,17 @@ Page({
       .fields({ node: true, size: true })
       .exec((res) => {
         if (!res || !res[0] || !res[0].node) {
-          console.warn('[luomo] Canvas节点未就绪，稍后重试')
+          this._canvasInitRetry = (this._canvasInitRetry || 0) + 1
+          if (this._canvasInitRetry > 10) {
+            console.error('[luomo] Canvas初始化失败，已达最大重试次数(10次)')
+            wx.showToast({ title: '画布初始化失败，请重启小程序', icon: 'none', duration: 3000 })
+            return
+          }
+          console.warn(`[luomo] Canvas节点未就绪，第${this._canvasInitRetry}次重试`)
           setTimeout(() => this._initCanvas(), 100)
           return
         }
+        this._canvasInitRetry = 0
         const canvas = res[0].node
         // 性能优化：DPR 上限为 2，避免高 DPR 设备上 Canvas 像素数暴增导致渲染卡死
         // iPhone 14 Pro DPR=3 → Canvas 像素数 = 1179×2044 = 240万
@@ -565,6 +572,21 @@ Page({
   onTextInput(e) {
     try {
       const text = e.detail.value
+      const MAX_TEXT_LENGTH = 8000
+
+      if (text.length > MAX_TEXT_LENGTH) {
+        const truncatedText = text.slice(0, MAX_TEXT_LENGTH)
+        this._pendingText = truncatedText
+        this.setData({ text: truncatedText })
+        wx.showToast({
+          title: `文字已超过${MAX_TEXT_LENGTH}字，已自动截断`,
+          icon: 'none',
+          duration: 2000
+        })
+        console.warn(`[luomo] 文本超长截断: ${text.length} → ${MAX_TEXT_LENGTH}`)
+        return
+      }
+
       this._pendingText = text
       this.setData({ text })
 
@@ -989,6 +1011,11 @@ Page({
     } finally {
       this.setData({ isRendering: false })
       this._rendering = false
+      if (this._pendingDirectionChange) {
+        const pendingDir = this._pendingDirectionChange
+        this._pendingDirectionChange = null
+        this._forceDirection = pendingDir
+      }
       // 如果渲染期间有新的渲染请求且未超过重试上限，立即触发重渲染
       if (this._needsRerender && this._canvasReady && this._renderRetryCount < 3) {
         const currentText = this._pendingText || this.data.text
@@ -1090,6 +1117,16 @@ Page({
       // 边框渲染（轻量操作，同步完成）
       const { drawBorder } = require('../../engine/paper')
       drawBorder(ctx, this._canvasWidth, this._canvasHeight, template.paper.border)
+
+      // 品牌印章（Logo）渲染
+      if (template.brandStamp && template.brandStamp.enabled) {
+        try {
+          const { drawBrandStamp } = require('../../engine/ink-effect')
+          await drawBrandStamp(ctx, this._canvasWidth, this._canvasHeight, template.font && template.font.family, template.brandStamp)
+        } catch (e) {
+          console.warn('[luomo] 空模板Logo渲染失败:', e)
+        }
+      }
 
     } catch (err) {
       console.error('[luomo] 渲染空模板失败', err)
@@ -2060,7 +2097,7 @@ Page({
       lineHeightDisplay: (lineHeightVal / 100).toFixed(1),
       letterSpacing: t.layout.letterSpacing,
       letterSpacingVal: Math.round(t.layout.letterSpacing * 100),
-      direction: t.layout.direction,
+      direction: 'horizontal',
       fontWeight: t.font.weight || '400',
       textAlign: 'left',
       firstLineIndent: 2,
@@ -2188,7 +2225,7 @@ Page({
       textSkewDisplay: s.textSkewDisplay || '0°',
       textAlign: s.textAlign || 'left',
       fontWeight: s.fontWeight || (t.font.weight || '400'),
-      direction: s.direction || t.layout.direction,
+      direction: s.direction != null ? s.direction : 'horizontal',
 
       // 排版模式等（保留）
       compactness: s.compactness != null ? s.compactness : 50,
@@ -2304,7 +2341,11 @@ Page({
 
     // === 基础排版（不受布局模式影响的）===
     if (s.fontSize != null) tpl.layout.fontSize = s.fontSize
-    if (s.direction != null && s.direction !== '') tpl.layout.direction = s.direction
+    if (this._forceDirection) {
+      tpl.layout.direction = this._forceDirection
+    } else if (s.direction != null && s.direction !== '') {
+      tpl.layout.direction = s.direction
+    }
     // 安全兜底：确保direction始终有值
     if (!tpl.layout.direction) tpl.layout.direction = 'horizontal'
     // 字体：优先用 settings.fontId，其次用模板的 family
@@ -3205,13 +3246,55 @@ Page({
   // ============ 排版设置页面事件处理 ============
 
   onLayoutDirectionChange(e) {
-    const idx = e.detail.value
+    const idx = parseInt(e.detail.value, 10)
     const dirVal = idx === 0 ? 'horizontal' : 'vertical'
+    const dirName = idx === 0 ? '横排' : '竖排'
+
+    console.log('[onLayoutDirectionChange] 触发:', { idx, dirVal, dirName, rawValue: e.detail.value, type: typeof e.detail.value, rendering: this._rendering })
+
+    this._forceDirection = dirVal
+
+    if (this._rendering) {
+      console.log('[onLayoutDirectionChange] 渲染中，等待100ms后重试')
+      this._pendingDirectionChange = dirVal
+      setTimeout(() => {
+        console.log('[onLayoutDirectionChange] 重试触发')
+        this._applyDirectionChange(dirVal, idx)
+      }, 150)
+      return
+    }
+
+    this._applyDirectionChange(dirVal, idx)
+  },
+
+  _applyDirectionChange(dirVal, idx) {
+    const dirName = idx === 0 ? '横排' : '竖排'
+    console.log('[_applyDirectionChange] 执行切换:', { dirVal, idx, dirName })
+
+    clearRenderCache()
+
+    if (this._canvas) {
+      const ctx = this._canvas.getContext('2d')
+      ctx.clearRect(0, 0, this._canvasWidth, this._canvasHeight)
+      const template = this._getEffectiveTemplate()
+      const baseColor = (template.paper && template.paper.baseColor) || '#FAF7F2'
+      ctx.fillStyle = baseColor
+      ctx.fillRect(0, 0, this._canvasWidth, this._canvasHeight)
+    }
+
     this.setData({
       'layoutSettings.directionIndex': idx,
       'settings.direction': dirVal
     })
-    this._triggerRender()
+
+    const text = this._pendingText || this.data.text
+    if (text) {
+      setTimeout(() => {
+        this._doRender(text)
+      }, 50)
+    }
+
+    wx.showToast({ title: `切换到${dirName}模式`, icon: 'none', duration: 1000 })
   },
 
   onLayoutVerticalDirChange(e) {

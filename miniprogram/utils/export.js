@@ -3,7 +3,14 @@
 
 function exportCanvasToImage(canvas, pageInstance, canvasSize, quality) {
   const scale = quality === 'ultra' ? 3 : quality === 'standard' ? 1 : 2
+  const TIMEOUT_MS = 15000
+
   return new Promise((resolve, reject) => {
+    const timeoutTimer = setTimeout(() => {
+      console.error('[export] canvasToTempFilePath 超时 (', TIMEOUT_MS, 'ms)')
+      reject(new Error('图片生成超时，请重试或减少文字内容'))
+    }, TIMEOUT_MS)
+
     wx.canvasToTempFilePath({
       canvas,
       x: 0,
@@ -14,8 +21,15 @@ function exportCanvasToImage(canvas, pageInstance, canvasSize, quality) {
       destHeight: canvasSize.height * scale,
       fileType: 'jpg',
       quality: 0.95,
-      success: (res) => { resolve(res.tempFilePath) },
-      fail: (err) => { console.error('[export] canvasToTempFilePath 失败', err); reject(err) }
+      success: (res) => {
+        clearTimeout(timeoutTimer)
+        resolve(res.tempFilePath)
+      },
+      fail: (err) => {
+        clearTimeout(timeoutTimer)
+        console.error('[export] canvasToTempFilePath 失败', err)
+        reject(err)
+      }
     }, pageInstance)
   })
 }
