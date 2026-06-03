@@ -2520,6 +2520,18 @@ Page({
         tpl.ink.inkSpreadIntensity = s.inkSpreadIntensity / 100
       }
     }
+    // 套印错位
+    if (s.misregistrationEnabled != null) {
+      tpl.ink.misRegistration = s.misregistrationEnabled ? (s.misregistrationOffset || 1) : 0
+    } else if (s.misregistrationOffset != null) {
+      tpl.ink.misRegistration = s.misregistrationOffset
+    }
+    // 页面破损
+    if (s.damageEnabled != null) {
+      tpl.ink.damage = s.damageEnabled ? (s.damageVal != null ? s.damageVal / 100 : 0.08) : 0
+    } else if (s.damage != null) {
+      tpl.ink.damage = s.damage
+    }
 
     // === 布局模式（先应用，后面 s.xxx 可覆盖）===
     if (s.layoutModeIndex != null) {
@@ -2546,6 +2558,10 @@ Page({
   },
 
   // ============ 导出 ============
+
+  async onSaveToAlbum() {
+    await this.onExport()
+  },
 
   async onExport() {
     if (!this.data.text || !this._canvasReady) {
@@ -2685,16 +2701,34 @@ Page({
 
     // 已下载但内存缓存丢失的字体，静默重新加载后切换
     if (isFontDownloaded(fontId)) {
-      this._applyFontDirectly(fontId, index)
+      this.setData({
+        'textSettings.fontIndex': index,
+        'settings.fontId': fontId
+      })
+      this.setData({ fontLoadingVisible: true })
+      resetOpenTypeDisabledFont(fontId)
+
       loadFont(fontId).then((family) => {
         this._loadedFontCache[fontId] = family
         clearRenderCache()
-        this._renderNow()
+        this._lastFontId = fontId
+
         const updatedOptions = this.data.textSettings.fontOptions.map((f) =>
           f.id === fontId ? { ...f, isLoaded: true } : f
         )
-        this.setData({ textSettings: { ...this.data.textSettings, fontOptions: updatedOptions } })
-      }).catch(() => {})
+        this.setData({
+          textSettings: { ...this.data.textSettings, fontOptions: updatedOptions },
+          fontLoadingVisible: false
+        })
+
+        // 真机延迟：确保wx.loadFontFace注册的字体被Canvas 2D完全识别
+        setTimeout(() => {
+          this._renderNow()
+        }, 200)
+      }).catch(() => {
+        this.setData({ fontLoadingVisible: false })
+        this._renderNow()
+      })
       return
     }
 
@@ -2723,7 +2757,10 @@ Page({
       resetOpenTypeDisabledFont(fontId)
     }
 
-    this._renderNow()
+    // 真机延迟渲染：确保wx.loadFontFace注册的字体被Canvas 2D识别
+    setTimeout(() => {
+      this._renderNow()
+    }, 100)
   },
 
   _downloadAndApplyFont(fontId, index, fontName) {
@@ -2751,7 +2788,11 @@ Page({
         fontLoadingVisible: false
       })
       wx.showToast({ title: `${fontName} 已就绪`, icon: 'success', duration: 1500 })
-      this._renderNow()
+
+      // 真机延迟渲染：wx.loadFontFace成功后Canvas 2D需要额外时间识别新字体
+      setTimeout(() => {
+        this._renderNow()
+      }, 200)
     }).catch(() => {
       this.setData({ fontLoadingVisible: false })
       clearRenderCache()
@@ -3358,17 +3399,29 @@ Page({
   },
 
   onLayoutMisregistrationToggle(e) {
-    this.setData({ 'layoutSettings.misregistrationEnabled': e.detail.value })
+    const enabled = e.detail.value
+    this.setData({
+      'layoutSettings.misregistrationEnabled': enabled,
+      'settings.misregistrationEnabled': enabled
+    })
     this._triggerRender()
   },
 
   onLayoutMisregistrationOffsetChange(e) {
-    this.setData({ 'layoutSettings.misregistrationOffset': e.detail.value })
+    const val = e.detail.value
+    this.setData({
+      'layoutSettings.misregistrationOffset': val,
+      'settings.misregistrationOffset': val
+    })
     this._triggerRender()
   },
 
   onLayoutDamageToggle(e) {
-    this.setData({ 'layoutSettings.damageEnabled': e.detail.value })
+    const enabled = e.detail.value
+    this.setData({
+      'layoutSettings.damageEnabled': enabled,
+      'settings.damageEnabled': enabled
+    })
     this._triggerRender()
   },
 
