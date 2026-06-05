@@ -402,8 +402,10 @@
   flex-direction: column;
   background-color: #FAF7F2;
   border-top: 1rpx solid rgba(158, 148, 136, 0.15);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .settings-panel--visible {
