@@ -2569,7 +2569,31 @@ Page({
       return
     }
 
+    // 预检查相册权限
+    try {
+      const authSetting = await new Promise((resolve) => {
+        wx.getSetting({ success: resolve, fail: () => resolve({ authSetting: {} }) })
+      })
+      if (authSetting.authSetting['scope.writePhotosAlbum'] === false) {
+        // 用户之前拒绝过，引导去设置页开启
+        wx.showModal({
+          title: '需要相册权限',
+          content: '保存图片需要相册写入权限，请在设置中开启',
+          confirmText: '去设置',
+          success: (res) => {
+            if (res.confirm) {
+              wx.openSetting()
+            }
+          }
+        })
+        return
+      }
+    } catch (e) {
+      // 权限检查失败不阻断，继续尝试保存
+    }
+
     this.setData({ isRendering: true })
+    wx.showToast({ title: '正在生成图片...', icon: 'loading', duration: 15000 })
 
     try {
       const userSettings = loadSettings()
@@ -2590,16 +2614,28 @@ Page({
         thumbnailPath: tempPath
       })
 
+      wx.hideToast()
       wx.showToast({ title: '已保存到相册', icon: 'success' })
     } catch (err) {
-      if (err.code === 'AUTH_DENY') {
+      wx.hideToast()
+      const errMsg = err.errMsg || err.message || String(err)
+      console.error('[onExport] 保存失败:', errMsg)
+
+      if (errMsg.includes('auth') || errMsg.includes('authorize') || errMsg.includes('deny') || (err.code === 'AUTH_DENY')) {
         wx.showModal({
           title: '需要相册权限',
-          content: '请在设置中开启相册权限',
-          showCancel: false
+          content: '请在设置中开启相册权限后重试',
+          confirmText: '去设置',
+          success: (res) => { if (res.confirm) wx.openSetting() }
         })
+      } else if (errMsg.includes('canvasToTempFilePath') || errMsg.includes('canvas')) {
+        wx.showToast({ title: '图片生成失败，请稍后重试', icon: 'none', duration: 2500 })
+      } else if (errMsg.includes('saveImageToPhotosAlbum') || errMsg.includes('photosAlbum') || errMsg.includes('album')) {
+        wx.showToast({ title: '保存到相册失败，请检查存储空间', icon: 'none', duration: 2500 })
+      } else if (errMsg.includes('超时') || errMsg.includes('timeout')) {
+        wx.showToast({ title: '生成超时，请减少文字后重试', icon: 'none', duration: 2500 })
       } else {
-        wx.showToast({ title: '保存失败，请重试', icon: 'none' })
+        wx.showToast({ title: '保存失败，请重试', icon: 'none', duration: 2000 })
       }
     } finally {
       this.setData({ isRendering: false })

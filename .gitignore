@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# IDE
+.trae/
+.workbuddy/
+.DS_Store
+*.xcworkspace/
+.idea/
+.vscode/
+
+# WeChat
+miniprogram/.cloudbase/
+miniprogram/.codebuddy/
+
+# Logs
+push.log
+*.log
+
+# OS
+Thumbs.db
