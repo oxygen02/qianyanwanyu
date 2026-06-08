@@ -20,6 +20,50 @@ let _cachedFonts = {}
 const _opentypeDisabledFonts = {}
 let _isSimulatorEnvironment = null
 
+// 早期模拟器检测：在模块加载时立即检测，避免首次渲染时才触发OpenType失败
+// 检测方法：尝试读取一个已知的小文件，检查返回的数据类型
+;(function _earlySimulatorDetect() {
+  try {
+    const fs = getFS()
+    // 尝试读取 font_cache 目录下的任意文件来检测环境
+    // 如果 fs.readFile 返回的是 opaque native object 而非 ArrayBuffer，则是模拟器
+    const testPath = `${wx.env.USER_DATA_PATH}/_sim_detect_test`
+    fs.writeFile({
+      filePath: testPath,
+      data: 'SIM',
+      encoding: 'ascii',
+      success: () => {
+        fs.readFile({
+          filePath: testPath,
+          success: (res) => {
+            try {
+              toArrayBuffer(res.data)
+              // 如果 toArrayBuffer 成功说明是真机
+              _isSimulatorEnvironment = false
+            } catch (e) {
+              if (e && e.message && e.message.includes('opaque native object')) {
+                _isSimulatorEnvironment = true
+                console.log('[ink-effect] 早期检测到模拟器环境，跳过OpenType渲染路径')
+              }
+            }
+            // 清理测试文件
+            try { fs.unlinkSync(testPath) } catch (_) {}
+          },
+          fail: () => {
+            // 文件读取失败不影响，保持 null（延迟检测）
+            try { fs.unlinkSync(testPath) } catch (_) {}
+          }
+        })
+      },
+      fail: () => {
+        // 写入失败也不影响
+      }
+    })
+  } catch (e) {
+    // 检测异常不影响正常流程
+  }
+})()
+
 function getPixelRatio() {
   try {
     if (wx.getWindowInfo) {
@@ -835,6 +879,8 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontConfig, font
 
 function canUseOpenTypeFont(fontId) {
   if (!fontId) return false
+  // 模拟器环境不支持 OpenType（fs.readFile 返回 opaque native object）
+  if (_isSimulatorEnvironment === true) return false
   return !_opentypeDisabledFonts[fontId]
 }
 

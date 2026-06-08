@@ -448,7 +448,7 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
     let retryCount = 0
     let isResolved = false
 
-    const attemptLoad = () => {
+    const attemptLoad = (currentUrl) => {
       const loadTimeout = 3000
       let loadTimer = null
 
@@ -482,7 +482,13 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
         if (retryCount < maxRetries) {
           retryCount++
           delete _tempUrls[fontConfig.id]
-          setTimeout(attemptLoad, 300)
+          // 关键修复：ERR_CACHE_MISS 时必须重新获取新临时链接
+          resolveFontURL(fontConfig).then((freshUrl) => {
+            console.log('[font-loader] 超时重试，获取新临时链接:', fontConfig.name)
+            setTimeout(() => attemptLoad(freshUrl), 300)
+          }).catch(() => {
+            setTimeout(() => attemptLoad(currentUrl), 300)
+          })
         } else {
           // 不立即标记为failed! 给wx.loadFontFace留5秒宽限期
           // wx.loadFontFace是异步黑盒，3s超时常在字体实际下载完成后才触发成功回调
@@ -504,7 +510,7 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
 
       wx.loadFontFace({
         family: fontConfig.family,
-        source: `url("${fontUrl}")`,
+        source: `url("${currentUrl}")`,
         desc: {
           weight: fontConfig.weight || '400',
           style: fontConfig.style || 'normal'
@@ -543,9 +549,18 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
 
           if (retryCount < maxRetries) {
             retryCount++
-            console.log('[font-loader] 重试加载字体:', fontConfig.name, `第${retryCount}次`)
+            console.log('[font-loader] 重试加载字体:', fontConfig.name, `第${retryCount}次`, isCacheError ? '(CACHE_MISS，重新获取链接)' : '')
             if (loadTimer) clearTimeout(loadTimer)
-            setTimeout(attemptLoad, 200)
+            if (isCacheError) {
+              // CACHE_MISS: 必须重新获取新的临时链接，否则重试仍会失败
+              resolveFontURL(fontConfig).then((freshUrl) => {
+                setTimeout(() => attemptLoad(freshUrl), 200)
+              }).catch(() => {
+                setTimeout(() => attemptLoad(currentUrl), 200)
+              })
+            } else {
+              setTimeout(() => attemptLoad(currentUrl), 200)
+            }
           } else {
             _loadedFonts[fontConfig.id] = 'failed'
             _loadedFonts[fontConfig.id + '_failed'] = true
@@ -558,7 +573,7 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
       })
     }
 
-    attemptLoad()
+    attemptLoad(fontUrl)
   })
 }
 
