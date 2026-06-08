@@ -5,7 +5,7 @@ const { renderPage, estimatePageCount, clearRenderCache } = require('../../engin
 const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, hasVisited, markVisited } = require('../../utils/storage')
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
-const { loadFont, getFontStatus, getFallbackFont, formatFileSize, loadFontWithProgress, isFontDownloaded, reconcileDownloadedRecords } = require('../../utils/font-loader')
+const { loadFont, getFontStatus, getFallbackFont, formatFileSize, loadFontWithProgress, isFontDownloaded, reconcileDownloadedRecords, onFontReady } = require('../../utils/font-loader')
 const { resetOpenTypeDisabledFont } = require('../../engine/ink-effect')
 const { getRandom: getRandomPoem } = require('../../utils/poem-service')
 
@@ -439,17 +439,30 @@ Page({
 
       // 异步预加载字体（显示加载提示）
       if (template.font && template.font.family) {
+        const fontId = template.font.family
         this.setData({ fontLoadingVisible: true, fontLoading: true, fontLoadingPercent: 10 })
         this._startWaitingPoem()
+
+        // 注册字体就绪回调：即使 loadFont 等待超时，字体后续加载成功时仍会触发重新渲染
+        onFontReady(fontId, (family) => {
+          console.log('[luomo] 字体延迟就绪，触发重新渲染:', fontId, '→', family)
+          this._loadedFontCache[fontId] = family
+          if (this.data.text && this._canvasReady) {
+            this._renderNow()
+          }
+          this._stopWaitingPoem()
+          this.setData({ fontLoadingVisible: false, fontLoading: false, fontLoadingPercent: 0 })
+        })
+
         setTimeout(() => {
-          loadFontWithProgress(template.font.family, (progress) => {
+          loadFontWithProgress(fontId, (progress) => {
             this.setData({
               fontLoading: progress.status === 'loading',
               fontLoadingPercent: progress.percent || 0
             })
           }).then(fontFamily => {
             if (fontFamily && fontFamily !== getFallbackFont()) {
-              this._loadedFontCache[template.font.family] = fontFamily
+              this._loadedFontCache[fontId] = fontFamily
               if (this.data.text) {
                 this._triggerRender()
               }

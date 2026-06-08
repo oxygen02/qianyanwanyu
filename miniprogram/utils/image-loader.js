@@ -23,10 +23,20 @@ function getTempFileURL(fileID) {
         if (file && file.tempFileURL) {
           resolve(file.tempFileURL)
         } else {
-          reject(new Error('获取图片临时链接失败'))
+          // 诊断：打印完整的返回结果以便排查
+          const diag = JSON.stringify({
+            fileID,
+            status: file ? file.status : 'NO_FILE',
+            errMsg: file ? file.errMsg : 'null'
+          }).slice(0, 200)
+          console.warn('[image-loader] 获取图片临时链接失败, 诊断:', diag)
+          reject(new Error('获取图片临时链接失败: ' + (file && file.errMsg) || 'tempFileURL为空'))
         }
       },
-      fail: (err) => reject(err)
+      fail: (err) => {
+        console.error('[image-loader] getTempFileURL 失败:', fileID, err)
+        reject(err)
+      }
     })
   })
 }

@@ -72,6 +72,8 @@ const _loadedFonts = {}
 const _tempUrls = {}
 // 字体加载失败时间戳（用于防止短时间内重复尝试）
 const _fontFailTimes = {}
+// 字体就绪回调列表（解决竞态：loadFont等待超时但字体后续加载成功时通知调用方）
+const _fontReadyCallbacks = {}
 
 // 临时链接有效期（毫秒），保守估计5分钟（微信实际有效期通常为2小时）
 const TEMP_URL_MAX_AGE = 5 * 60 * 1000
@@ -516,7 +518,6 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
           style: fontConfig.style || 'normal'
         },
         success: async () => {
-          if (isResolved) return
           console.log('[font-loader] wx.loadFontFace 成功:', fontConfig.name)
 
           try {
@@ -525,16 +526,32 @@ function tryLoadFontFace(fontConfig, fontUrl, maxRetries = 0, onProgress = null)
             console.warn('[font-loader] ensureCanvasFontReady 超时或失败，继续使用字体:', e.message || e)
           }
 
+          // 无论 Promise 是否已 resolve，都标记字体为已加载
           _loadedFonts[fontConfig.id] = 'loaded'
           recordFontDownloaded(fontConfig.id)
           console.log('[font-loader] 字体完全就绪:', fontConfig.name)
           if (onProgress) onProgress({ status: 'done', percent: 100 })
+
+          // 通知所有注册的字体就绪回调（解决竞态：loadFont等待超时但字体后续成功）
+          const cbs = _fontReadyCallbacks[fontConfig.id]
+          if (cbs && cbs.length > 0) {
+            console.log('[font-loader] 触发字体就绪回调:', fontConfig.name, '回调数:', cbs.length)
+            cbs.forEach(cb => {
+              try { cb(fontConfig.family) } catch (e) {
+                console.warn('[font-loader] 字体就绪回调执行失败:', e)
+              }
+            })
+            delete _fontReadyCallbacks[fontConfig.id]
+          }
+
           if (!isSimulatorDetected()) {
             downloadFontToCache(fontUrl, fontConfig.id).then(() => {
               console.log('[font-loader] 字体已缓存到本地，可用于OpenType渲染:', fontConfig.name)
               return loadFontFromCache(fontConfig.id)
             }).catch(() => {})
           }
+
+          if (isResolved) return
           safeResolve(fontConfig.family)
         },
         fail: (err) => {
@@ -595,27 +612,39 @@ function loadFont(fontId, onProgress = null) {
     console.log('[font-loader] 字体正在加载中，等待:', fontId)
     return new Promise((resolve) => {
       let waitPercent = 10
+      let resolved = false
+      const doResolve = (result) => {
+        if (resolved) return
+        resolved = true
+        clearInterval(checkInterval)
+        resolve(result)
+      }
       const checkInterval = setInterval(() => {
         if (_loadedFonts[fontId] === 'loaded') {
-          clearInterval(checkInterval)
           if (onProgress) onProgress({ status: 'done', percent: 100 })
-          resolve(fontId)
+          doResolve(fontId)
         } else if (_loadedFonts[fontId] === 'failed') {
-          clearInterval(checkInterval)
           if (onProgress) onProgress({ status: 'failed', percent: 0 })
-          resolve(getFallbackFont())
+          doResolve(getFallbackFont())
         } else if (onProgress) {
           waitPercent += Math.random() * 5 + 2
           if (waitPercent > 85) waitPercent = 85
           onProgress({ status: 'loading', percent: Math.round(waitPercent) })
         }
       }, 300)
+      // 超时从10s增加到20s：tryLoadFontFace可能需要3s+5s宽限期+云存储下载时间
       setTimeout(() => {
-        clearInterval(checkInterval)
-        console.warn('[font-loader] 字体加载等待超时:', fontId)
+        if (resolved) return
+        console.warn('[font-loader] 字体加载等待超时:', fontId, '(20s，字体可能在后台继续加载)')
         if (onProgress) onProgress({ status: 'timeout', percent: 50 })
-        resolve(getFallbackFont())
-      }, 10000)
+        // 注册延迟回调：如果字体后续加载成功，仍会通知调用方
+        _fontReadyCallbacks[fontId] = _fontReadyCallbacks[fontId] || []
+        const lateCb = (family) => {
+          console.log('[font-loader] 延迟收到字体就绪通知:', fontId, '→', family)
+        }
+        _fontReadyCallbacks[fontId].push(lateCb)
+        doResolve(getFallbackFont())
+      }, 20000)
     })
   }
 
@@ -782,6 +811,25 @@ function getCacheStats() {
   return stats
 }
 
+/**
+ * 注册字体就绪回调
+ * 当字体加载成功时（包括延迟就绪的情况），自动触发回调通知调用方刷新渲染
+ * @param {string} fontId - 字体ID
+ * @param {function} callback - 回调函数，参数为 fontFamily 名称
+ */
+function onFontReady(fontId, callback) {
+  if (!fontId || typeof callback !== 'function') return
+  // 如果字体已经就绪，立即执行回调
+  if (_loadedFonts[fontId] === 'loaded') {
+    const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
+    try { callback(fontConfig ? fontConfig.family : fontId) } catch (e) {}
+    return
+  }
+  // 否则注册到等待列表
+  _fontReadyCallbacks[fontId] = _fontReadyCallbacks[fontId] || []
+  _fontReadyCallbacks[fontId].push(callback)
+}
+
 module.exports = {
   loadFont,
   loadFontWithProgress,
@@ -796,5 +844,6 @@ module.exports = {
   recordFontDownloaded,
   getDownloadedFonts,
   isFontDownloaded,
-  reconcileDownloadedRecords
+  reconcileDownloadedRecords,
+  onFontReady
 }
