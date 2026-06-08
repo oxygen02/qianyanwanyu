@@ -494,8 +494,9 @@ function drawInkLine(ctx, text, x, y, charWidth, letterSpacing, inkConfig, fontC
  * @param {object} inkConfig - 油墨配置
  * @param {object} fontConfig - 字体配置
  * @param {number} fontSize - 字号（物理像素）
+ * @param {boolean} [previewMode] - 预览模式（效果强度翻倍）
  */
-function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig, simpleMode) {
+function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig, simpleMode, previewMode) {
   if (!glyphs || glyphs.length === 0) return
 
   // simpleMode: 简洁渲染模式（与 OpenType 路径视觉一致）
@@ -507,12 +508,15 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
     fontConfig = { family: 'serif' }
   }
 
+  const previewMul = previewMode ? 1.8 : 1.0  // 预览模式下加强效果
   const inkColor = parseColor(inkConfig.color || '#1A1008')
-  const opacity = inkConfig.opacity || 0.88
-  const variation = inkConfig.variation || 0.05
-  const blurRadius = inkConfig.blurRadius || 0.3
-  const misReg = inkConfig.misRegistration || 0.08
-  const damage = inkConfig.damage || 0
+  const opacity = inkConfig.opacity ?? 0.88
+  const variation = (inkConfig.variation ?? 0.05) * previewMul
+  const blurRadius = (inkConfig.blurRadius ?? 0.3) * previewMul
+  // 使用 ?? 而非 ||：misRegistration 可能为 0（关闭），|| 会把 0 当 falsy 回退到默认值
+  const misReg = Math.min(0.5, (inkConfig.misRegistration ?? 0) * previewMul)
+  // damage 同理，使用 ??
+  const damage = Math.min(0.4, (inkConfig.damage ?? 0) * (previewMode ? 2.5 : 1.0))
 
   // 新增：文字描边配置
   const strokeEnabled = fontConfig.stroke || false
@@ -522,12 +526,12 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   const textSkew = (layoutConfig && layoutConfig.textSkew) || 0
 
   // 新增：墨色浸染配置
-  const inkSpreadEnabled = inkConfig.inkSpread || false
-  const inkSpreadIntensity = inkConfig.inkSpreadIntensity || 0
+  const inkSpreadEnabled = !!inkConfig.inkSpread
+  const inkSpreadIntensity = inkConfig.inkSpreadIntensity ?? 0
 
-  // 新增：字体风化配置
-  const weatheringEnabled = inkConfig.weathering || false
-  const weatheringIntensity = inkConfig.weatheringIntensity || 0
+  // 新增：字体风化配置（独立效果，不依赖damage）
+  const weatheringEnabled = !!inkConfig.weathering
+  const weatheringIntensity = inkConfig.weatheringIntensity ?? 0
 
   // 字体族（清理非法字符）
   const family = sanitizeFontFamily(fontConfig.family)
@@ -539,8 +543,10 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
 
   console.log('[ink-effect] drawInkBlock fontStr:', fontStr, 'glyphs:', glyphs.length,
     'opacity:', opacity.toFixed(2), 'variation:', variation.toFixed(2),
-    'blur:', blurRadius.toFixed(2), 'misReg:', misReg.toFixed(2), 'damage:', damage.toFixed(2),
-    'stroke:', strokeEnabled, 'skew:', textSkew, 'spread:', inkSpreadEnabled)
+    'blur:', blurRadius.toFixed(2), 'misReg:', misReg.toFixed(2),
+    'weathering:', weatheringEnabled, 'weatherInt:', weatheringIntensity.toFixed(2),
+    'spread:', inkSpreadEnabled, 'spreadInt:', inkSpreadIntensity.toFixed(2),
+    '(damage已移至纸张层)')
 
   ctx.save()
   ctx.font = fontStr
@@ -552,7 +558,9 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
     ctx.transform(1, 0, Math.tan(skewAngle), 1, 0, 0)
   }
 
-  // ===== 第0层：纸张纤维吸附底层（让墨迹"陷入"纸张）=====
+  // ===== [优化合并] 渲染策略：将原有的10层合并为3层 =====
+  // 原10层：铅字压痕/纤维渗透/表层晕染/实墨/边缘浸润/渗色/错位/浸染/破损/压痕
+  // 合并为3层：①墨迹渗透层(融合阴影+羽化) ②主体实墨+错位重影 ③飞白破损
   // 模拟墨水被纸张纤维吸收后的底层扩散——比文字略大、极淡、高度羽化
   // simpleMode下跳过此层，保持与OpenType路径一致的视觉效果
   if (!simpleMode) {
@@ -738,33 +746,27 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
     ctx.shadowBlur = 0
   }
 
-  // ===== 第5层：飞白破损（缺墨 / 纸张纤维遮挡）=====
-  const damageLevel = Math.min(1, Math.max(0, damage))
-  if (damageLevel > 0.01) {
+  // ===== 第5层：字体风化（独立效果，模拟老旧印刷品笔画残缺）=====
+  // 随机降低部分笔画的透明度 + 轻微位置抖动，产生"墨迹褪色/磨损"感
+  // 不依赖damage，单独开关控制
+  if (weatheringEnabled && weatheringIntensity > 0.01) {
     ctx.globalCompositeOperation = 'source-over'
+    const weatherAlphaBase = Math.min(0.6, weatheringIntensity * 0.8)
     for (let i = 0; i < glyphs.length; i++) {
       const g = glyphs[i]
       if (!g.text || g.text === ' ') continue
-
       const hash = (((i * 37 + (g.text.charCodeAt(0) || 0) + 777) % 1000) / 1000)
-
-      // 字体风化效果：增加笔画残缺感
-      const effectiveDamage = weatheringEnabled ? Math.min(1, damageLevel + weatheringIntensity * 0.5) : damageLevel
-      if (hash < effectiveDamage) {
-        const numStreaks = 1 + Math.floor(hash * 3)
-        const streakAlpha = 0.55 + hash * 0.35
-        // 使用纸张底色而非纯白，让破损更自然
-        ctx.fillStyle = `rgba(250,247,242,${streakAlpha})`
-
-        for (let s = 0; s < numStreaks; s++) {
-          const sx = g.x + fontSize * ((hash * 0.5 + s * 0.22) % 0.75)
-          const sy = g.y - fontSize * (0.15 + (hash * 0.4 + s * 0.18) % 0.5)
-          const sw = fontSize * (0.012 + hash * 0.035)
-          const sh = fontSize * (0.25 + hash * 0.35)
-          ctx.fillRect(sx, sy, sw, sh)
-        }
+      if (hash < weatheringIntensity * 0.7) {
+        // 风化程度随 hash 变化，部分笔画更严重
+        const fadeAlpha = weatherAlphaBase * (0.3 + hash * 0.7)
+        const jitterX = fontSize * (hash - 0.5) * weatheringIntensity * 0.03
+        const jitterY = fontSize * (hash * 0.7 - 0.35) * weatheringIntensity * 0.02
+        ctx.globalAlpha = Math.max(0.15, 1 - fadeAlpha)
+        ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${Math.max(0.1, opacity * (1 - fadeAlpha))})`
+        ctx.fillText(g.text, g.x + jitterX, g.y + jitterY)
       }
     }
+    ctx.globalAlpha = 1.0
   }
 
   // ===== 第6层：纸张压痕微凹（模拟铅字按压的物理凹陷）=====
@@ -822,52 +824,151 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontConfig, font
   if (fontId && _opentypeDisabledFonts[fontId]) {
     throw new Error(`opentype_disabled:${fontId}`)
   }
-  
+
   try {
     const font = await loadFontFromCache(fontId)
-    
+
+    // 使用 ?? 而非 ||：避免 0 被 falsy 回退（与 drawInkBlock 保持一致）
     const inkColor = parseColor(inkConfig.color || '#1A1008')
-    const opacity = inkConfig.opacity || 0.88
-    const variation = inkConfig.variation || 0.05
-    const blurRadius = inkConfig.blurRadius || 0.3
-    const misReg = inkConfig.misRegistration || 0.08
-    const damage = inkConfig.damage || 0
+    const opacity = inkConfig.opacity ?? 0.88
+    const variation = (inkConfig.variation ?? 0.05)
+    const blurRadius = (inkConfig.blurRadius ?? 0.3)
+    const misReg = Math.min(0.5, (inkConfig.misRegistration ?? 0))
     const strokeEnabled = (fontConfig && fontConfig.stroke) || (inkConfig && inkConfig.stroke) || false
     const strokeWidth = (fontConfig && fontConfig.strokeWidth) || (inkConfig && inkConfig.strokeWidth) || 1
     const textSkew = (layoutConfig && layoutConfig.textSkew) || 0
-    
+
+    // 文字特效配置（与 drawInkBlock 保持一致）
+    const inkSpreadEnabled = !!inkConfig.inkSpread
+    const inkSpreadIntensity = inkConfig.inkSpreadIntensity ?? 0
+    const weatheringEnabled = !!inkConfig.weathering
+    const weatheringIntensity = inkConfig.weatheringIntensity ?? 0
+
+    console.log('[ink-effect] OpenType渲染:', 'glyphs:', glyphs.length,
+      'opacity:', opacity.toFixed(2), 'blur:', blurRadius.toFixed(2),
+      'misReg:', misReg.toFixed(2), 'spread:', inkSpreadEnabled, 'weathering:', weatheringEnabled)
+
     const paths = await getGlyphPaths(font, glyphs, fontSize)
-    
+
     ctx.save()
-    
+
     if (textSkew !== 0) {
       const skewAngle = (textSkew * Math.PI) / 180
       ctx.transform(1, 0, Math.tan(skewAngle), 1, 0, 0)
     }
-    
+
+    // ===== 第0层：墨迹底层扩散 =====
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.25})`
+    ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},0.35)`
+    ctx.shadowBlur = fontSize * 0.50
+    for (const p of paths) { p.path.draw(ctx) }
+    ctx.shadowBlur = 0
+
+    // ===== 第1层：纤维渗透（blur效果）=====
+    if (blurRadius > 0.05) {
+      ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.45})`
+      ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},0.60)`
+      ctx.shadowBlur = blurRadius * fontSize * 2.2
+      for (const p of paths) { p.path.draw(ctx) }
+      ctx.shadowBlur = 0
+    }
+
+    // ===== 第2层：主体实墨 =====
     ctx.globalCompositeOperation = 'source-over'
     ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity})`
-    
-    for (const p of paths) {
-      p.path.draw(ctx)
+    for (const p of paths) { p.path.draw(ctx) }
+
+    // ===== 第3层：套印错位重影（misRegistration）=====
+    if (misReg > 0.01) {
+      const misOffsets = [
+        { ox: fontSize * 0.08 * misReg, oy: fontSize * 0.03 * misReg },
+        { ox: -fontSize * 0.05 * misReg, oy: fontSize * 0.06 * misReg }
+      ]
+      for (const off of misOffsets) {
+        ctx.save()
+        ctx.translate(off.ox, off.oy)
+        ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.30 * misReg})`
+        for (const p of paths) { p.path.draw(ctx) }
+        ctx.restore()
+      }
     }
-    
+
+    // ===== 第4层：颜色渗色（chromatic bleed）=====
+    if (misReg > 0.05) {
+      const bleedOffset = fontSize * 0.06 * misReg
+      const bleedAlpha = opacity * 0.25 * misReg
+
+      // 红色通道偏移
+      ctx.save()
+      ctx.translate(-bleedOffset, -bleedOffset)
+      ctx.globalCompositeOperation = 'screen'
+      ctx.fillStyle = `rgba(${Math.min(255, inkColor.r + 40)},${inkColor.g},${inkColor.b},${bleedAlpha})`
+      for (const p of paths) { p.path.draw(ctx) }
+      ctx.restore()
+
+      // 蓝色通道偏移
+      ctx.save()
+      ctx.translate(bleedOffset, bleedOffset)
+      ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${Math.min(255, inkColor.b + 30)},${bleedAlpha})`
+      for (const p of paths) { p.path.draw(ctx) }
+      ctx.restore()
+      ctx.globalCompositeOperation = 'source-over'
+    }
+
+    // ===== 第5层：墨色浸染（inkSpread）=====
+    if (inkSpreadEnabled && inkSpreadIntensity > 0.01) {
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * inkSpreadIntensity * 0.35})`
+      ctx.shadowColor = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${inkSpreadIntensity * 0.7})`
+      ctx.shadowBlur = fontSize * inkSpreadIntensity * 0.8
+      for (const p of paths) { p.path.draw(ctx) }
+      ctx.shadowBlur = 0
+    }
+
+    // ===== 第6层：字体风化（独立效果）=====
+    if (weatheringEnabled && weatheringIntensity > 0.01) {
+      ctx.globalCompositeOperation = 'source-over'
+      const weatherAlphaBase = Math.min(0.6, weatheringIntensity * 0.8)
+      for (let i = 0; i < paths.length; i++) {
+        const hash = (((i * 37 + (glyphs[i].text.charCodeAt(0) || 0) + 777) % 1000) / 1000)
+        if (hash < weatheringIntensity * 0.7) {
+          const fadeAlpha = weatherAlphaBase * (0.3 + hash * 0.7)
+          const jitterX = fontSize * (hash - 0.5) * weatheringIntensity * 0.03
+          const jitterY = fontSize * (hash * 0.7 - 0.35) * weatheringIntensity * 0.02
+          ctx.save()
+          ctx.translate(jitterX, jitterY)
+          ctx.globalAlpha = Math.max(0.15, 1 - fadeAlpha)
+          ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${Math.max(0.1, opacity * (1 - fadeAlpha))})`
+          paths[i].path.draw(ctx)
+          ctx.restore()
+        }
+      }
+      ctx.globalAlpha = 1.0
+    }
+
+    // ===== 描边 =====
     if (strokeEnabled && strokeWidth > 0) {
       const actualStrokeWidth = Math.max(0.5, strokeWidth * ((layoutConfig && layoutConfig._dpr) || 2))
-      console.log('[ink-effect] OpenType描边: width=', strokeWidth, 'actual=', actualStrokeWidth.toFixed(1))
       ctx.strokeStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.6})`
       ctx.lineWidth = actualStrokeWidth
       ctx.lineJoin = 'round'
       ctx.miterLimit = 2
-      for (const p of paths) {
-        p.path.draw(ctx, null, true)
-      }
+      for (const p of paths) { p.path.draw(ctx, null, true) }
     }
-    
+
+    // ===== 压痕微凹 =====
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.fillStyle = `rgba(20,12,5,${opacity * 0.08})`
+    ctx.shadowColor = 'rgba(20,12,5,0.20)'
+    ctx.shadowBlur = fontSize * 0.15
+    for (const p of paths) { p.path.draw(ctx) }
+    ctx.shadowBlur = 0
+
     ctx.restore()
-    
-    console.log('[ink-effect] 使用 opentype.js 渲染完成，字符数:', paths.length)
-    
+
+    console.log('[ink-effect] OpenType渲染完成，字符数:', paths.length)
+
   } catch (err) {
     if (fontId && !_opentypeDisabledFonts[fontId]) {
       _opentypeDisabledFonts[fontId] = true
