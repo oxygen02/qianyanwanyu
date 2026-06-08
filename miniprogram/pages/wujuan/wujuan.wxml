@@ -106,7 +106,10 @@
       <view
         wx:for="{{downloadedFonts}}"
         wx:key="id"
-        class="font-item"
+        class="font-item {{defaultFontId === item.id ? 'font-item--active' : ''}}"
+        bindtap="onSelectDefaultFont"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
       >
         <view class="font-icon">Aa</view>
         <view class="font-info">
@@ -120,7 +123,16 @@
           <text class="status-dot"></text>
           <text class="status-text">已缓存</text>
         </view>
+        <view class="font-check" wx:if="{{defaultFontId === item.id}}">
+          <text class="check-icon">✓</text>
+        </view>
       </view>
+    </view>
+
+    <!-- 默认字体提示 -->
+    <view class="font-tip" wx:if="{{defaultFontId}}">
+      <text class="tip-text">默认字体：{{defaultFontName}}</text>
+      <text class="tip-text" style="margin-top:6rpx;">前往「落墨」创建新书页时将自动使用该字体。</text>
     </view>
 
     <!-- 提示信息 -->

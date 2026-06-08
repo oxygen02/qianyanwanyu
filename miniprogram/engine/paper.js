@@ -234,6 +234,13 @@ function generatePaperTexture(params) {
     _drawStains(ctx, width, height, paperConfig.stain)
   }
 
+  // 第十一层：页面破损（tear / hole / worn-edge）
+  // 模拟老旧书页的撕裂、破洞、磨损边缘 — 这是纸张层面的效果
+  const paperDamage = (paperConfig.effects && paperConfig.effects.damage) || 0
+  if (paperDamage > 0.01) {
+    _drawPaperDamage(ctx, width, height, paperDamage, seed)
+  }
+
   return ctx
 }
 
@@ -273,6 +280,97 @@ function _drawStains(ctx, width, height, stainConfig) {
     ctx.arc(0, 0, r, 0, Math.PI * 2)
     ctx.restore()
     ctx.fill()
+  }
+
+  ctx.globalCompositeOperation = 'source-over'
+}
+
+/**
+ * 绘制页面破损效果（纸张层）
+ * 模拟老旧书页的：边缘撕裂、局部破洞、折痕磨损
+ * @param {CanvasRenderingContext2D} ctx - 纸张纹理 Canvas ctx
+ * @param {number} width - 画布宽度
+ * @param {number} height - 画布高度
+ * @param {number} level - 破损程度 0~1
+ * @param {number} seed - 随机种子
+ */
+function _drawPaperDamage(ctx, width, height, level, seed) {
+  const dmgSeed = (seed || 0) + 99999  // 独立种子避免与其他效果冲突
+  const eps = Math.min(width, height) * 0.003  // 最小绘制单位
+
+  ctx.globalCompositeOperation = 'destination-out'  // 挖空（透明）
+
+  // 1. 边缘撕裂（沿四边随机缺口）
+  if (level > 0.05) {
+    const tearCount = Math.floor(2 + level * 4)
+    for (let i = 0; i < tearCount; i++) {
+      const edge = Math.floor(_pseudoRandom(dmgSeed, i * 7) * 4)
+      let tx, ty, tw, th
+      const tearLen = Math.min(width, height) * (0.03 + _pseudoRandom(dmgSeed, i * 7 + 1) * 0.08) * level
+
+      switch (edge) {
+        case 0: tx = width * (0.1 + _pseudoRandom(dmgSeed, i * 7 + 2) * 0.8); ty = 0; tw = tearLen; th = Math.max(eps, height * (0.01 + _pseudoRandom(dmgSeed, i * 7 + 3) * 0.04) * level); break
+        case 1: tx = width * (0.1 + _pseudoRandom(dmgSeed, i * 7 + 2) * 0.8); ty = height - Math.max(eps, height * (0.01 + _pseudoRandom(dmgSeed, i * 7 + 3) * 0.04) * level); tw = tearLen; th = Math.max(eps, height * (0.01 + _pseudoRandom(dmgSeed, i * 7 + 3) * 0.04) * level); break
+        case 2: tx = 0; ty = height * (0.1 + _pseudoRandom(dmgSeed, i * 7 + 2) * 0.8); tw = Math.max(eps, width * (0.01 + _pseudoRandom(dmgSeed, i * 7 + 3) * 0.03) * level); th = tearLen; break
+        default: tx = width - Math.max(eps, width * (0.01 + _pseudoRandom(dmgSeed, i * 7 + 3) * 0.03) * level); ty = height * (0.1 + _pseudoRandom(dmgSeed, i * 7 + 2) * 0.8); tw = Math.max(eps, width * (0.01 + _pseudoRandom(dmgSeed, i * 7 + 3) * 0.03) * level); th = tearLen; break
+      }
+
+      ctx.beginPath()
+      ctx.moveTo(tx, ty)
+      ctx.lineTo(tx + tw * 0.5, ty + th * (0.5 + _pseudoRandom(dmgSeed, i * 7 + 4)))
+      ctx.lineTo(tx + tw, ty)
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+
+  // 2. 局部破洞/虫蛀孔
+  if (level > 0.15) {
+    const holeCount = Math.floor(1 + level * 3)
+    for (let i = 0; i < holeCount; i++) {
+      const hx = width * (0.15 + _pseudoRandom(dmgSeed, i * 11 + 10) * 0.7)
+      const hy = height * (0.15 + _pseudoRandom(dmgSeed, i * 11 + 11) * 0.7)
+      const hr = Math.max(eps, Math.min(width, height) * (0.01 + _pseudoRandom(dmgSeed, i * 11 + 12) * 0.03) * level)
+
+      ctx.beginPath()
+      ctx.arc(hx, hy, hr, 0, Math.PI * 2)
+      ctx.fill()
+
+      const notchCount = 3 + Math.floor(_pseudoRandom(dmgSeed, i * 11 + 13) * 4)
+      for (let n = 0; n < notchCount; n++) {
+        const angle = (n / notchCount) * Math.PI * 2 + _pseudoRandom(dmgSeed, i * 11 + 14 + n) * 0.5
+        const nr = hr * (1.1 + _pseudoRandom(dmgSeed, i * 11 + 15 + n) * 0.4)
+        ctx.beginPath()
+        ctx.moveTo(hx + Math.cos(angle) * hr, hy + Math.sin(angle) * hr)
+        ctx.lineTo(hx + Math.cos(angle) * nr, hy + Math.sin(angle) * nr)
+        ctx.lineTo(hx + Math.cos(angle + 0.15) * hr, hy + Math.sin(angle + 0.15) * hr)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
+  }
+
+  // 3. 折痕磨损线
+  if (level > 0.08) {
+    const creaseCount = Math.floor(1 + level * 2)
+    for (let i = 0; i < creaseCount; i++) {
+      const isH = _pseudoRandom(dmgSeed, i * 13 + 20) > 0.5
+      const cx = isH ? width * (0.1 + _pseudoRandom(dmgSeed, i * 13 + 21) * 0.8) : width * (_pseudoRandom(dmgSeed, i * 13 + 21) * 0.9 + 0.05)
+      const cy = isH ? height * (_pseudoRandom(dmgSeed, i * 13 + 22) * 0.9 + 0.05) : height * (0.1 + _pseudoRandom(dmgSeed, i * 13 + 22) * 0.8)
+      const cLen = Math.min(width, height) * (0.15 + _pseudoRandom(dmgSeed, i * 13 + 23) * 0.35) * level
+      const cw = Math.max(eps, Math.min(width, height) * (0.002 + _pseudoRandom(dmgSeed, i * 13 + 24) * 0.006))
+
+      ctx.save()
+      ctx.translate(cx, cy)
+      if (!isH) ctx.rotate(Math.PI / 2)
+      ctx.beginPath()
+      ctx.moveTo(-cLen * 0.5, 0)
+      ctx.quadraticCurveTo(0, cw * 2, cLen * 0.5, 0)
+      ctx.quadraticCurveTo(0, -cw * 0.5, -cLen * 0.5, 0)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
   }
 
   ctx.globalCompositeOperation = 'source-over'

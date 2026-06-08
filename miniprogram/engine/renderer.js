@@ -110,10 +110,11 @@ function clearRenderCache() {
  * @param {number} params.pageIndex - 当前页码（0-based）
  * @param {number} params.totalPages - 总页数
  * @param {string} params.dateStr - 创作时间字符串（用于水印）
+ * @param {boolean} [params.previewMode] - 预览模式（效果增强）
  * @returns {Promise<void>}
  */
 async function renderPage(params) {
-  const { canvas, width, height, text, templateId, template: tplOverride, pageIndex, totalPages, dateStr } = params
+  const { canvas, width, height, text, templateId, template: tplOverride, pageIndex, totalPages, dateStr, previewMode } = params
   let template = tplOverride || TEMPLATES[templateId] || TEMPLATES['modern-prose']
   const ctx = canvas.getContext('2d')
   let currentPage = null
@@ -470,7 +471,8 @@ function _scaleTemplateForDPR(template, dpr) {
       light: template.paper.light ? { ...template.paper.light } : undefined,
       border: template.paper.border ? { ...template.paper.border } : undefined,
       stain: template.paper.stain ? { ...template.paper.stain } : undefined,
-      edges: template.paper.edges ? { ...template.paper.edges } : undefined
+      edges: template.paper.edges ? { ...template.paper.edges } : undefined,
+      effects: template.paper.effects ? { ...template.paper.effects } : undefined
     },
     font: { ...template.font },
     ink: { ...template.ink },

@@ -489,3 +489,26 @@
   color: #B8AEA4;
   line-height: 1.6;
 }
+
+.font-item--active {
+  border: 2rpx solid #6B5B4F;
+  background-color: rgba(107, 91, 79, 0.04);
+}
+
+.font-check {
+  width: 44rpx;
+  height: 44rpx;
+  background-color: #6B5B4F;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12rpx;
+  flex-shrink: 0;
+}
+
+.check-icon {
+  font-size: 26rpx;
+  color: #FAF7F2;
+  font-weight: 600;
+}

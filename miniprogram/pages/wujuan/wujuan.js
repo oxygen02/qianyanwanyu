@@ -19,7 +19,8 @@ Page({
     // 设置
     settings: {
       watermarkEnabled: true,
-      exportQuality: 'high'
+      exportQuality: 'high',
+      defaultFontId: ''
     },
     // 已下载字体列表
     downloadedFonts: [],
@@ -66,13 +67,16 @@ Page({
     const activeTemplateId = loadActiveTemplate()
     const settings = loadSettings()
 
+    const defaultFontName = (settings.defaultFontId && this._formatDownloadedFonts().find(f => f.id === settings.defaultFontId))?.name || '未选择'
     this.setData({
       historyList,
       systemTemplates,
       customTemplates,
       activeTemplateId,
       settings,
-      downloadedFonts: this._formatDownloadedFonts()
+      downloadedFonts: this._formatDownloadedFonts(),
+      defaultFontId: settings.defaultFontId || '',
+      defaultFontName
     })
   },
 
@@ -133,6 +137,15 @@ Page({
         }
       }
     })
+  },
+
+  onSelectDefaultFont(e) {
+    const fontId = e.currentTarget.dataset.id
+    const fontName = e.currentTarget.dataset.name
+    const settings = { ...this.data.settings, defaultFontId: fontId }
+    this.setData({ settings, defaultFontId: fontId })
+    saveSettings(settings)
+    wx.showToast({ title: `默认字体：${fontName}`, icon: 'success', duration: 1500 })
   },
 
   _noop() {},

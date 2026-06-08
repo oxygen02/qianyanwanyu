@@ -6,7 +6,7 @@
 
 function exportCanvasToImage(canvas, pageInstance, canvasSize, quality) {
   const scale = quality === 'ultra' ? 3 : quality === 'standard' ? 1 : 2
-  const TIMEOUT_MS = 15000
+  const TIMEOUT_MS = 30000  // 大文本需要更长时间
 
   // ============ 诊断日志：打印 canvas 状态 ============
   const canvasInfo = {

@@ -1,1 +1,37 @@
-{"miniprogramRoot": "miniprogram/", "setting": {"es6": true, "postcss": false, "compileWorklet": false, "minified": false, "uglifyFileName": false, "uploadWithSourceMap": true, "enhance": true, "packNpmManually": false, "packNpmRelationList": [], "minifyWXSS": true, "minifyWXML": true, "localPlugins": false, "disableUseStrict": false, "useCompilerPlugins": false, "condition": false, "swc": false, "disableSWC": true}, "compileType": "miniprogram", "appid": "wxc56fcfe0d57c6679", "projectname": "qianyanwanyu", "libVersion": "3.6.1"}
+{
+  "miniprogramRoot": "miniprogram/",
+  "setting": {
+    "es6": true,
+    "postcss": false,
+    "compileWorklet": false,
+    "minified": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "miniprogram",
+  "appid": "wxc56fcfe0d57c6679",
+  "projectname": "qianyanwanyu",
+  "libVersion": "3.6.1",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
+}

@@ -69,11 +69,11 @@ function simplifyToTraditional(text) {
 /**
  * 判断是否为标点符号（不能出现在行首）
  */
-const LINE_START_FORBIDDEN = '，。！？；：、…—）》】」\'\"'
+const LINE_START_FORBIDDEN = '，。！？；：、…—）》】」·：；‹›‼‽⁇⁈⁉'
 /**
  * 不能出现在行尾的标点
  */
-const LINE_END_FORBIDDEN = '（《【「\'\""'
+const LINE_END_FORBIDDEN = '（《【「·‹›'
 
 function isLineStartForbidden(char) {
   return LINE_START_FORBIDDEN.includes(char)
@@ -101,6 +101,12 @@ function toFullWidth(text) {
     } else if (code >= 0x61 && code <= 0x7A) {
       // 小写字母 a-z → ａ-ｚ (U+FF41-U+FF5A)
       result += String.fromCharCode(code - 0x61 + 0xFF41)
+    } else if (code === 0x20) {
+      // 半角空格 → 全角空格(U+3000)
+      result += '\u3000'
+    } else if (ch === ' ') {
+      // 半角空格 → 全角空格
+      result += '　'
     } else {
       result += ch
     }
@@ -198,6 +204,19 @@ function typesetPage(params) {
   if (contentWidth <= 0 || contentHeight <= 0) {
     console.warn('[typesetter] 内容区域无效:', { canvasW: safeCanvasW, canvasH: safeCanvasH, marginTop, marginBottom, marginLeft, marginRight })
     return { glyphs: [], remainder: text, pagesFull: false }
+  }
+
+  // 内容区域过小保护
+  const MIN_CONTENT_WIDTH = fontSize * 4
+  const MIN_CONTENT_HEIGHT = fontSize * 3
+  if (contentWidth < MIN_CONTENT_WIDTH || contentHeight < MIN_CONTENT_HEIGHT) {
+    console.warn('[typesetter] 内容区域过小，自动调整边距')
+    const adjustW = (safeCanvasW - MIN_CONTENT_WIDTH) / 2
+    const adjustH = (safeCanvasH - MIN_CONTENT_HEIGHT) / 2
+    marginLeft = Math.min(marginLeft, adjustW)
+    marginRight = Math.min(marginRight, adjustW)
+    marginTop = Math.min(marginTop, adjustH)
+    marginBottom = Math.min(marginBottom, adjustH)
   }
 
   const glyphs = []
@@ -400,40 +419,60 @@ function typesetPage(params) {
 
   } else {
     // 竖排（从右到左）
-    const charHeight = fontSize + letterSpacing
-    const charsPerColumn = Math.floor(contentHeight / charHeight)
-    const totalColumns = Math.floor(contentWidth / (fontSize * 1.5))
+    // 竖排语义：lineHeight → 列间距（列与列的水平距离），letterSpacing → 字符垂直间距
+    const charSpace = fontSize + letterSpacing  // 字符垂直间距 = 字号 + 字距
+    const charsPerColumn = Math.floor(contentHeight / charSpace)
+    const colSpacing = lineHeight  // 列间距 = 行距（含 fontSize * lineHeightScale * lineHeight 因子）
+    const totalColumns = Math.floor(contentWidth / colSpacing)
+
+    // 分段处理，保留段落间距
+    let paragraphs = processedText.split('\n')
+    if (emptyLineHandling === 'merge') {
+      const merged = []
+      let prevEmpty = false
+      for (const p of paragraphs) {
+        const isEmpty = p.trim().length === 0
+        if (isEmpty) {
+          if (!prevEmpty) { merged.push(p); prevEmpty = true }
+        } else { merged.push(p); prevEmpty = false }
+      }
+      paragraphs = merged
+    }
 
     let col = 0
     let charInCol = 0
-    let textIdx = 0
-    const chars = processedText.replace(/\n/g, '　')  // 换行改为全角空格（竖排段落）
 
-    while (textIdx < chars.length) {
-      if (col >= totalColumns) {
-        remainder = chars.slice(textIdx)
-        return { glyphs, remainder, pagesFull: true }
+    for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+      const para = paragraphs[pIdx]
+      if (para.trim().length === 0) {
+        charInCol += 1
+      } else {
+        for (let i = 0; i < para.length; i++) {
+          if (col >= totalColumns) {
+            remainder = paragraphs.slice(pIdx).join('\n').slice(i)
+            return { glyphs, remainder, pagesFull: true }
+          }
+
+          const ch = para[i]
+          const x = marginLeft + (totalColumns - 1 - col) * colSpacing + fontSize * 0.5  // 列位置由 colSpacing 决定
+          const y = marginTop + charInCol * charSpace + fontSize  // 字符垂直位置由 charSpace 决定
+
+          glyphs.push({ text: ch, x, y })
+          charInCol++
+
+          if (charInCol >= charsPerColumn) {
+            charInCol = 0
+            col++
+          }
+        }
       }
 
-      const ch = chars[textIdx]
-      // 半角字符在竖排时旋转显示，占用高度为宽度（即半角宽度）
-      const charAdvance = getCharWidthScale(ch) < 1 ? fontSize * 0.5 + letterSpacing : charHeight
-
-      const x = marginLeft + (totalColumns - 1 - col) * fontSize * 1.5 + fontSize * 0.5 // 从右往左
-      const y = marginTop + charInCol * charHeight + fontSize
-
-      glyphs.push({
-        text: ch,
-        x,
-        y
-      })
-
-      charInCol++
-      textIdx++
-
-      if (charInCol >= charsPerColumn) {
-        charInCol = 0
-        col++
+      if (pIdx < paragraphs.length - 1 && paragraphSpacing > 0) {
+        charInCol += paragraphSpacing
+        if (charInCol >= charsPerColumn) {
+          charInCol = 0
+          col++
+        }
       }
     }
 

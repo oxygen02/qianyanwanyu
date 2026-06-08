@@ -3,7 +3,7 @@
 // 优先使用本地缓存，避免重复下载
 
 const { BUILT_IN_FONTS } = require('./constants')
-const { loadFontFromCache, markOpenTypeIncompatible, isSimulatorDetected } = require('../engine/ink-effect')
+const { loadFontFromCache, markOpenTypeIncompatible, isSimulatorDetected, resetOpenTypeDisabledFont } = require('../engine/ink-effect')
 
 /**
  * 扫描本地字体缓存目录，获取所有已缓存字体ID列表
@@ -847,3 +847,218 @@ module.exports = {
   reconcileDownloadedRecords,
   onFontReady
 }
+
+// ============ 字体子集化集成 ============
+
+let _subsetFontLoader = null
+
+/**
+ * 懒加载 font-subset 模块
+ */
+function _getSubsetModule() {
+  if (!_subsetFontLoader) {
+    try {
+      _subsetFontLoader = require('./font-subset')
+    } catch (e) {
+      console.warn('[font-loader] font-subset 模块加载失败:', e.message)
+      return null
+    }
+  }
+  return _subsetFontLoader
+}
+
+/**
+ * 使用字体子集加载字体（大幅减少下载量）
+ * 
+ * 流程：
+ *   1. 确保完整字体已下载到本地缓存
+ *   2. 为当前文字内容创建子集字体
+ *   3. 通过 wx.loadFontFace 加载子集字体（本地文件路径）
+ *
+ * @param {string} fontId - 字体ID
+ * @param {string} text - 用户输入的文字
+ * @param {function} [onProgress] - 进度回调
+ * @returns {Promise<string>} 加载成功的 font-family 名称
+ */
+async function loadFontWithSubset(fontId, text, onProgress = null) {
+  const FALLBACK_FONT = getFallbackFont()
+
+  // 已加载，直接返回
+  if (_loadedFonts[fontId] === 'loaded') {
+    if (onProgress) onProgress({ status: 'done', percent: 100 })
+    return Promise.resolve(fontId)
+  }
+
+  // 正在加载中，等待完成
+  if (_loadedFonts[fontId] === 'loading') {
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (_loadedFonts[fontId] === 'loaded') {
+          clearInterval(checkInterval)
+          resolve(fontId)
+        } else if (_loadedFonts[fontId] === 'failed') {
+          clearInterval(checkInterval)
+          resolve(FALLBACK_FONT)
+        }
+      }, 300)
+      setTimeout(() => {
+        clearInterval(checkInterval)
+        resolve(FALLBACK_FONT)
+      }, 20000)
+    })
+  }
+
+  const fontConfig = BUILT_IN_FONTS.find(f => f.id === fontId)
+  if (!fontConfig || !fontConfig.fileID) {
+    console.warn('[font-loader] 字体配置缺失，回退系统字体:', fontId)
+    if (onProgress) onProgress({ status: 'failed', percent: 0 })
+    return Promise.resolve(FALLBACK_FONT)
+  }
+
+  _loadedFonts[fontId] = 'loading'
+
+  // 策略：始终优先使用 cloud URL 的完整字体（稳定可靠）
+  // 子集文件仅在后台创建，用于后续 OpenType 渲染加速
+  // 不依赖子集文件加载（避免模拟器 HTTP 500 问题）
+  const loadFullFont = async () => {
+    try {
+      const fontUrl = await resolveFontURL(fontConfig)
+      const result = await tryLoadFontFace(fontConfig, fontUrl, 1, onProgress)
+      _loadedFonts[fontId] = 'loaded'
+      recordFontDownloaded(fontId)
+      if (result && result !== FALLBACK_FONT) {
+        // 完整字体加载成功 → 后台异步创建子集供 OpenType 渲染
+        _tryCreateSubsetInBackground(fontId, text)
+      }
+      return result
+    } catch (err) {
+      _loadedFonts[fontId] = 'failed'
+      if (onProgress) onProgress({ status: 'failed', percent: 0 })
+      return FALLBACK_FONT
+    }
+  }
+
+  // 如果已有本地缓存，尝试加载子集文件，但同时启动完整字体作为兜底
+  if (text && typeof text === 'string' && text.trim().length > 5) {
+    try {
+      await ensureCacheDir()
+      const subsetModule = _getSubsetModule()
+      if (subsetModule && subsetModule.hasSubsetFont(fontId)) {
+        const subsetPath = subsetModule.getSubsetFontPath(fontId)
+        try {
+          await _loadSubsetFontFace(fontConfig, subsetPath)
+          _loadedFonts[fontId] = 'loaded'
+          recordFontDownloaded(fontId)
+          if (onProgress) onProgress({ status: 'done', percent: 100 })
+          console.log('[font-loader] 子集字体加载成功:', fontId)
+          return fontConfig.family
+        } catch (subsetErr) {
+          console.warn('[font-loader] 子集加载失败，回退完整字体:', fontId, subsetErr.message || subsetErr)
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 默认走完整字体加载
+  return loadFullFont()
+}
+
+/**
+ * 加载子集字体文件到 WebView
+ */
+function _loadSubsetFontFace(fontConfig, subsetPath) {
+  return new Promise((resolve, reject) => {
+    // 设置较短超时（模拟器上子集文件可能无法加载）
+    let resolved = false
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        reject(new Error('subset_load_timeout'))
+      }
+    }, 3000)
+    wx.loadFontFace({
+      family: fontConfig.family,
+      source: `url("${subsetPath}")`,
+      desc: { weight: fontConfig.weight || '400', style: fontConfig.style || 'normal' },
+      success: async () => {
+        if (resolved) return
+        resolved = true
+        clearTimeout(timer)
+        try { await ensureCanvasFontReady(fontConfig.family) } catch (_) {}
+        resolve()
+      },
+      fail: (err) => {
+        if (resolved) return
+        resolved = true
+        clearTimeout(timer)
+        console.warn('[font-loader] 子集字体加载失败（已自动回退完整字体）:', err.errMsg || err)
+        reject(err)
+      }
+    })
+  })
+}
+
+/**
+ * 回退到完整字体加载（原始方式）
+ */
+
+/**
+ * 后台尝试创建字体子集（不影响主流程）
+ * 子集成功后缓存到本地，供后续 OpenType 渲染使用
+ */
+async function _tryCreateSubsetInBackground(fontId, text) {
+  if (!text || typeof text !== 'string' || text.trim().length < 5) return
+  try {
+    await ensureCacheDir()
+    const subsetModule = _getSubsetModule()
+    if (!subsetModule) return
+    if (subsetModule.hasSubsetFont(fontId)) return  // 已存在
+    const config = BUILT_IN_FONTS.find(f => f.id === fontId)
+    if (!config) return
+    // 先确保完整字体已缓存
+    if (!getLocalFontPath(fontId)) {
+      const tempURL = await resolveFontURL(config)
+      await downloadFontToCache(tempURL, fontId)
+    }
+    await subsetModule.createFontSubset(fontId, text)
+    console.log('[font-loader] 后台子集创建完成:', fontId)
+  } catch (e) {
+    // 静默失败，不影响主流程
+    if (e.message && !['chars_limit_exceeded', 'chars_too_few'].includes(e.message)) {
+      console.warn('[font-loader] 后台子集创建跳过:', fontId, e.message || e)
+    }
+  }
+}
+
+async function _fallbackLoadFullFont(fontConfig, onProgress) {
+  const FALLBACK_FONT = getFallbackFont()
+  try {
+    const fontUrl = await resolveFontURL(fontConfig)
+    return await tryLoadFontFace(fontConfig, fontUrl, 0, onProgress)
+  } catch (err) {
+    console.warn('[font-loader] 完整字体加载回退也失败:', fontConfig.name, err.message || err)
+    _loadedFonts[fontConfig.id] = 'failed'
+    if (onProgress) onProgress({ status: 'failed', percent: 0 })
+    return FALLBACK_FONT
+  }
+}
+
+/**
+ * 清除字体子集缓存
+ */
+function clearFontSubset(fontId) {
+  try {
+    const subsetModule = _getSubsetModule()
+    if (subsetModule) {
+      subsetModule.clearSubset(fontId)
+      return true
+    }
+  } catch (_) { }
+  return false
+}
+
+// 导出新增函数
+module.exports.resetOpenTypeDisabledFont = resetOpenTypeDisabledFont
+module.exports.loadFontWithSubset = loadFontWithSubset
+module.exports.clearFontSubset = clearFontSubset
+module.exports.FONT_CACHE_DIR = FONT_CACHE_DIR

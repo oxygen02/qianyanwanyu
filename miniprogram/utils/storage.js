@@ -161,10 +161,11 @@ function loadSettings() {
   try {
     return wx.getStorageSync(KEYS.SETTINGS) || {
       watermarkEnabled: true,
-      exportQuality: 'high'
+      exportQuality: 'high',
+      defaultFontId: ''
     }
   } catch (e) {
-    return { watermarkEnabled: true, exportQuality: 'high' }
+    return { watermarkEnabled: true, exportQuality: 'high', defaultFontId: '' }
   }
 }
 
