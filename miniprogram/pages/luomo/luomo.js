@@ -510,10 +510,28 @@ Page({
     this._checkAndLoadHistory()
     reconcileDownloadedRecords()
 
-    // 同步"吾卷"中设置的默认字体
+    // 同步"吾卷"中设置的默认字体（需触发加载+渲染）
     const _curSettings = loadSettings()
     if (_curSettings.defaultFontId && _curSettings.defaultFontId !== this.data.settings.fontId) {
-      this.setData({ 'settings.fontId': _curSettings.defaultFontId })
+      const targetFontId = _curSettings.defaultFontId
+      // 查找字体在列表中的索引
+      let fontIndex = -1
+      const fontList = this.data.fontList || []
+      for (let i = 0; i < fontList.length; i++) {
+        if (fontList[i].id === targetFontId) { fontIndex = i; break }
+      }
+      if (fontIndex >= 0) {
+        // 使用完整的字体应用流程（含加载+渲染）
+        this._applyFontDirectly(targetFontId, fontIndex)
+      } else {
+        // 字体列表未加载时，至少更新设置并触发渲染
+        this.setData({
+          'settings.fontId': targetFontId,
+          'activeFontId': targetFontId
+        })
+        clearRenderCache()
+        this._renderNow()
+      }
     }
 
     // 注册页面尺寸变化监听（折叠屏/分屏适配）
@@ -806,10 +824,12 @@ Page({
   onSelectAllText() {
     const text = this.data.text || ''
     if (!text.length) return
+    // 先设置选区范围，再重新聚焦（点击按钮会导致textarea失焦）
     this.setData({
       selectionStart: 0,
       selectionEnd: text.length,
-      cursorPos: text.length
+      cursorPos: text.length,
+      fullscreenFocused: true  // 重新聚焦使selection生效
     })
   },
 
@@ -2410,7 +2430,8 @@ Page({
         light: base.paper.light ? { ...base.paper.light } : undefined,
         border: base.paper.border ? { ...base.paper.border } : undefined,
         stain: base.paper.stain ? { ...base.paper.stain } : undefined,
-        edges: base.paper.edges ? { ...base.paper.edges } : undefined
+        edges: base.paper.edges ? { ...base.paper.edges } : undefined,
+        effects: base.paper.effects ? { ...base.paper.effects } : undefined
       },
       font: { ...base.font },
       ink: { ...base.ink },
@@ -2469,10 +2490,17 @@ Page({
       tpl.ink.misRegistration = s.misregistrationOffset / 20
     }
     // 页面破损：布尔开关 + 程度值
+    // 注意：damage 同时影响两层 — 纸张纹理层（tear/hole/worn-edge）和墨迹层（已移除，改为纯纸张效果）
     if (s.damageEnabled != null) {
-      tpl.ink.damage = s.damageEnabled ? (s.damageVal != null ? s.damageVal / 100 : 0.08) : 0
+      const dmgVal = s.damageVal != null ? s.damageVal / 100 : 0.08
+      tpl.ink.damage = s.damageEnabled ? dmgVal : 0
+      // 纸张层：传递给 generatePaperTexture 用于渲染撕裂/破洞/磨损边缘
+      if (!tpl.paper.effects) tpl.paper.effects = {}
+      tpl.paper.effects.damage = s.damageEnabled ? dmgVal : 0
     } else if (s.damage != null) {
       tpl.ink.damage = s.damage
+      if (!tpl.paper.effects) tpl.paper.effects = {}
+      tpl.paper.effects.damage = s.damage
     }
 
     // === 基础纸张 ===

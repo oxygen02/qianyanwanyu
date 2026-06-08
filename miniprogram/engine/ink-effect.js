@@ -548,6 +548,11 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
     'spread:', inkSpreadEnabled, 'spreadInt:', inkSpreadIntensity.toFixed(2),
     '(damage已移至纸张层)')
 
+  // 粗体检测：weight >= 600 视为粗体，通过多方向偏移模拟
+  const weightVal = parseInt(fontConfig.weight || '400', 10)
+  const isBold = weightVal >= 600
+  const boldPx = isBold ? Math.max(0.5, fontSize * 0.015) : 0
+
   ctx.save()
   ctx.font = fontStr
   ctx.textBaseline = 'alphabetic'
@@ -618,6 +623,13 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
     for (const g of glyphs) {
       if (!g.text || g.text === ' ') continue
       ctx.fillText(g.text, g.x, g.y)
+      // 粗体模拟（simpleMode路径）
+      if (isBold && boldPx > 0) {
+        ctx.fillText(g.text, g.x + boldPx, g.y)
+        ctx.fillText(g.text, g.x - boldPx, g.y)
+        ctx.fillText(g.text, g.x, g.y + boldPx * 0.6)
+        ctx.fillText(g.text, g.x, g.y - boldPx * 0.6)
+      }
     }
 
     // 描边效果（simpleMode 也支持）
@@ -661,6 +673,14 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
 
       ctx.fillStyle = `rgba(${r},${gVal},${bVal},${charOpacity})`
       ctx.fillText(g.text, g.x, g.y)
+
+      // 粗体模拟：通过4方向微小偏移叠加模拟加粗（微信Canvas数字权重支持有限）
+      if (isBold && boldPx > 0) {
+        ctx.fillText(g.text, g.x + boldPx, g.y)
+        ctx.fillText(g.text, g.x - boldPx, g.y)
+        ctx.fillText(g.text, g.x, g.y + boldPx * 0.6)
+        ctx.fillText(g.text, g.x, g.y - boldPx * 0.6)
+      }
 
       if (strokeEnabled && strokeWidth > 0) {
         const strokeColor = inkConfig.strokeColor || inkConfig.color || '#1A1008'
@@ -720,12 +740,13 @@ function drawInkBlock(ctx, glyphs, inkConfig, fontConfig, fontSize, layoutConfig
   // ===== 第4.5层：错位重影（套印偏差）=====
   const misLevel = Math.min(1, Math.max(0, misReg))
   if (misLevel > 0.01) {
+    // 增强偏移量：原0.08/0.05太微弱 → 调整为0.15/0.10使效果可见
     const misOffsets = [
-      { ox: fontSize * 0.08 * misLevel, oy: fontSize * 0.03 * misLevel },
-      { ox: -fontSize * 0.05 * misLevel, oy: fontSize * 0.06 * misLevel }
+      { ox: fontSize * 0.15 * misLevel, oy: fontSize * 0.06 * misLevel },
+      { ox: -fontSize * 0.10 * misLevel, oy: fontSize * 0.10 * misLevel }
     ]
     for (const off of misOffsets) {
-      ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.30 * misLevel})`
+      ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.35 * misLevel})`
       for (const g of glyphs) {
         if (!g.text || g.text === ' ') continue
         ctx.fillText(g.text, g.x + off.ox, g.y + off.oy)
@@ -844,9 +865,15 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontConfig, font
     const weatheringEnabled = !!inkConfig.weathering
     const weatheringIntensity = inkConfig.weatheringIntensity ?? 0
 
+    // 粗体检测
+    const weightVal = parseInt((fontConfig && fontConfig.weight) || '400', 10)
+    const isBold = weightVal >= 600
+    const boldPx = isBold ? Math.max(0.5, fontSize * 0.015) : 0
+
     console.log('[ink-effect] OpenType渲染:', 'glyphs:', glyphs.length,
       'opacity:', opacity.toFixed(2), 'blur:', blurRadius.toFixed(2),
-      'misReg:', misReg.toFixed(2), 'spread:', inkSpreadEnabled, 'weathering:', weatheringEnabled)
+      'misReg:', misReg.toFixed(2), 'spread:', inkSpreadEnabled, 'weathering:', weatheringEnabled,
+      'bold:', isBold)
 
     const paths = await getGlyphPaths(font, glyphs, fontSize)
 
@@ -879,16 +906,31 @@ async function drawInkBlockWithOpenType(ctx, glyphs, inkConfig, fontConfig, font
     ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity})`
     for (const p of paths) { p.path.draw(ctx) }
 
+    // 粗体模拟（OpenType路径：通过path偏移叠加模拟加粗）
+    if (isBold && boldPx > 0) {
+      for (const p of paths) {
+        ctx.save()
+        ctx.translate(boldPx, 0); p.path.draw(ctx); ctx.restore()
+        ctx.save()
+        ctx.translate(-boldPx, 0); p.path.draw(ctx); ctx.restore()
+        ctx.save()
+        ctx.translate(0, boldPx * 0.6); p.path.draw(ctx); ctx.restore()
+        ctx.save()
+        ctx.translate(0, -boldPx * 0.6); p.path.draw(ctx); ctx.restore()
+      }
+    }
+
     // ===== 第3层：套印错位重影（misRegistration）=====
     if (misReg > 0.01) {
+      // 增强偏移量（与drawInkBlock保持一致）
       const misOffsets = [
-        { ox: fontSize * 0.08 * misReg, oy: fontSize * 0.03 * misReg },
-        { ox: -fontSize * 0.05 * misReg, oy: fontSize * 0.06 * misReg }
+        { ox: fontSize * 0.15 * misReg, oy: fontSize * 0.06 * misReg },
+        { ox: -fontSize * 0.10 * misReg, oy: fontSize * 0.10 * misReg }
       ]
       for (const off of misOffsets) {
         ctx.save()
         ctx.translate(off.ox, off.oy)
-        ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.30 * misReg})`
+        ctx.fillStyle = `rgba(${inkColor.r},${inkColor.g},${inkColor.b},${opacity * 0.35 * misReg})`
         for (const p of paths) { p.path.draw(ctx) }
         ctx.restore()
       }
