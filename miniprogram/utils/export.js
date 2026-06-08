@@ -1,5 +1,8 @@
 // utils/export.js
 // 图片导出工具
+//
+// 重要：本项目使用 Canvas 2D API（new-canvas），必须用 canvas.toTempFilePath() 实例方法
+//       不能使用 wx.canvasToTempFilePath() 全局方法，否则真机上会失败！
 
 function exportCanvasToImage(canvas, pageInstance, canvasSize, quality) {
   const scale = quality === 'ultra' ? 3 : quality === 'standard' ? 1 : 2
@@ -7,30 +10,57 @@ function exportCanvasToImage(canvas, pageInstance, canvasSize, quality) {
 
   return new Promise((resolve, reject) => {
     const timeoutTimer = setTimeout(() => {
-      console.error('[export] canvasToTempFilePath 超时 (', TIMEOUT_MS, 'ms)')
+      console.error('[export] canvas.toTempFilePath 超时 (', TIMEOUT_MS, 'ms)')
       reject(new Error('图片生成超时，请重试或减少文字内容'))
     }, TIMEOUT_MS)
 
-    wx.canvasToTempFilePath({
-      canvas,
-      x: 0,
-      y: 0,
-      width: canvasSize.width,
-      height: canvasSize.height,
-      destWidth: canvasSize.width * scale,
-      destHeight: canvasSize.height * scale,
-      fileType: 'jpg',
-      quality: 0.95,
-      success: (res) => {
-        clearTimeout(timeoutTimer)
-        resolve(res.tempFilePath)
-      },
-      fail: (err) => {
-        clearTimeout(timeoutTimer)
-        console.error('[export] canvasToTempFilePath 失败', err)
-        reject(err)
-      }
-    }, pageInstance)
+    // Canvas 2D 必须使用实例方法 canvas.toTempFilePath()
+    // 不能使用 wx.canvasToTempFilePath() 全局方法
+    if (canvas && typeof canvas.toTempFilePath === 'function') {
+      // 新版 Canvas 2D API
+      canvas.toTempFilePath({
+        x: 0,
+        y: 0,
+        width: canvasSize.width,
+        height: canvasSize.height,
+        destWidth: canvasSize.width * scale,
+        destHeight: canvasSize.height * scale,
+        fileType: 'jpg',
+        quality: 0.95,
+        success: (res) => {
+          clearTimeout(timeoutTimer)
+          console.log('[export] canvas.toTempFilePath 成功')
+          resolve(res.tempFilePath)
+        },
+        fail: (err) => {
+          clearTimeout(timeoutTimer)
+          console.error('[export] canvas.toTempFilePath 失败', err)
+          reject(err)
+        }
+      })
+    } else {
+      // 降级：尝试旧版 wx.canvasToTempFilePath
+      console.warn('[export] canvas.toTempFilePath 不可用，降级到 wx.canvasToTempFilePath')
+      wx.canvasToTempFilePath({
+        canvas,
+        x: 0,
+        y: 0,
+        width: canvasSize.width,
+        height: canvasSize.height,
+        destWidth: canvasSize.width * scale,
+        destHeight: canvasSize.height * scale,
+        fileType: 'jpg',
+        quality: 0.95,
+        success: (res) => {
+          clearTimeout(timeoutTimer)
+          resolve(res.tempFilePath)
+        },
+        fail: (err) => {
+          clearTimeout(timeoutTimer)
+          reject(err)
+        }
+      }, pageInstance)
+    }
   })
 }
 
@@ -68,7 +98,7 @@ function generateId() {
 }
 
 async function exportFlow(params) {
-  // 步骤1：Canvas转临时文件
+  // 步骤1：Canvas转临时文件（Canvas 2D 使用实例方法）
   const tempPath = await exportCanvasToImage(params.canvas, params.pageInstance, params.canvasSize, params.quality || 'high')
 
   // 步骤2：保存到相册（带重试）
