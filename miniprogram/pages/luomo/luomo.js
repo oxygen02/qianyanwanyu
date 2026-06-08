@@ -5,8 +5,7 @@ const { renderPage, estimatePageCount, clearRenderCache } = require('../../engin
 const { saveDraft, loadDraft, clearDraft, saveActiveTemplate, loadActiveTemplate, addHistory, loadSettings, hasVisited, markVisited } = require('../../utils/storage')
 const { exportFlow, generateId } = require('../../utils/export')
 const { TEMPLATES, TEMPLATE_ORDER, DEFAULT_TEMPLATE_ID, BUILT_IN_FONTS, PAPER_SIZES } = require('../../utils/constants')
-const { loadFont, getFontStatus, getFallbackFont, formatFileSize, loadFontWithProgress, isFontDownloaded, reconcileDownloadedRecords, onFontReady } = require('../../utils/font-loader')
-const { resetOpenTypeDisabledFont } = require('../../engine/ink-effect')
+const { loadFont, loadFontWithSubset, getFontStatus, getFallbackFont, formatFileSize, loadFontWithProgress, isFontDownloaded, reconcileDownloadedRecords, onFontReady } = require('../../utils/font-loader')
 const { getRandom: getRandomPoem } = require('../../utils/poem-service')
 
 // 防抖计时器
@@ -93,7 +92,7 @@ Page({
       fontSizeMode: 'px',
       fontSizeDisplay: '27px',
       lineHeight: null,
-      lineHeightVal: 100,
+      lineHeightVal: 170,
       letterSpacing: null,
       letterSpacingVal: 0,
       direction: 'horizontal',
@@ -291,8 +290,8 @@ Page({
       directionIndex: 0,
       verticalDir: 'rtl',
       textAlign: 'left',
-      lineHeight: 100,
-      lineHeightDisplay: '1.0倍',
+      lineHeight: 170,
+      lineHeightDisplay: '1.7倍',
       letterSpacing: 0,
       indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
       indentIndex: 0,
@@ -345,7 +344,7 @@ Page({
     const windowInfo = wx.getWindowInfo()
     const { windowHeight, windowWidth } = windowInfo
     const rpxRatio = windowWidth / 750
-    const bottomAreaH = Math.floor(480 * rpxRatio)
+    const bottomAreaH = Math.min(Math.floor(480 * rpxRatio), Math.floor(windowHeight * 0.40))
     const toolbarH = Math.floor(56 * rpxRatio)
 
     // 第一阶段：立即设置基础布局参数（< 10ms）
@@ -392,7 +391,11 @@ Page({
     const userSettings = loadSettings()
 
     const template = TEMPLATES[activeTemplateId] || TEMPLATES['modern-prose']
-    const currentFontId = template.font && template.font.family ? template.font.family : '上古宋体-Regular'
+    // 如果用户在"吾卷"中设置了默认字体，优先使用
+    const defaultFontId = userSettings.defaultFontId
+    const currentFontId = (defaultFontId && BUILT_IN_FONTS.find(f => f.id === defaultFontId))
+      ? defaultFontId
+      : (template.font && template.font.family ? template.font.family : '上古宋体-Regular')
     const currentFontStatus = getFontStatus(currentFontId)
 
     // 构建简约的模板预览选项（仅用于纸张设置内嵌展示，8个）
@@ -455,7 +458,10 @@ Page({
         })
 
         setTimeout(() => {
-          loadFontWithProgress(fontId, (progress) => {
+          const _fontText = this.data.text
+          const _useSubset = _fontText && _fontText.trim().length > 5
+          const _fontLoader = _useSubset ? loadFontWithSubset : loadFontWithProgress
+          _fontLoader(fontId, _useSubset ? _fontText : null, (progress) => {
             this.setData({
               fontLoading: progress.status === 'loading',
               fontLoadingPercent: progress.percent || 0
@@ -503,6 +509,71 @@ Page({
     }
     this._checkAndLoadHistory()
     reconcileDownloadedRecords()
+
+    // 同步"吾卷"中设置的默认字体
+    const _curSettings = loadSettings()
+    if (_curSettings.defaultFontId && _curSettings.defaultFontId !== this.data.settings.fontId) {
+      this.setData({ 'settings.fontId': _curSettings.defaultFontId })
+    }
+
+    // 注册页面尺寸变化监听（折叠屏/分屏适配）
+    if (wx.onWindowResize) {
+      wx.onWindowResize(this._windowResizeHandler)
+    }
+  },
+
+  onHide() {
+    // 注销监听，避免重复注册
+    if (wx.offWindowResize && this._windowResizeHandler) {
+      wx.offWindowResize(this._windowResizeHandler)
+    }
+  },
+
+  /**
+   * 窗口尺寸变化处理（折叠屏/分屏/横竖屏切换）
+   */
+  _windowResizeHandler(res) {
+    const { windowWidth, windowHeight } = res.size || res
+    if (!windowWidth || !windowHeight) return
+
+    const app = getApp()
+    const oldWidth = app.globalData.screenWidth
+    const oldHeight = app.globalData.screenHeight
+
+    if (oldWidth === windowWidth && oldHeight === windowHeight) return
+
+    // 更新全局数据
+    app.globalData.screenWidth = windowWidth
+    app.globalData.screenHeight = windowHeight
+
+    const windowInfo = wx.getWindowInfo()
+    app.globalData.statusBarHeight = windowInfo.statusBarHeight || 0
+
+    const rpxRatio = windowWidth / 750
+    const bottomAreaH = Math.min(Math.floor(480 * rpxRatio), Math.floor(windowHeight * 0.40))
+    const toolbarH = Math.floor(56 * rpxRatio)
+
+    this.setData({
+      safeAreaTop: windowInfo.statusBarHeight || 0,
+      toolbarTop: windowHeight - bottomAreaH - toolbarH
+    })
+
+    // 重新初始化 Canvas 尺寸和渲染
+    if (this._canvas) {
+      const dpr = wx.getWindowInfo().pixelRatio || 2
+      const canvasW = Math.floor(windowWidth * dpr)
+      const canvasH = Math.floor((windowHeight - bottomAreaH - toolbarH) * dpr)
+      this._canvas.width = canvasW
+      this._canvas.height = canvasH
+      this._canvasWidth = canvasW
+      this._canvasHeight = canvasH
+
+      const text = this._pendingText || this.data.text
+      if (text) {
+        clearRenderCache()
+        this._doRender(text)
+      }
+    }
   },
 
   _checkAndLoadHistory() {
@@ -1006,7 +1077,8 @@ Page({
         template,
         pageIndex: this.data.currentPage,
         totalPages: total,
-        dateStr: this.data.brandStampEnabled ? this._getDateStr() : null
+        dateStr: this.data.brandStampEnabled ? this._getDateStr() : null,
+        previewMode: this.data.settingsPanelVisible
       })
 
       // 保存glyph数据
@@ -1341,7 +1413,10 @@ Page({
     if (settingsPanelVisible) {
       if (settingsTab === tab) {
         this.setData({ settingsPanelVisible: false })
+        // 关闭设置面板后预览模式结束，触发一次正常渲染
+        this._triggerRender()
       } else {
+        // 切Tab时保留预览模式
         this.setData({ settingsTab: tab })
       }
     } else {
@@ -1485,7 +1560,7 @@ Page({
       const font = BUILT_IN_FONTS.find(f => f.id === activeFontId)
       if (font && font.fileID) {
         this.setData({ activeFontDownloadStatus: 'loading' })
-        loadFont(activeFontId)
+        this._loadWithSubset(activeFontId)
           .then(() => {
             // 加载成功：更新列表中该字体的 isLoaded 状态
             const updatedList = this.data.fontList.map(f => {
@@ -1570,11 +1645,10 @@ Page({
     clearRenderCache()
     this._lastFontId = fontId
 
-    if (fontId !== 'HeitiSC' && fontId !== 'SongtiSC') {
-      resetOpenTypeDisabledFont(fontId)
+    // 仅当字体已加载时才渲染（避免字体未加载时回退到系统字体）
+    if (downloadStatus === 'loaded' && (this._loadedFontCache[fontId] || getFontStatus(fontId) === 'loaded')) {
+      this._renderNow()
     }
-
-    this._renderNow()
   },
 
   /**
@@ -1583,7 +1657,7 @@ Page({
   _downloadFont(fontId, font) {
     this.setData({ activeFontDownloadStatus: 'loading' })
 
-    loadFont(fontId)
+    (this.data.text && this.data.text.trim().length > 5 ? loadFontWithSubset(fontId, this.data.text) : loadFont(fontId))
       .then(family => {
         this._loadedFontCache[fontId] = family
         clearRenderCache()
@@ -1602,7 +1676,8 @@ Page({
           fontList,
           textSettings: { ...this.data.textSettings, fontOptions: updatedFontOptions }
         })
-        this._renderNow()
+        // 延迟渲染：等待 Canvas 2D 识别新加载的字体
+        setTimeout(() => { this._renderNow() }, 200)
       })
       .catch(() => {
         this.setData({ activeFontDownloadStatus: 'failed' })
@@ -1800,8 +1875,10 @@ Page({
 
   onDamageChange(e) {
     const val = e.detail.value
+    // 非线性映射：前30%刻度对应0-0.15(可见破损)，后70%刻度对应0.15-0.5(严重)
+    const mapped = val <= 30 ? (val / 30) * 0.15 : 0.15 + ((val - 30) / 70) * 0.35
     this.setData({
-      'settings.damage': val / 100,
+      'settings.damage': mapped,
       'settings.damageVal': val
     })
     this._triggerRender()
@@ -2022,7 +2099,7 @@ Page({
 
   onLineHeightStep(e) {
     const delta = parseInt(e.currentTarget.dataset.delta)
-    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 80, 400)
+    const newVal = this._clamp(this.data.settings.lineHeightVal + delta, 100, 280)
     this.setData({
       'settings.lineHeight': newVal / 100,
       'settings.lineHeightVal': newVal,
@@ -2370,6 +2447,34 @@ Page({
     if (s.misRegistration != null) tpl.ink.misRegistration = s.misRegistration
     if (s.damage != null) tpl.ink.damage = s.damage
 
+    // === 特效开关（用户手动切换，优先级高于模板默认值）===
+    // 字体风化：布尔开关 + 强度滑块
+    if (s.weatheringEnabled != null) {
+      tpl.ink.weathering = s.weatheringEnabled
+      if (s.weatheringIntensity != null) {
+        tpl.ink.weatheringIntensity = s.weatheringIntensity / 100
+      }
+    }
+    // 墨色浸染：布尔开关 + 强度滑块
+    if (s.inkSpreadEnabled != null) {
+      tpl.ink.inkSpread = s.inkSpreadEnabled
+      if (s.inkSpreadIntensity != null) {
+        tpl.ink.inkSpreadIntensity = s.inkSpreadIntensity / 100
+      }
+    }
+    // 套印错位：布尔开关 + 偏移滑块
+    if (s.misregistrationEnabled != null) {
+      tpl.ink.misRegistration = s.misregistrationEnabled ? ((s.misregistrationOffset != null ? s.misregistrationOffset : 1) / 20) : 0
+    } else if (s.misregistrationOffset != null) {
+      tpl.ink.misRegistration = s.misregistrationOffset / 20
+    }
+    // 页面破损：布尔开关 + 程度值
+    if (s.damageEnabled != null) {
+      tpl.ink.damage = s.damageEnabled ? (s.damageVal != null ? s.damageVal / 100 : 0.08) : 0
+    } else if (s.damage != null) {
+      tpl.ink.damage = s.damage
+    }
+
     // === 基础纸张 ===
     if (s.paperBaseColor != null) tpl.paper.baseColor = s.paperBaseColor
     // 边距：滑块值直接作为像素值（不再基于模板默认值的百分比）
@@ -2535,9 +2640,9 @@ Page({
     }
     // 套印错位
     if (s.misregistrationEnabled != null) {
-      tpl.ink.misRegistration = s.misregistrationEnabled ? (s.misregistrationOffset || 1) : 0
+      tpl.ink.misRegistration = s.misregistrationEnabled ? ((s.misregistrationOffset != null ? s.misregistrationOffset : 1) / 20) : 0
     } else if (s.misregistrationOffset != null) {
-      tpl.ink.misRegistration = s.misregistrationOffset
+      tpl.ink.misRegistration = s.misregistrationOffset / 20
     }
     // 页面破损
     if (s.damageEnabled != null) {
@@ -2759,9 +2864,9 @@ Page({
         'settings.fontId': fontId
       })
       this.setData({ fontLoadingVisible: true })
-      resetOpenTypeDisabledFont(fontId)
+      /*skipped*/;
 
-      loadFont(fontId).then((family) => {
+      (this.data.text && this.data.text.trim().length > 5 ? loadFontWithSubset(fontId, this.data.text) : loadFont(fontId)).then((family) => {
         this._loadedFontCache[fontId] = family
         clearRenderCache()
         this._lastFontId = fontId
@@ -2807,7 +2912,7 @@ Page({
     this._lastFontId = fontId
 
     if (fontId !== 'HeitiSC' && fontId !== 'SongtiSC') {
-      resetOpenTypeDisabledFont(fontId)
+      /*skipped*/;
     }
 
     // 真机延迟渲染：确保wx.loadFontFace注册的字体被Canvas 2D识别
@@ -2823,9 +2928,9 @@ Page({
     })
     this.setData({ fontLoadingVisible: true })
 
-    resetOpenTypeDisabledFont(fontId)
+    /*skipped*/;
 
-    loadFont(fontId).then((fontFamily) => {
+    (this.data.text && this.data.text.trim().length > 5 ? loadFontWithSubset(fontId, this.data.text) : loadFont(fontId)).then((fontFamily) => {
       this._loadedFontCache[fontId] = fontFamily
       clearRenderCache()
       this._lastFontId = fontId
@@ -3580,8 +3685,8 @@ Page({
       default: // 默认模式
         config = {
           textAlign: 'left',
-          lineHeight: 100,
-          lineHeightDisplay: '1.0倍',
+          lineHeight: 170,
+          lineHeightDisplay: '1.7倍',
           paragraphSpacing: 15,
           indentIndex: 0
         }
@@ -3615,8 +3720,8 @@ Page({
         directionIndex: 0,
         verticalDir: 'rtl',
         textAlign: 'left',
-        lineHeight: 100,
-        lineHeightDisplay: '1.0倍',
+        lineHeight: 170,
+        lineHeightDisplay: '1.7倍',
         letterSpacing: 0,
         indentOptions: ['无缩进', '2字符缩进', '4字符缩进'],
         indentIndex: 0,

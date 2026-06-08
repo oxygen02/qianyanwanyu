@@ -389,7 +389,7 @@
   flex-direction: column;
   position: relative;
   z-index: 100;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   background-color: #FAF7F2;
   transition: height 0.2s ease-out;
@@ -420,7 +420,7 @@
 
 .settings-body {
   flex: 1;
-  min-height: 0;
+  height: 0; /* 关键：flex子元素需设height:0才能正确计算scroll区域 */
   min-height: 300rpx;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -1641,6 +1641,27 @@
   gap: 6rpx;
   align-items: stretch;
   margin-bottom: 4rpx;
+}
+
+/* 特效滑块紧凑行：风化/浸染/错位/破损 合并为2行显示 */
+.settings-row--compact {
+  display: flex;
+  gap: 8rpx;
+  align-items: center;
+  margin-bottom: 2rpx;
+}
+.settings-row--compact .settings-cell {
+  flex: 1;
+  min-width: 0;
+  padding: 4rpx 8rpx;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 6rpx;
+  border: 1rpx solid rgba(158, 148, 136, 0.08);
+}
+.settings-row--compact .setting-label {
+  font-size: 20rpx;
+  color: #8B7D6B;
+  margin-bottom: 2rpx;
 }
 
 .settings-cell--taller {
