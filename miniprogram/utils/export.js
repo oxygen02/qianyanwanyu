@@ -8,6 +8,26 @@ function exportCanvasToImage(canvas, pageInstance, canvasSize, quality) {
   const scale = quality === 'ultra' ? 3 : quality === 'standard' ? 1 : 2
   const TIMEOUT_MS = 15000
 
+  // ============ 诊断日志：打印 canvas 状态 ============
+  const canvasInfo = {
+    isNull: !canvas,
+    hasToTempFilePath: !!(canvas && typeof canvas.toTempFilePath === 'function'),
+    canvasType: canvas ? (canvas.constructor ? canvas.constructor.name : 'unknown') : 'null',
+    canvasWidth: canvas ? canvas.width : 'N/A',
+    canvasHeight: canvas ? canvas.height : 'N/A',
+    paramWidth: canvasSize ? canvasSize.width : 'N/A',
+    paramHeight: canvasSize ? canvasSize.height : 'N/A'
+  }
+  console.log('[export] 开始导出, canvas状态:', JSON.stringify(canvasInfo), 'quality:', quality)
+
+  // 前置校验：canvas 无效时立即拒绝
+  if (!canvas) {
+    return Promise.reject(new Error('Canvas对象为空，请等待页面加载完成后重试'))
+  }
+  if (!canvas.width || !canvas.height || canvas.width <= 0 || canvas.height <= 0) {
+    return Promise.reject(new Error('Canvas尺寸无效(w=' + canvas.width + ',h=' + canvas.height + ')，请重试'))
+  }
+
   return new Promise((resolve, reject) => {
     const timeoutTimer = setTimeout(() => {
       console.error('[export] canvas.toTempFilePath 超时 (', TIMEOUT_MS, 'ms)')
@@ -34,7 +54,14 @@ function exportCanvasToImage(canvas, pageInstance, canvasSize, quality) {
         },
         fail: (err) => {
           clearTimeout(timeoutTimer)
-          console.error('[export] canvas.toTempFilePath 失败', err)
+          // 打印完整错误信息用于诊断
+          const errDetail = {
+            errMsg: err.errMsg || 'unknown',
+            errCode: err.errCode || 'N/A',
+            message: err.message || '',
+            fullError: JSON.stringify(err).slice(0, 500)
+          }
+          console.error('[export] canvas.toTempFilePath 失败, 详情:', JSON.stringify(errDetail))
           reject(err)
         }
       })

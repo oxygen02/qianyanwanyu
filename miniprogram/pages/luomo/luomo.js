@@ -2619,7 +2619,7 @@ Page({
     } catch (err) {
       wx.hideToast()
       const errMsg = err.errMsg || err.message || String(err)
-      console.error('[onExport] 保存失败:', errMsg)
+      console.error('[onExport] 保存失败:', errMsg, '完整错误:', JSON.stringify(err).slice(0, 300))
 
       if (errMsg.includes('auth') || errMsg.includes('authorize') || errMsg.includes('deny') || (err.code === 'AUTH_DENY')) {
         wx.showModal({
@@ -2628,6 +2628,8 @@ Page({
           confirmText: '去设置',
           success: (res) => { if (res.confirm) wx.openSetting() }
         })
+      } else if (errMsg.includes('Canvas对象为空') || errMsg.includes('Canvas尺寸无效')) {
+        wx.showToast({ title: '画布未就绪，请稍后重试', icon: 'none', duration: 2500 })
       } else if (errMsg.includes('canvasToTempFilePath') || errMsg.includes('canvas')) {
         wx.showToast({ title: '图片生成失败，请稍后重试', icon: 'none', duration: 2500 })
       } else if (errMsg.includes('saveImageToPhotosAlbum') || errMsg.includes('photosAlbum') || errMsg.includes('album')) {
@@ -2635,7 +2637,9 @@ Page({
       } else if (errMsg.includes('超时') || errMsg.includes('timeout')) {
         wx.showToast({ title: '生成超时，请减少文字后重试', icon: 'none', duration: 2500 })
       } else {
-        wx.showToast({ title: '保存失败，请重试', icon: 'none', duration: 2000 })
+        // 显示具体错误信息（截取前20字），方便定位问题
+        const shortMsg = errMsg.length > 20 ? errMsg.slice(0, 20) + '...' : errMsg
+        wx.showToast({ title: '保存失败: ' + shortMsg, icon: 'none', duration: 3000 })
       }
     } finally {
       this.setData({ isRendering: false })
